@@ -27,8 +27,6 @@ mod family;
 mod gallery;
 mod types;
 
-#[cfg(target_arch = "wasm32")]
-use self::browser::begin_analysis_from_blob;
 use self::components::{gallery_with_filter, lipid_classes_card, summary};
 
 /// Renders the lipid selection UI.
@@ -67,7 +65,6 @@ pub fn app() -> Element {
         handle_uploaded_files(
             ctx,
             upload::extract_blob_from_file_data(&evt.data().files()),
-            drag_active,
         );
     };
 
@@ -75,7 +72,6 @@ pub fn app() -> Element {
         handle_uploaded_files(
             ctx,
             upload::extract_blob_from_file_data(&evt.data().files()),
-            drag_active,
         );
     };
 
@@ -153,14 +149,7 @@ pub fn app() -> Element {
                         style: StyleBuilder::new().property("margin-top", "0.75rem").border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.5rem 0.9rem").cursor("pointer").width("100%").build(),
                          onclick: move |_| {
                             #[cfg(target_arch = "wasm32")]
-                            browser::load_example_dataset(
-                                ctx.file_name,
-                                ctx.status,
-                                ctx.busy,
-                                drag_active,
-                                ctx.analysis,
-                                ctx.input_format,
-                            );
+                            browser::load_example_dataset(ctx);
                         },
                         "Load Example SMILES"
                     }
@@ -182,12 +171,12 @@ pub fn app() -> Element {
 /// `#[cfg(target_arch = "wasm32")]` signal-declaration duplication: each drag/drop
 /// handler owns its own snapshot and mutates the shared signal state.
 #[derive(Clone, Copy)]
-struct UploadCtx {
-    file_name: Signal<String>,
-    status: Signal<String>,
-    busy: Signal<bool>,
-    analysis: Signal<Option<Analysis>>,
-    input_format: Signal<Option<LipidFormat>>,
+pub(super) struct UploadCtx {
+    pub(super) file_name: Signal<String>,
+    pub(super) status: Signal<String>,
+    pub(super) busy: Signal<bool>,
+    pub(super) analysis: Signal<Option<Analysis>>,
+    pub(super) input_format: Signal<Option<LipidFormat>>,
 }
 
 /// Acts on an already-extracted file: sniffs its format from the name and hands it
@@ -199,12 +188,11 @@ struct UploadCtx {
 fn handle_uploaded_files(
     mut ctx: UploadCtx,
     result: Result<Option<upload::ExtractedFile>, String>,
-    drag_active: Signal<bool>,
 ) {
     match result {
         Ok(Some(file)) => {
             let detected_format = LipidFormat::from_path(&file.name);
-            process_file_upload(ctx, file, detected_format, drag_active);
+            process_file_upload(ctx, file, detected_format);
         }
         Ok(None) => ctx.status.set("No file selected.".to_string()),
         Err(msg) => ctx.status.set(msg),
@@ -216,20 +204,9 @@ fn process_file_upload(
     mut ctx: UploadCtx,
     file: upload::ExtractedFile,
     format: Option<LipidFormat>,
-    drag_active: Signal<bool>,
 ) {
     ctx.input_format.set(format);
-    begin_analysis_from_blob(
-        file.blob,
-        file.name,
-        ctx.file_name,
-        ctx.status,
-        ctx.busy,
-        drag_active,
-        ctx.analysis,
-        ctx.input_format,
-        format,
-    );
+    browser::start_analysis(file.blob, file.name, ctx, format);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -237,7 +214,6 @@ fn process_file_upload(
     mut ctx: UploadCtx,
     file: upload::ExtractedFile,
     format: Option<LipidFormat>,
-    _drag_active: Signal<bool>,
 ) {
     ctx.input_format.set(format);
     ctx.file_name.set(file.name);

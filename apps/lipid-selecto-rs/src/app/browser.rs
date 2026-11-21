@@ -9,11 +9,13 @@
 use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
+use super::UploadCtx;
+#[cfg(target_arch = "wasm32")]
 use crate::examples::example_smiles;
 #[cfg(target_arch = "wasm32")]
 use crate::format::LipidFormat;
 #[cfg(target_arch = "wasm32")]
-use crate::parser::{Analysis, BlockExtractor, build_analysis_from_classified, classify_blocks};
+use crate::parser::{BlockExtractor, build_analysis_from_classified, classify_blocks};
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
 #[cfg(target_arch = "wasm32")]
@@ -28,32 +30,27 @@ const MAX_GALLERY_ITEMS: usize = 96;
 
 /// Reads the blob in streaming chunks, classifies lipids, and populates signals.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::too_many_lines, clippy::too_many_arguments)] // wasm async dispatch needs many signal handles
-fn start_analysis(
+#[allow(clippy::too_many_lines)] // wasm async dispatch needs streaming loop and chunked yield
+pub(super) fn start_analysis(
     blob: Blob,
     source_name: String,
-    mut file_name_signal: Signal<String>,
-    mut status: Signal<String>,
-    mut busy: Signal<bool>,
-    _drag_active: Signal<bool>,
-    mut analysis: Signal<Option<Analysis>>,
-    mut input_format_signal: Signal<Option<LipidFormat>>,
+    mut ctx: UploadCtx,
     initial_format: Option<LipidFormat>,
 ) {
-    file_name_signal.set(source_name);
+    ctx.file_name.set(source_name);
 
     spawn(async move {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         // blob.slice_with_f64_and_f64 requires f64 args, cast from u64
         let total_bytes = blob.size() as u64;
-        status.set(format!("Reading {total_bytes} bytes…"));
-        busy.set(true);
+        ctx.status.set(format!("Reading {total_bytes} bytes…"));
+        ctx.busy.set(true);
 
         // Stream the blob line-by-line via BlobLines, collecting only the
         // parsed blocks (not the raw file text) so memory stays bounded by
         // the parsed output, not the raw file size.
         let mut reader = BlobLines::new(BlobSource::new(&blob), |processed, total| {
-            status.set(format!(
+            ctx.status.set(format!(
                 "Reading file… {}/{} bytes",
                 processed.min(total),
                 total
@@ -70,25 +67,27 @@ fn start_analysis(
                 }
                 Ok(None) | Err(UploadError::UnexpectedEof) => break,
                 Err(e) => {
-                    status.set(format!("Error reading file: {e}"));
-                    busy.set(false);
+                    ctx.status.set(format!("Error reading file: {e}"));
+                    ctx.busy.set(false);
                     return;
                 }
             }
         }
 
-        status.set(format!("Parsed {line_count} lines — classifying…"));
+        ctx.status
+            .set(format!("Parsed {line_count} lines — classifying…"));
 
         if initial_format.is_none()
             && let Some(detected) = extractor.detected_format()
         {
-            input_format_signal.set(Some(detected));
+            ctx.input_format.set(Some(detected));
         }
         let blocks = extractor.finish();
 
         if blocks.is_empty() {
-            status.set("No valid entries found in the file.".to_string());
-            busy.set(false);
+            ctx.status
+                .set("No valid entries found in the file.".to_string());
+            ctx.busy.set(false);
             return;
         }
 
@@ -102,67 +101,32 @@ fn start_analysis(
         for chunk in blocks.chunks_mut(chunk_size) {
             classify_blocks(chunk, &all_classes);
             processed += chunk.len();
-            status.set(format!("Classifying… {processed}/{total} entries"));
+            ctx.status
+                .set(format!("Classifying… {processed}/{total} entries"));
             TimeoutFuture::new(0).await;
         }
-        status.set(format!("Classified {total} entries — building gallery…"));
+        ctx.status
+            .set(format!("Classified {total} entries — building gallery…"));
 
         let result = build_analysis_from_classified(blocks, MAX_GALLERY_ITEMS, all_classes);
         let block_count = result.blocks.len();
         let gallery_count = result.gallery.len();
-        analysis.set(Some(result));
+        ctx.analysis.set(Some(result));
 
-        status.set(format!(
+        ctx.status.set(format!(
             "Done — {block_count} entries analyzed (showing {gallery_count} gallery items)."
         ));
-        busy.set(false);
+        ctx.busy.set(false);
         // Yield once so the UI repaints before the heavy work finishes.
         TimeoutFuture::new(0).await;
     });
 }
 
-/// Public entry point: delegates to [`start_analysis`] with the uploaded blob.
-#[cfg(target_arch = "wasm32")]
-#[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
-pub(super) fn begin_analysis_from_blob(
-    blob: Blob,
-    source_name: String,
-    file_name_signal: Signal<String>,
-    status: Signal<String>,
-    busy: Signal<bool>,
-    drag_active: Signal<bool>,
-    analysis: Signal<Option<Analysis>>,
-    input_format_signal: Signal<Option<LipidFormat>>,
-    initial_format: Option<LipidFormat>,
-) {
-    start_analysis(
-        blob,
-        source_name,
-        file_name_signal,
-        status,
-        busy,
-        drag_active,
-        analysis,
-        input_format_signal,
-        initial_format,
-    );
-}
-
 /// Loads the curated example lipid dataset (204 SMILES) and runs analysis.
 #[cfg(target_arch = "wasm32")]
-pub(super) fn load_example_dataset(
-    file_name_signal: Signal<String>,
-    status: Signal<String>,
-    busy: Signal<bool>,
-    drag_active: Signal<bool>,
-    analysis: Signal<Option<Analysis>>,
-    input_format: Signal<Option<LipidFormat>>,
-) {
-    let mut status = status;
-    let mut busy = busy;
-    let mut input_format = input_format;
-    input_format.set(Some(LipidFormat::Smiles));
+pub(super) fn load_example_dataset(mut ctx: UploadCtx) {
     let fmt = Some(LipidFormat::Smiles);
+    ctx.input_format.set(fmt);
     let smiles_lines = example_smiles();
     let text = smiles_lines.join("\n");
 
@@ -172,21 +136,11 @@ pub(super) fn load_example_dataset(
     let blob = match Blob::new_with_str_sequence(&arr.into()) {
         Ok(blob) => blob,
         Err(e) => {
-            status.set(format!("Error creating blob: {e:?}"));
-            busy.set(false);
+            ctx.status.set(format!("Error creating blob: {e:?}"));
+            ctx.busy.set(false);
             return;
         }
     };
 
-    start_analysis(
-        blob,
-        "example_lipids.smi".to_string(),
-        file_name_signal,
-        status,
-        busy,
-        drag_active,
-        analysis,
-        input_format,
-        fmt,
-    );
+    start_analysis(blob, "example_lipids.smi".to_string(), ctx, fmt);
 }
