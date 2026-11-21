@@ -54,8 +54,6 @@ pub fn UploadZone(
 ) -> Element {
     let colors = ColorScheme::LIGHT;
     let mut drag_active = drag_active;
-    let on_file_change = on_file_change;
-    let on_drop = on_drop;
 
     let is_drag_active = *drag_active.read();
     let upload_style = StyleBuilder::new()
@@ -64,7 +62,7 @@ pub fn UploadZone(
         .align_items("center")
         .justify_content("center")
         .gap(Spacing::MD)
-        .property("min-height", "140px")
+        .min_height("140px")
         .width("100%")
         .property("box-sizing", "border-box")
         .property("position", "relative")
@@ -96,19 +94,17 @@ pub fn UploadZone(
     } else {
         colors.text
     };
+    let activate_drag = move |evt: Event<DragData>| {
+        evt.prevent_default();
+        drag_active.set(true);
+    };
 
     rsx! {
         label {
             r#for: "upload-input",
             style: upload_style,
-            ondragenter: move |evt: Event<DragData>| {
-                evt.prevent_default();
-                drag_active.set(true);
-            },
-            ondragover: move |evt: Event<DragData>| {
-                evt.prevent_default();
-                drag_active.set(true);
-            },
+            ondragenter: activate_drag,
+            ondragover: activate_drag,
             ondragleave: move |evt: Event<DragData>| {
                 evt.prevent_default();
                 drag_active.set(false);
