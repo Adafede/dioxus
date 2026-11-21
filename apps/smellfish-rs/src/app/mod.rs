@@ -11,13 +11,12 @@
 //! (kept inline because its `oninput`/`onfocus` closures need the local
 //! `pasted_smiles`/`demo_cleared` signals).
 use crate::document_head::SmellfishDocumentHead;
-use crate::model::{EndpointStatus, MoleculeRow, MotifSummary};
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 use ui::prelude::{Button, ButtonVariant, SimpleAnalyticsBadge, skip_link};
 
-mod browser;
+pub(crate) mod browser;
 mod csv_export;
 mod formatting;
 mod motif_display;
@@ -55,69 +54,38 @@ CCCCCCCC=CCCCCCCCC(N)=O";
 pub fn app() -> Element {
     ui::shared_signal!(file_name, String::new);
 
-    let status = use_signal(String::new);
-    let busy = use_signal(|| false);
-    let mut drag_active = use_signal(|| false);
-    let rows = use_signal(Vec::<MoleculeRow>::new);
-    let motifs = use_signal(Vec::<MotifSummary>::new);
-    let endpoints = use_signal(Vec::<EndpointStatus>::new);
-    let warnings = use_signal(Vec::<String>::new);
+    let mut signals = browser::ImportSignals {
+        file_name,
+        status: use_signal(String::new),
+        busy: use_signal(|| false),
+        drag_active: use_signal(|| false),
+        rows: use_signal(Vec::new),
+        motifs: use_signal(Vec::new),
+        endpoints: use_signal(Vec::new),
+        warnings: use_signal(Vec::new),
+    };
     let mut pasted_smiles = use_signal(|| DEMO_SMILES.to_string());
     let mut demo_cleared = use_signal(|| false);
 
     let on_file_change = move |evt: Event<FormData>| {
-        browser::attempt_import(
-            &evt.data().files(),
-            file_name,
-            status,
-            busy,
-            drag_active,
-            rows,
-            motifs,
-            endpoints,
-            warnings,
-        );
+        browser::attempt_import(&evt.data().files(), signals);
     };
-    let on_drag_enter = move |evt: Event<DragData>| {
+    let on_drag_activate = move |evt: Event<DragData>| {
         evt.prevent_default();
-        drag_active.set(true);
-    };
-    let on_drag_over = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(true);
+        signals.drag_active.set(true);
     };
     let on_drag_leave = move |evt: Event<DragData>| {
         evt.prevent_default();
-        drag_active.set(false);
+        signals.drag_active.set(false);
     };
     let on_drop = move |evt: Event<DragData>| {
-        browser::attempt_import(
-            &evt.data().files(),
-            file_name,
-            status,
-            busy,
-            drag_active,
-            rows,
-            motifs,
-            endpoints,
-            warnings,
-        );
+        browser::attempt_import(&evt.data().files(), signals);
     };
     let submit_pasted_smiles = move |_| {
-        browser::attempt_import_from_text(
-            pasted_smiles.read().trim(),
-            file_name,
-            status,
-            busy,
-            drag_active,
-            rows,
-            motifs,
-            endpoints,
-            warnings,
-        );
+        browser::attempt_import_from_text(pasted_smiles.read().trim(), signals);
     };
 
-    let ep_list = endpoints.read();
+    let ep_list = signals.endpoints.read();
 
     rsx! {
         SmellfishDocumentHead {}
@@ -129,10 +97,10 @@ pub fn app() -> Element {
             main { id: "main-content",
                 section { class: "panel input-panel",
                     div { class: "input-split",
-                        label { class: if *drag_active.read() { "input-card dropzone dragging" } else { "input-card dropzone" },
+                        label { class: if *signals.drag_active.read() { "input-card dropzone dragging" } else { "input-card dropzone" },
                             r#for: "smiles-csv",
-                            ondragenter: on_drag_enter,
-                            ondragover: on_drag_over,
+                            ondragenter: on_drag_activate,
+                            ondragover: on_drag_activate,
                             ondragleave: on_drag_leave,
                             ondrop: on_drop,
 
@@ -145,7 +113,7 @@ pub fn app() -> Element {
                                 id: "smiles-csv",
                                 r#type: "file",
                                 accept: ".csv,text/csv",
-                                disabled: *busy.read(),
+                                disabled: *signals.busy.read(),
                                 onchange: on_file_change,
                             }
                         }
@@ -161,7 +129,7 @@ pub fn app() -> Element {
                                     id: "smiles-paste",
                                     class: "smiles-textarea",
                                     placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
-                                    disabled: *busy.read(),
+                                    disabled: *signals.busy.read(),
                                     value: "{pasted_smiles}",
                                     onfocus: move |_| {
                                         if !*demo_cleared.read() {
@@ -176,19 +144,19 @@ pub fn app() -> Element {
                                 Button {
                                     label: "Analyze pasted SMILES",
                                     variant: ButtonVariant::Primary,
-                                    disabled: *busy.read(),
+                                    disabled: *signals.busy.read(),
                                     onclick: Some(EventHandler::new(submit_pasted_smiles)),
                                 }
                             }
                         }
                     }
 
-                    if !status.read().is_empty() || *busy.read() {
+                    if !signals.status.read().is_empty() || *signals.busy.read() {
                         p { class: "status", role: "status", aria_live: "polite", aria_atomic: "true",
-                            if *busy.read() {
+                            if *signals.busy.read() {
                                 span { class: "spinner" }
                             }
-                            "{status}"
+                            "{signals.status}"
                         }
                     }
                     if !ep_list.is_empty() {
@@ -199,21 +167,21 @@ pub fn app() -> Element {
                         }
                     }
 
-                    if !file_name.read().is_empty() {
-                        p { class: "small muted", "Loaded: {file_name}" }
+                    if !signals.file_name.read().is_empty() {
+                        p { class: "small muted", "Loaded: {signals.file_name}" }
                     }
 
-                    if !warnings.read().is_empty() {
-                        div { class: "alert", "{warnings.read().join(\" • \")}" }
+                    if !signals.warnings.read().is_empty() {
+                        div { class: "alert", "{signals.warnings.read().join(\" • \")}" }
                     }
                 }
 
-                if !motifs.read().is_empty() {
-                    MotifPanel { motifs }
+                if !signals.motifs.read().is_empty() {
+                    MotifPanel { motifs: signals.motifs }
                 }
 
-                if !rows.read().is_empty() {
-                    ResultsView { rows }
+                if !signals.rows.read().is_empty() {
+                    ResultsView { rows: signals.rows }
                 }
             }
 

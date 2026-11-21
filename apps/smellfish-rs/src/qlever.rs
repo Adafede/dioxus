@@ -81,19 +81,25 @@ pub(crate) async fn enrich_sources(
 }
 
 async fn probe_endpoint(http: &ReqwestClient, name: &str, endpoint: &str) -> EndpointStatus {
-    match run_query(http, endpoint, "ASK {}", ResponseFormat::SparqlJson).await {
-        Ok(_) => EndpointStatus {
-            name: name.to_string(),
-            endpoint: endpoint.to_string(),
-            reachable: true,
-            detail: "reachable".to_string(),
-        },
-        Err(err) => EndpointStatus {
-            name: name.to_string(),
-            endpoint: endpoint.to_string(),
-            reachable: false,
-            detail: err.to_string(),
-        },
+    let (reachable, detail) =
+        match run_query(http, endpoint, "ASK {}", ResponseFormat::SparqlJson).await {
+            Ok(_) => (true, "reachable".to_string()),
+            Err(err) => (false, err.to_string()),
+        };
+    EndpointStatus {
+        name: name.to_string(),
+        endpoint: endpoint.to_string(),
+        reachable,
+        detail,
+    }
+}
+
+fn lotus_status(endpoint: &str, reachable: bool, detail: impl Into<String>) -> EndpointStatus {
+    EndpointStatus {
+        name: "LOTUS".to_string(),
+        endpoint: endpoint.to_string(),
+        reachable,
+        detail: detail.into(),
     }
 }
 
@@ -109,13 +115,7 @@ async fn fetch_lotus_with_fallback(
             } else {
                 "online"
             };
-            let status = EndpointStatus {
-                name: "LOTUS".to_string(),
-                endpoint: WDQS_WIKIDATA.to_string(),
-                reachable: true,
-                detail: detail.to_string(),
-            };
-            (data, status)
+            (data, lotus_status(WDQS_WIKIDATA, true, detail))
         }
         Err(wdqs_err) => {
             warnings.push(format!(
@@ -128,23 +128,18 @@ async fn fetch_lotus_with_fallback(
                     } else {
                         "online (QLever fallback)"
                     };
-                    let status = EndpointStatus {
-                        name: "LOTUS".to_string(),
-                        endpoint: QLEVER_WIKIDATA.to_string(),
-                        reachable: true,
-                        detail: detail.to_string(),
-                    };
-                    (data, status)
+                    (data, lotus_status(QLEVER_WIKIDATA, true, detail))
                 }
                 Err(qlever_err) => {
                     warnings.push(format!("LOTUS qlever also failed: {qlever_err}"));
-                    let status = EndpointStatus {
-                        name: "LOTUS".to_string(),
-                        endpoint: WDQS_WIKIDATA.to_string(),
-                        reachable: false,
-                        detail: format!("WDQS: {wdqs_err}; QLever: {qlever_err}"),
-                    };
-                    (HashMap::new(), status)
+                    (
+                        HashMap::new(),
+                        lotus_status(
+                            WDQS_WIKIDATA,
+                            false,
+                            format!("WDQS: {wdqs_err}; QLever: {qlever_err}"),
+                        ),
+                    )
                 }
             }
         }

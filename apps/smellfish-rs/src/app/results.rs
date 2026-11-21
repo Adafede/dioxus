@@ -22,6 +22,22 @@ use super::motif_display::{
     chip_class_for, display_label, is_natural_source, is_synthetic_source, is_unclassified_source,
 };
 
+type MotifPredicate = fn(&str) -> bool;
+
+const MOTIF_GROUPS: [(&str, &str, MotifPredicate); 3] = [
+    ("Natural", "Natural-product motif", is_natural_source),
+    (
+        "Synthetic-leaning",
+        "Synthetic-leaning functional group",
+        is_synthetic_source,
+    ),
+    (
+        "Unclassified",
+        "Unclassified functional group",
+        is_unclassified_source,
+    ),
+];
+
 /// Hero banner.
 #[component]
 pub fn Hero() -> Element {
@@ -41,27 +57,13 @@ pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
         section { class: "panel",
             h2 { "Motifs" }
             div { class: "motif-groups",
-                div { class: "motif-group",
-                    h3 { class: "small", "Natural" }
-                    div { class: "chip-list",
-                        for motif in motifs_ref.iter().filter(|m| is_natural_source(&m.source_class)).take(12) {
-                            span { class: "{chip_class_for(&motif.source_class)}", title: "Natural-product motif", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)} ({motif.count})" }
-                        }
-                    }
-                }
-                div { class: "motif-group",
-                    h3 { class: "small", "Synthetic-leaning" }
-                    div { class: "chip-list",
-                        for motif in motifs_ref.iter().filter(|m| is_synthetic_source(&m.source_class)).take(12) {
-                            span { class: "{chip_class_for(&motif.source_class)}", title: "Synthetic-leaning functional group", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)} ({motif.count})" }
-                        }
-                    }
-                }
-                div { class: "motif-group",
-                    h3 { class: "small", "Unclassified" }
-                    div { class: "chip-list",
-                        for motif in motifs_ref.iter().filter(|m| is_unclassified_source(&m.source_class)).take(12) {
-                            span { class: "{chip_class_for(&motif.source_class)}", title: "Unclassified functional group", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)} ({motif.count})" }
+                for (heading, title, matches_group) in MOTIF_GROUPS {
+                    div { class: "motif-group",
+                        h3 { class: "small", "{heading}" }
+                        div { class: "chip-list",
+                            for motif in motifs_ref.iter().filter(|m| matches_group(&m.source_class)).take(12) {
+                                span { class: "{chip_class_for(&motif.source_class)}", title: "{title}", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)} ({motif.count})" }
+                            }
                         }
                     }
                 }
@@ -192,27 +194,13 @@ pub fn MoleculeCard(row: MoleculeRow) -> Element {
                     div { class: "meta",
                         strong { "Functional groups" }
                         div { class: "motif-groups",
-                            div { class: "motif-group",
-                                h4 { class: "small", "Natural" }
-                                div { class: "chip-list",
-                                    for motif in row.motif_hits.iter().filter(|m| is_natural_source(&m.source_class)) {
-                                        span { class: "{chip_class_for(&motif.source_class)}", title: "Natural-product motif", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)}" }
-                                    }
-                                }
-                            }
-                            div { class: "motif-group",
-                                h4 { class: "small", "Synthetic-leaning" }
-                                div { class: "chip-list",
-                                    for motif in row.motif_hits.iter().filter(|m| is_synthetic_source(&m.source_class)) {
-                                        span { class: "{chip_class_for(&motif.source_class)}", title: "Synthetic-leaning functional group", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)}" }
-                                    }
-                                }
-                            }
-                            div { class: "motif-group",
-                                h4 { class: "small", "Unclassified" }
-                                div { class: "chip-list",
-                                    for motif in row.motif_hits.iter().filter(|m| is_unclassified_source(&m.source_class)) {
-                                        span { class: "{chip_class_for(&motif.source_class)}", title: "Unclassified functional group", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)}" }
+                            for (heading, title, matches_group) in MOTIF_GROUPS {
+                                div { class: "motif-group",
+                                    h4 { class: "small", "{heading}" }
+                                    div { class: "chip-list",
+                                        for motif in row.motif_hits.iter().filter(|m| matches_group(&m.source_class)) {
+                                            span { class: "{chip_class_for(&motif.source_class)}", title: "{title}", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)}" }
+                                        }
                                     }
                                 }
                             }

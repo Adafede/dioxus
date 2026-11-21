@@ -29,34 +29,22 @@ use crate::model::{ChemistCheck, MoleculeRow, RdkitMotifHit, normalized_source_c
 /// signal.
 #[must_use]
 pub(crate) fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
-    let mut checks: Vec<ChemistCheck> = Vec::with_capacity(3);
-
     // 1 — NP-likeness score
-    if !row.np_score_available {
-        checks.push(ChemistCheck {
-            name: "NP-likeness",
-            status: "warn",
-            detail: "Ertl model not loaded".into(),
-        });
+    let (np_status, np_detail) = if !row.np_score_available {
+        ("warn", "Ertl model not loaded".into())
     } else if row.np_likeness >= 0.5 {
-        checks.push(ChemistCheck {
-            name: "NP-likeness",
-            status: "pass",
-            detail: format!("Ertl score {:+.2}", row.np_likeness),
-        });
+        ("pass", format!("Ertl score {:+.2}", row.np_likeness))
     } else if row.np_likeness > -0.5 {
-        checks.push(ChemistCheck {
-            name: "NP-likeness",
-            status: "warn",
-            detail: format!("Ertl score {:+.2} — borderline", row.np_likeness),
-        });
+        (
+            "warn",
+            format!("Ertl score {:+.2} — borderline", row.np_likeness),
+        )
     } else {
-        checks.push(ChemistCheck {
-            name: "NP-likeness",
-            status: "fail",
-            detail: format!("Ertl score {:+.2} — synthetic-leaning", row.np_likeness),
-        });
-    }
+        (
+            "fail",
+            format!("Ertl score {:+.2} — synthetic-leaning", row.np_likeness),
+        )
+    };
 
     // 2 — Skeleton / scaffold classification
     let family = &row.ring_family;
@@ -72,56 +60,41 @@ pub(crate) fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
             "heteroaromatic",
         ],
     );
-    if is_polyaromatic {
-        checks.push(ChemistCheck {
-            name: "Skeleton",
-            status: "fail",
-            detail: row.ring_family.clone(),
-        });
+    let skel_status = if is_polyaromatic {
+        "fail"
     } else if is_np_skeleton {
-        checks.push(ChemistCheck {
-            name: "Skeleton",
-            status: "pass",
-            detail: row.ring_family.clone(),
-        });
+        "pass"
     } else {
-        checks.push(ChemistCheck {
-            name: "Skeleton",
-            status: "warn",
-            detail: row.ring_family.clone(),
-        });
-    }
+        "warn"
+    };
 
     // 3 — Database presence
     let has_lotus = !row.lotus_taxa.is_empty();
     let has_pubchem = !row.pubchem_cids.is_empty();
-    if has_lotus && has_pubchem {
-        checks.push(ChemistCheck {
-            name: "Database",
-            status: "pass",
-            detail: "LOTUS + PubChem".into(),
-        });
-    } else if has_lotus {
-        checks.push(ChemistCheck {
-            name: "Database",
-            status: "pass",
-            detail: "LOTUS taxa".into(),
-        });
-    } else if has_pubchem {
-        checks.push(ChemistCheck {
-            name: "Database",
-            status: "warn",
-            detail: "PubChem only".into(),
-        });
-    } else {
-        checks.push(ChemistCheck {
-            name: "Database",
-            status: "fail",
-            detail: "Not in LOTUS or PubChem".into(),
-        });
-    }
+    let (db_status, db_detail) = match (has_lotus, has_pubchem) {
+        (true, true) => ("pass", "LOTUS + PubChem"),
+        (true, false) => ("pass", "LOTUS taxa"),
+        (false, true) => ("warn", "PubChem only"),
+        (false, false) => ("fail", "Not in LOTUS or PubChem"),
+    };
 
-    checks
+    vec![
+        ChemistCheck {
+            name: "NP-likeness",
+            status: np_status,
+            detail: np_detail,
+        },
+        ChemistCheck {
+            name: "Skeleton",
+            status: skel_status,
+            detail: row.ring_family.clone(),
+        },
+        ChemistCheck {
+            name: "Database",
+            status: db_status,
+            detail: db_detail.into(),
+        },
+    ]
 }
 
 /// Motif labels that indicate scaffold-class characteristics of natural products.

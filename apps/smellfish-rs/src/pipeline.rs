@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
+use crate::app::browser::ImportSignals;
 use crate::csv::parse_csv_rows;
 use crate::evidence::{EvidenceInputs, assess_np_evidence, row_verdict, run_checks};
 use crate::model::{
@@ -259,109 +260,73 @@ pub(crate) struct ImportOutcome {
     pub warnings: Vec<String>,
 }
 
-fn apply_import_outcome(
-    outcome: ImportOutcome,
-    prefix: &str,
-    mut status: Signal<String>,
-    mut rows: Signal<Vec<MoleculeRow>>,
-    mut motifs: Signal<Vec<MotifSummary>>,
-    mut endpoints: Signal<Vec<EndpointStatus>>,
-    mut warnings: Signal<Vec<String>>,
-) {
+pub(crate) enum ImportSource {
+    Blob(web_sys::Blob),
+    Text(String),
+}
+
+fn apply_import_outcome(outcome: ImportOutcome, prefix: &str, mut signals: ImportSignals) {
     let row_count = outcome.rows.len();
     let motif_count = outcome.motifs.len();
     let sub_count = outcome.unique_substituents;
     let unique = outcome.unique_inchikeys;
     let has_warnings = !outcome.warnings.is_empty();
-    rows.set(outcome.rows);
-    motifs.set(outcome.motifs);
-    endpoints.set(outcome.endpoints);
-    warnings.set(outcome.warnings);
+    signals.rows.set(outcome.rows);
+    signals.motifs.set(outcome.motifs);
+    signals.endpoints.set(outcome.endpoints);
+    signals.warnings.set(outcome.warnings);
     let suffix = if has_warnings {
         " with QLever warnings"
     } else {
         ""
     };
-    status.set(format!(
+    signals.status.set(format!(
         "{prefix}{suffix} — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys"
     ));
 }
 
-#[allow(clippy::too_many_arguments)] // wasm entry point: signal handles for async import
 pub(crate) fn begin_import(
-    file: web_sys::Blob,
+    source: ImportSource,
     file_name_value: String,
-    mut file_name: Signal<String>,
-    mut status: Signal<String>,
-    mut busy: Signal<bool>,
-    mut drag_active: Signal<bool>,
-    mut rows: Signal<Vec<MoleculeRow>>,
-    mut motifs: Signal<Vec<MotifSummary>>,
-    mut endpoints: Signal<Vec<EndpointStatus>>,
-    mut warnings: Signal<Vec<String>>,
+    mut signals: ImportSignals,
 ) {
-    file_name.set(file_name_value);
-    busy.set(true);
-    drag_active.set(false);
-    status.set("Preparing…".to_string());
-    rows.set(Vec::new());
-    motifs.set(Vec::new());
-    endpoints.set(Vec::new());
-    warnings.set(Vec::new());
+    let is_blob = matches!(source, ImportSource::Blob(_));
+    signals.file_name.set(file_name_value);
+    signals.busy.set(true);
+    signals.drag_active.set(false);
+    signals.status.set(
+        if is_blob {
+            "Preparing…"
+        } else {
+            "Preparing demo…"
+        }
+        .to_string(),
+    );
+    signals.rows.set(Vec::new());
+    signals.motifs.set(Vec::new());
+    signals.endpoints.set(Vec::new());
+    signals.warnings.set(Vec::new());
 
     spawn(async move {
-        match import_csv(file, status).await {
+        let outcome = match source {
+            ImportSource::Blob(file) => import_csv(file, signals.status).await,
+            ImportSource::Text(text) => import_csv_text(&text, signals.status).await,
+        };
+        match outcome {
             Ok(outcome) => {
-                apply_import_outcome(outcome, "Done", status, rows, motifs, endpoints, warnings);
+                let prefix = if is_blob { "Done" } else { "Demo loaded" };
+                apply_import_outcome(outcome, prefix, signals);
             }
             Err(err) => {
-                status.set(format!("Error reading CSV: {err}"));
+                let msg = if is_blob {
+                    format!("Error reading CSV: {err}")
+                } else {
+                    format!("Error loading demo data: {err}")
+                };
+                signals.status.set(msg);
             }
         }
-        busy.set(false);
-    });
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn begin_import_from_text(
-    text: String,
-    file_name_value: String,
-    mut file_name: Signal<String>,
-    mut status: Signal<String>,
-    mut busy: Signal<bool>,
-    mut drag_active: Signal<bool>,
-    mut rows: Signal<Vec<MoleculeRow>>,
-    mut motifs: Signal<Vec<MotifSummary>>,
-    mut endpoints: Signal<Vec<EndpointStatus>>,
-    mut warnings: Signal<Vec<String>>,
-) {
-    file_name.set(file_name_value);
-    busy.set(true);
-    drag_active.set(false);
-    status.set("Preparing demo…".to_string());
-    rows.set(Vec::new());
-    motifs.set(Vec::new());
-    endpoints.set(Vec::new());
-    warnings.set(Vec::new());
-
-    spawn(async move {
-        match import_csv_text(&text, status).await {
-            Ok(outcome) => {
-                apply_import_outcome(
-                    outcome,
-                    "Demo loaded",
-                    status,
-                    rows,
-                    motifs,
-                    endpoints,
-                    warnings,
-                );
-            }
-            Err(err) => {
-                status.set(format!("Error loading demo data: {err}"));
-            }
-        }
-        busy.set(false);
+        signals.busy.set(false);
     });
 }
 

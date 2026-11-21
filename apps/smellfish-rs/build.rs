@@ -42,13 +42,7 @@ fn main() {
     );
 }
 
-fn download_with_header(dst: &Path, url: &str, header: &str) {
-    // Skip download if the file already exists and is non-empty. The data
-    // files are committed to the repo, so a fresh clone does not need network
-    // access to build. This also avoids re-running curl on every build.
-    if fs::metadata(dst).is_ok_and(|m| m.len() > 0) {
-        return;
-    }
+fn fetch_url(url: &str) -> String {
     let output = Command::new("curl")
         .args(["-fsSL", url])
         .output()
@@ -58,12 +52,23 @@ fn download_with_header(dst: &Path, url: &str, header: &str) {
         "failed to download {url}: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+fn download_with_header(dst: &Path, url: &str, header: &str) {
+    // Skip download if the file already exists and is non-empty. The data
+    // files are committed to the repo, so a fresh clone does not need network
+    // access to build. This also avoids re-running curl on every build.
+    if fs::metadata(dst).is_ok_and(|m| m.len() > 0) {
+        return;
+    }
+    let body = fetch_url(url);
     let mut out = String::new();
     out.push_str(header);
     if !header.ends_with('\n') {
         out.push('\n');
     }
-    out.push_str(&String::from_utf8_lossy(&output.stdout));
+    out.push_str(&body);
     out.push('\n');
     fs::write(dst, out).unwrap_or_else(|err| panic!("failed to write {}: {err}", dst.display()));
 }
@@ -82,16 +87,7 @@ fn download_and_filter_lotus_scaffolds(dst: &Path, url: &str) {
         );
         return;
     }
-    let output = Command::new("curl")
-        .args(["-fsSL", url])
-        .output()
-        .unwrap_or_else(|err| panic!("failed to run curl for {url}: {err}"));
-    assert!(
-        output.status.success(),
-        "failed to download {url}: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let text = String::from_utf8_lossy(&output.stdout);
+    let text = fetch_url(url);
     let mut kept: Vec<String> = Vec::new();
     let mut in_header = true;
     for raw_line in text.lines() {
