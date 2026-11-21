@@ -125,11 +125,12 @@ pub fn ResultsPanel(
                                     for (smiles, detail) in sorted_high_error {
                                         {
                                             let suffix = if detail.count > 1 { format!(" (x{})", detail.count) } else { String::new() };
-                                            let calc_value = detail.calculated_mass.map_or_else(|| "n/a".to_string(), format_value);
-                                            let expected_value = detail.expected_mass.map_or_else(|| "n/a".to_string(), format_value);
-                                            let observed_value = detail.observed_precursor_mz.map_or_else(|| "n/a".to_string(), format_value);
-                                            let max_error_da = detail.max_abs_error_da.map_or_else(|| "n/a".to_string(), format_value);
-                                            let max_error_ppm = detail.max_abs_error_ppm.map_or_else(|| "n/a".to_string(), format_value);
+                                            let fmt_opt = |v: Option<f64>| v.map_or_else(|| "n/a".to_string(), format_value);
+                                            let calc_value = fmt_opt(detail.calculated_mass);
+                                            let expected_value = fmt_opt(detail.expected_mass);
+                                            let observed_value = fmt_opt(detail.observed_precursor_mz);
+                                            let max_error_da = fmt_opt(detail.max_abs_error_da);
+                                            let max_error_ppm = fmt_opt(detail.max_abs_error_ppm);
                                             let formula_suffix = detail.formula.as_deref().filter(|value| !value.trim().is_empty()).map_or_else(String::new, |formula| format!("; formula {formula}"));
                                             let item_label = format!("{smiles}{suffix} — worst error {max_error_da} Da / {max_error_ppm} ppm (derived expected precursor {expected_value}; observed precursor {observed_value}; reference mass {calc_value}){formula_suffix}");
                                             rsx! { li { "{item_label}" } }
@@ -143,31 +144,40 @@ pub fn ResultsPanel(
 
                 div {
                     style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(220px, 1fr))").gap("1rem").property("margin-top", "1rem").build(),
-                    div { style: StyleBuilder::new().property("background", "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)").padding("0.9rem").border_radius("14px").border("1px solid #e2e8f0").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
-                        h4 { style: StyleBuilder::new().margin("0 0 0.35rem").font_size("0.95rem").color("#0f172a").build(), "Observed precursor 𝑚/𝑧 distribution" }
-                        p { style: StyleBuilder::new().margin("0").color("#64748b").font_size("0.8rem").build(), "Range, mean, and median of the observed precursor 𝑚/𝑧 values" }
-                        div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.45rem").property("margin-top", "0.6rem").build(),
-                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#eff6ff").color("#1d4ed8").border("1px solid #bfdbfe").font_size("0.78rem").font_weight("700").build(), "median {format_value(metrics.observed_precursor_median)}" }
-                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "mean {format_value(metrics.observed_precursor_mean)}" }
-                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "range {format_value(metrics.observed_precursor_max - metrics.observed_precursor_min)}" }
-                        }
-                    }
-                    div { style: StyleBuilder::new().property("background", "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)").padding("0.9rem").border_radius("14px").border("1px solid #e2e8f0").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
-                        h4 { style: StyleBuilder::new().margin("0 0 0.35rem").font_size("0.95rem").color("#0f172a").build(), "Absolute precursor error (Da)" }
-                        p { style: StyleBuilder::new().margin("0").color("#64748b").font_size("0.8rem").build(), "Median absolute deviation, mean absolute deviation, and RMS in daltons" }
-                        div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.45rem").property("margin-top", "0.6rem").build(),
-                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#eff6ff").color("#1d4ed8").border("1px solid #bfdbfe").font_size("0.78rem").font_weight("700").build(), "median {format_value(metrics.abs_error_da_median)}" }
-                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "mean {format_value(metrics.abs_error_da_mean)}" }
-                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "RMS {format_value(metrics.abs_error_da_rms)}" }
-                        }
-                    }
-                    div { style: StyleBuilder::new().property("background", "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)").padding("0.9rem").border_radius("14px").border("1px solid #e2e8f0").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
-                        h4 { style: StyleBuilder::new().margin("0 0 0.35rem").font_size("0.95rem").color("#0f172a").build(), "Relative precursor error (ppm)" }
-                        p { style: StyleBuilder::new().margin("0").color("#64748b").font_size("0.8rem").build(), "Median relative deviation, mean relative deviation, and RMS of the ppm error" }
-                        div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.45rem").property("margin-top", "0.6rem").build(),
-                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#eff6ff").color("#1d4ed8").border("1px solid #bfdbfe").font_size("0.78rem").font_weight("700").build(), "median {format_value(metrics.abs_error_ppm_median)}" }
-                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "mean {format_value(metrics.abs_error_ppm_mean)}" }
-                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "RMS {format_value(metrics.abs_error_ppm_rms)}" }
+                    for (heading, subtitle, median, mean, third_label, third_val) in [
+                        (
+                            "Observed precursor 𝑚/𝑧 distribution",
+                            "Range, mean, and median of the observed precursor 𝑚/𝑧 values",
+                            metrics.observed_precursor_median,
+                            metrics.observed_precursor_mean,
+                            "range",
+                            metrics.observed_precursor_max - metrics.observed_precursor_min,
+                        ),
+                        (
+                            "Absolute precursor error (Da)",
+                            "Median absolute deviation, mean absolute deviation, and RMS in daltons",
+                            metrics.abs_error_da_median,
+                            metrics.abs_error_da_mean,
+                            "RMS",
+                            metrics.abs_error_da_rms,
+                        ),
+                        (
+                            "Relative precursor error (ppm)",
+                            "Median relative deviation, mean relative deviation, and RMS of the ppm error",
+                            metrics.abs_error_ppm_median,
+                            metrics.abs_error_ppm_mean,
+                            "RMS",
+                            metrics.abs_error_ppm_rms,
+                        ),
+                    ] {
+                        div { style: StyleBuilder::new().property("background", "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)").padding("0.9rem").border_radius("14px").border("1px solid #e2e8f0").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
+                            h4 { style: StyleBuilder::new().margin("0 0 0.35rem").font_size("0.95rem").color("#0f172a").build(), "{heading}" }
+                            p { style: StyleBuilder::new().margin("0").color("#64748b").font_size("0.8rem").build(), "{subtitle}" }
+                            div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.45rem").property("margin-top", "0.6rem").build(),
+                                span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#eff6ff").color("#1d4ed8").border("1px solid #bfdbfe").font_size("0.78rem").font_weight("700").build(), "median {format_value(median)}" }
+                                span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "mean {format_value(mean)}" }
+                                span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "{third_label} {format_value(third_val)}" }
+                            }
                         }
                     }
                 }
@@ -177,45 +187,22 @@ pub fn ResultsPanel(
                     h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "Tolerance-band compliance" }
                     p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Counts of spectra up to each reported mass-error cutoff (cumulative)" }
                     div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
-                        div { style: tolerance_card_style(0),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.1 mDa" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"0.1_da\", metrics.spectra)}" }
-                        }
-                        div { style: tolerance_card_style(1),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 mDa" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"0.5_da\", metrics.spectra)}" }
-                        }
-                        div { style: tolerance_card_style(2),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 mDa" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"1.0_da\", metrics.spectra)}" }
-                        }
-                        div { style: tolerance_card_style(3),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 mDa" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"5.0_da\", metrics.spectra)}" }
-                        }
-                        div { style: tolerance_card_style(4),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 5.0 mDa" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \">5.0_da\", metrics.spectra)}" }
-                        }
-                        div { style: tolerance_card_style(0),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 ppm" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"0.5_ppm\", metrics.spectra)}" }
-                        }
-                        div { style: tolerance_card_style(1),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 ppm" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"1.0_ppm\", metrics.spectra)}" }
-                        }
-                        div { style: tolerance_card_style(2),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 ppm" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"5.0_ppm\", metrics.spectra)}" }
-                        }
-                        div { style: tolerance_card_style(3),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 10.0 ppm" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"10.0_ppm\", metrics.spectra)}" }
-                        }
-                        div { style: tolerance_card_style(4),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 10.0 ppm" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \">10.0_ppm\", metrics.spectra)}" }
+                        for (level, label, bucket) in [
+                            (0usize, "≤ 0.1 mDa", "0.1_da"),
+                            (1, "≤ 0.5 mDa", "0.5_da"),
+                            (2, "≤ 1.0 mDa", "1.0_da"),
+                            (3, "≤ 5.0 mDa", "5.0_da"),
+                            (4, "> 5.0 mDa", ">5.0_da"),
+                            (0, "≤ 0.5 ppm", "0.5_ppm"),
+                            (1, "≤ 1.0 ppm", "1.0_ppm"),
+                            (2, "≤ 5.0 ppm", "5.0_ppm"),
+                            (3, "≤ 10.0 ppm", "10.0_ppm"),
+                            (4, "> 10.0 ppm", ">10.0_ppm"),
+                        ] {
+                            div { style: tolerance_card_style(level),
+                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "{label}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, bucket, metrics.spectra)}" }
+                            }
                         }
                     }
                 }
@@ -293,47 +280,24 @@ pub fn ResultsPanel(
                         h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "Tolerance-band compliance (Recalibrated)" }
                         p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Estimated compliance after MS2 fragment recalibration (preview)" }
                         div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
-                            // mDa after
-                            div { style: tolerance_card_style(0),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.1 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 0.1, false)}" }
-                            }
-                            div { style: tolerance_card_style(1),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 0.5, false)}" }
-                            }
-                            div { style: tolerance_card_style(2),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 1.0, false)}" }
-                            }
-                            div { style: tolerance_card_style(3),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 5.0, false)}" }
-                            }
-                            div { style: tolerance_card_style(4),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 5.0 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 5.0, true)}" }
-                            }
-                            // ppm after
-                            div { style: tolerance_card_style(0),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 0.5, false)}" }
-                            }
-                            div { style: tolerance_card_style(1),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 1.0, false)}" }
-                            }
-                            div { style: tolerance_card_style(2),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 5.0, false)}" }
-                            }
-                            div { style: tolerance_card_style(3),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 10.0 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 10.0, false)}" }
-                            }
-                            div { style: tolerance_card_style(4),
-                                strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 10.0 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 10.0, true)}" }
+                            for (level, label, value) in [
+                                // mDa after
+                                (0usize, "≤ 0.1 mDa", format_recalibrated_compliance_mda(&diag.error_da_after, 0.1, false)),
+                                (1, "≤ 0.5 mDa", format_recalibrated_compliance_mda(&diag.error_da_after, 0.5, false)),
+                                (2, "≤ 1.0 mDa", format_recalibrated_compliance_mda(&diag.error_da_after, 1.0, false)),
+                                (3, "≤ 5.0 mDa", format_recalibrated_compliance_mda(&diag.error_da_after, 5.0, false)),
+                                (4, "> 5.0 mDa", format_recalibrated_compliance_mda(&diag.error_da_after, 5.0, true)),
+                                // ppm after
+                                (0, "≤ 0.5 ppm", format_recalibrated_compliance_ppm(&diag.error_ppm_after, 0.5, false)),
+                                (1, "≤ 1.0 ppm", format_recalibrated_compliance_ppm(&diag.error_ppm_after, 1.0, false)),
+                                (2, "≤ 5.0 ppm", format_recalibrated_compliance_ppm(&diag.error_ppm_after, 5.0, false)),
+                                (3, "≤ 10.0 ppm", format_recalibrated_compliance_ppm(&diag.error_ppm_after, 10.0, false)),
+                                (4, "> 10.0 ppm", format_recalibrated_compliance_ppm(&diag.error_ppm_after, 10.0, true)),
+                            ] {
+                                div { style: tolerance_card_style(level),
+                                    strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "{label}" }
+                                    span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{value}" }
+                                }
                             }
                         }
                     }
@@ -400,27 +364,18 @@ pub fn ResultsPanel(
                             // Tab buttons
                             div {
                                 style: StyleBuilder::new().display("flex").gap("0.5rem").property("margin-bottom", "0.8rem").border_bottom("1px solid #e2e8f0").property("padding-bottom", "0.5rem").build(),
-                                button {
-                                    style: if *cumulative_dist_tab.read() == "mda" {
-                                        StyleBuilder::new().padding("0.5rem 1rem").border("2px solid #1e40af").property("background", "#1e40af").color("white").border_radius("6px").font_weight("600").cursor("pointer").build()
-                                    } else {
-                                        StyleBuilder::new().padding("0.5rem 1rem").border("1px solid #e2e8f0").property("background", "white").color("#64748b").border_radius("6px").cursor("pointer").build()
-                                    },
-                                    onclick: move |_| {
-                                        cumulative_dist_tab.set("mda");
-                                    },
-                                    "mDa (Absolute)"
-                                }
-                                button {
-                                    style: if *cumulative_dist_tab.read() == "ppm" {
-                                        StyleBuilder::new().padding("0.5rem 1rem").border("2px solid #1e40af").property("background", "#1e40af").color("white").border_radius("6px").font_weight("600").cursor("pointer").build()
-                                    } else {
-                                        StyleBuilder::new().padding("0.5rem 1rem").border("1px solid #e2e8f0").property("background", "white").color("#64748b").border_radius("6px").cursor("pointer").build()
-                                    },
-                                    onclick: move |_| {
-                                        cumulative_dist_tab.set("ppm");
-                                    },
-                                    "ppm (Relative)"
+                                for (tab, label) in [("mda", "mDa (Absolute)"), ("ppm", "ppm (Relative)")] {
+                                    button {
+                                        style: if *cumulative_dist_tab.read() == tab {
+                                            StyleBuilder::new().padding("0.5rem 1rem").border("2px solid #1e40af").property("background", "#1e40af").color("white").border_radius("6px").font_weight("600").cursor("pointer").build()
+                                        } else {
+                                            StyleBuilder::new().padding("0.5rem 1rem").border("1px solid #e2e8f0").property("background", "white").color("#64748b").border_radius("6px").cursor("pointer").build()
+                                        },
+                                        onclick: move |_| {
+                                            cumulative_dist_tab.set(tab);
+                                        },
+                                        "{label}"
+                                    }
                                 }
                             }
 
