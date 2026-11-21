@@ -116,13 +116,17 @@ fn json_string(s: &str) -> String {
     out
 }
 
-fn json_string_list(items: &[&str]) -> String {
-    let mut out = String::new();
-    for (i, item) in items.iter().enumerate() {
+fn write_json_list<T: Copy>(
+    items: &[T],
+    cap_per_item: usize,
+    mut write: impl FnMut(&mut String, T),
+) -> String {
+    let mut out = String::with_capacity(items.len() * cap_per_item);
+    for (i, &item) in items.iter().enumerate() {
         if i > 0 {
             out.push_str(", ");
         }
-        write_json_string(&mut out, item);
+        write(&mut out, item);
     }
     out
 }
@@ -134,31 +138,15 @@ fn write_json_edam_uri(out: &mut String, term: EdamTerm) {
 }
 
 fn json_edam_terms(terms: &[EdamTerm]) -> String {
-    let mut out = String::with_capacity(terms.len() * 80);
-    for (i, t) in terms.iter().copied().enumerate() {
-        if i > 0 {
-            out.push_str(", ");
-        }
+    write_json_list(terms, 80, |out, t| {
         out.push_str(r#"{"id": "#);
-        write_json_string(&mut out, t.id);
+        write_json_string(out, t.id);
         out.push_str(r#", "label": "#);
-        write_json_string(&mut out, t.label);
+        write_json_string(out, t.label);
         out.push_str(r#", "uri": "#);
-        write_json_edam_uri(&mut out, t);
+        write_json_edam_uri(out, t);
         out.push('}');
-    }
-    out
-}
-
-fn json_edam_uris(terms: &[EdamTerm]) -> String {
-    let mut out = String::with_capacity(terms.len() * 40);
-    for (i, t) in terms.iter().copied().enumerate() {
-        if i > 0 {
-            out.push_str(", ");
-        }
-        write_json_edam_uri(&mut out, t);
-    }
-    out
+    })
 }
 
 /// Returns the inline `<script>` body that registers one read-only tool on
@@ -172,8 +160,8 @@ pub(crate) fn capabilities_script(cfg: WebMcpConfig) -> String {
     let name = json_string(&tool_name);
     let title = json_string(cfg.title);
     let description = json_string(cfg.description);
-    let inputs = json_string_list(cfg.inputs);
-    let outputs = json_string_list(cfg.outputs);
+    let inputs = write_json_list(cfg.inputs, 0, write_json_string);
+    let outputs = write_json_list(cfg.outputs, 0, write_json_string);
     let topics = json_edam_terms(cfg.edam.topics);
     let operations = json_edam_terms(cfg.edam.operations);
     let input_data = json_edam_terms(cfg.edam.input_data);
@@ -204,8 +192,8 @@ pub(crate) fn bioschemas_json_ld(cfg: WebMcpConfig) -> String {
     let id = json_string(cfg.app_id);
     let name = json_string(cfg.title);
     let description = json_string(cfg.description);
-    let topic_uris = json_edam_uris(cfg.edam.topics);
-    let operation_uris = json_edam_uris(cfg.edam.operations);
+    let topic_uris = write_json_list(cfg.edam.topics, 40, write_json_edam_uri);
+    let operation_uris = write_json_list(cfg.edam.operations, 40, write_json_edam_uri);
     let topics = json_edam_terms(cfg.edam.topics);
     let operations = json_edam_terms(cfg.edam.operations);
     let input_data = json_edam_terms(cfg.edam.input_data);

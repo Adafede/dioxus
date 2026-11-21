@@ -94,10 +94,10 @@ pub fn Card(props: CardProps) -> Element {
         .line_height(Typography::LINE_HEIGHT)
         .build();
 
-    if let Some(href) = props.href {
-        rsx! {
-            article {
-                style: card_style,
+    rsx! {
+        article {
+            style: card_style,
+            if let Some(href) = props.href {
                 a {
                     href: href,
                     style: StyleBuilder::new()
@@ -108,18 +108,11 @@ pub fn Card(props: CardProps) -> Element {
                         .build(),
                     h2 { style: title_style, "{props.title}" }
                 }
-                if let Some(children) = props.children {
-                    div { style: content_style, {children} }
-                }
-            }
-        }
-    } else {
-        rsx! {
-            article { style: card_style,
+            } else {
                 h2 { style: title_style, "{props.title}" }
-                if let Some(children) = props.children {
-                    div { style: content_style, {children} }
-                }
+            }
+            if let Some(children) = props.children {
+                div { style: content_style, {children} }
             }
         }
     }

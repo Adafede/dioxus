@@ -194,6 +194,16 @@ pub struct StyleBuilder {
     css: String,
 }
 
+macro_rules! style_props {
+    ($( $method:ident => $css:literal ),* $(,)?) => {
+        $(
+            pub fn $method(self, value: &str) -> Self {
+                self.property($css, value)
+            }
+        )*
+    };
+}
+
 impl StyleBuilder {
     pub const fn new() -> Self {
         Self { css: String::new() }
@@ -209,116 +219,35 @@ impl StyleBuilder {
         self
     }
 
-    pub fn color(self, color: &str) -> Self {
-        self.property("color", color)
-    }
-
-    pub fn background_color(self, color: &str) -> Self {
-        self.property("background-color", color)
-    }
-
-    pub fn padding(self, padding: &str) -> Self {
-        self.property("padding", padding)
-    }
-
-    pub fn margin(self, margin: &str) -> Self {
-        self.property("margin", margin)
-    }
-
-    pub fn border_radius(self, radius: &str) -> Self {
-        self.property("border-radius", radius)
-    }
-
-    pub fn display(self, display: &str) -> Self {
-        self.property("display", display)
-    }
-
-    pub fn flex(self, flex: &str) -> Self {
-        self.property("flex", flex)
-    }
-
-    pub fn flex_direction(self, direction: &str) -> Self {
-        self.property("flex-direction", direction)
-    }
-
-    pub fn flex_wrap(self, wrap: &str) -> Self {
-        self.property("flex-wrap", wrap)
-    }
-
-    pub fn align_items(self, align: &str) -> Self {
-        self.property("align-items", align)
-    }
-
-    pub fn justify_content(self, justify: &str) -> Self {
-        self.property("justify-content", justify)
-    }
-
-    pub fn gap(self, gap: &str) -> Self {
-        self.property("gap", gap)
-    }
-
-    pub fn border(self, border: &str) -> Self {
-        self.property("border", border)
-    }
-
-    pub fn font_size(self, size: &str) -> Self {
-        self.property("font-size", size)
-    }
-
-    pub fn font_family(self, family: &str) -> Self {
-        self.property("font-family", family)
-    }
-
-    pub fn font_weight(self, weight: &str) -> Self {
-        self.property("font-weight", weight)
-    }
-
-    pub fn line_height(self, height: &str) -> Self {
-        self.property("line-height", height)
-    }
-
-    pub fn text_align(self, align: &str) -> Self {
-        self.property("text-align", align)
-    }
-
-    pub fn width(self, width: &str) -> Self {
-        self.property("width", width)
-    }
-
-    pub fn height(self, height: &str) -> Self {
-        self.property("height", height)
-    }
-
-    pub fn min_height(self, height: &str) -> Self {
-        self.property("min-height", height)
-    }
-
-    pub fn box_shadow(self, shadow: &str) -> Self {
-        self.property("box-shadow", shadow)
-    }
-
-    pub fn transition(self, transition: &str) -> Self {
-        self.property("transition", transition)
-    }
-
-    pub fn opacity(self, opacity: &str) -> Self {
-        self.property("opacity", opacity)
-    }
-
-    pub fn text_decoration(self, decoration: &str) -> Self {
-        self.property("text-decoration", decoration)
-    }
-
-    pub fn cursor(self, cursor: &str) -> Self {
-        self.property("cursor", cursor)
-    }
-
-    pub fn border_bottom(self, border: &str) -> Self {
-        self.property("border-bottom", border)
-    }
-
-    pub fn border_left(self, border: &str) -> Self {
-        self.property("border-left", border)
+    style_props! {
+        color => "color",
+        background_color => "background-color",
+        padding => "padding",
+        margin => "margin",
+        border_radius => "border-radius",
+        display => "display",
+        flex => "flex",
+        flex_direction => "flex-direction",
+        flex_wrap => "flex-wrap",
+        align_items => "align-items",
+        justify_content => "justify-content",
+        gap => "gap",
+        border => "border",
+        font_size => "font-size",
+        font_family => "font-family",
+        font_weight => "font-weight",
+        line_height => "line-height",
+        text_align => "text-align",
+        width => "width",
+        height => "height",
+        min_height => "min-height",
+        box_shadow => "box-shadow",
+        transition => "transition",
+        opacity => "opacity",
+        text_decoration => "text-decoration",
+        cursor => "cursor",
+        border_bottom => "border-bottom",
+        border_left => "border-left",
     }
 
     #[must_use]

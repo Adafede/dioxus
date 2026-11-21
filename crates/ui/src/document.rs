@@ -113,90 +113,50 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         let doc = document();
         doc.set_title(title.clone());
         sync_document_lang(&lang_for_hook);
+        let meta = |attr: &'static str, key: &str, content: String| {
+            doc.create_head_element(
+                "meta",
+                &[(attr, key.to_string()), ("content", content)],
+                None,
+            );
+        };
 
         // <meta name="description"> + og:description
         if let Some(desc) = description {
-            doc.create_head_element(
-                "meta",
-                &[
-                    ("name", "description".to_string()),
-                    ("content", desc.clone()),
-                ],
-                None,
-            );
-            doc.create_head_element(
-                "meta",
-                &[
-                    ("property", "og:description".to_string()),
-                    ("content", desc),
-                ],
-                None,
-            );
+            meta("name", "description", desc.clone());
+            meta("property", "og:description", desc);
         }
 
         // og:type
-        doc.create_head_element(
-            "meta",
-            &[("property", "og:type".to_string()), ("content", og_type)],
-            None,
-        );
+        meta("property", "og:type", og_type);
 
         // og:title
-        doc.create_head_element(
-            "meta",
-            &[("property", "og:title".to_string()), ("content", title)],
-            None,
-        );
+        meta("property", "og:title", title);
 
         // og:site_name
         if let Some(site_name) = og_site_name {
-            doc.create_head_element(
-                "meta",
-                &[
-                    ("property", "og:site_name".to_string()),
-                    ("content", site_name),
-                ],
-                None,
-            );
+            meta("property", "og:site_name", site_name);
         }
 
         // og:url
         if let Some(url) = og_url {
-            doc.create_head_element(
-                "meta",
-                &[("property", "og:url".to_string()), ("content", url)],
-                None,
-            );
+            meta("property", "og:url", url);
         }
 
         // theme-color (light/dark)
         if let Some((light, dark)) = theme_colors {
-            doc.create_head_element(
-                "meta",
-                &[
-                    ("name", "theme-color".to_string()),
-                    ("content", light.to_string()),
-                    ("media", "(prefers-color-scheme: light)".to_string()),
-                ],
-                None,
-            );
-            doc.create_head_element(
-                "meta",
-                &[
-                    ("name", "theme-color".to_string()),
-                    ("content", dark.to_string()),
-                    ("media", "(prefers-color-scheme: dark)".to_string()),
-                ],
-                None,
-            );
-            doc.create_head_element(
-                "meta",
-                &[
-                    ("name", "color-scheme".to_string()),
-                    ("content", "light dark".to_string()),
-                ],
-                None,
-            );
+            for (color, scheme) in [(light, "light"), (dark, "dark")] {
+                doc.create_head_element(
+                    "meta",
+                    &[
+                        ("name", "theme-color".to_string()),
+                        ("content", color.to_string()),
+                        ("media", format!("(prefers-color-scheme: {scheme})")),
+                    ],
+                    None,
+                );
+            }
+            meta("name", "color-scheme", "light dark".to_string());
         }
 
         // canonical <link>
