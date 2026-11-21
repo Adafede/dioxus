@@ -371,6 +371,7 @@ pub fn render_recalibration_summary_text(
     let mean_improvement = mean_before.abs() - mean_after.abs();
     let rms_improvement = rms_before - rms_after;
     let max_improvement = max_before - max_after;
+    let improvement_color = |v: f64| if v > 0.0 { "green" } else { "red" };
 
     Ok(format!(
         r#"<div style="font-family: monospace; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
@@ -404,27 +405,15 @@ pub fn render_recalibration_summary_text(
         </div>"#,
         mean_before,
         mean_after,
-        if mean_improvement > 0.0 {
-            "green"
-        } else {
-            "red"
-        },
+        improvement_color(mean_improvement),
         mean_improvement,
         rms_before,
         rms_after,
-        if rms_improvement > 0.0 {
-            "green"
-        } else {
-            "red"
-        },
+        improvement_color(rms_improvement),
         rms_improvement,
         max_before,
         max_after,
-        if max_improvement > 0.0 {
-            "green"
-        } else {
-            "red"
-        },
+        improvement_color(max_improvement),
         max_improvement,
     ))
 }

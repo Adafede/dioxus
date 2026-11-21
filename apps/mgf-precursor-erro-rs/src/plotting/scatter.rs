@@ -5,7 +5,7 @@
 //! points) with colour helpers and `plotters` to emit SVG strings.
 
 use crate::errors::MgfError;
-use crate::metrics::PlotPoint;
+use crate::metrics::{PlotPoint, ScatterPlotData};
 
 use super::color::{adduct_family_shape_style, tolerance_step_color, tolerance_step_rgb};
 use super::data::{
@@ -125,12 +125,14 @@ pub fn render_ecdf_svg(
     ))
 }
 
-/// Renders a scatter plot of signed mass-bias errors by adduct family.
-///
-/// # Errors
-///
-/// Returns an error if the SVG backend cannot fill or present the drawing area.
-pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String, MgfError> {
+fn render_scatter_svg(
+    title: &str,
+    plot_data: ScatterPlotData,
+    y_desc: &str,
+    ticks: &[f64],
+    alpha: f32,
+    clamp_y: bool,
+) -> Result<String, MgfError> {
     use plotters::prelude::*;
     use plotters::series::{LineSeries, PointSeries};
 
@@ -140,24 +142,12 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String,
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
     root.fill(&WHITE)?;
 
-    let plot_data = prepare_scatter_plot_data(
-        points,
-        |point| point.ms2_precursor_peak.or(Some(point.pepmass_header)),
-        |point| {
-            point
-                .signed_error_da
-                .is_finite()
-                .then_some(point.signed_error_da)
-        },
-        fallback_y_limit_for_unit("mDa") / 1000.0,
-    );
     let legend_items = plot_data.legend_items;
     let x_min = plot_data.x_min;
     let x_max = plot_data.x_max;
     let y_limit = plot_data.y_limit;
     let y_min = -y_limit;
     let y_max = y_limit;
-    let points_by_family = plot_data.series;
 
     {
         let mut chart = ChartBuilder::on(&root)
@@ -176,7 +166,7 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String,
             .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
             .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
             .x_desc("Observed precursor 𝑚/𝑧")
-            .y_desc("Signed error (Da)")
+            .y_desc(y_desc)
             .x_label_style(("sans-serif", 11).into_font())
             .y_label_style(("sans-serif", 11).into_font())
             .draw()?;
@@ -186,10 +176,28 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String,
             ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
         ))?;
 
-        for (family, points) in points_by_family {
-            let style = adduct_family_shape_style(family, 0.4);
+        for &tick in ticks {
+            if tick <= 0.0 {
+                continue;
+            }
+            let positive_tick = tick.min(y_limit);
+            if !(y_min..=y_max).contains(&positive_tick) {
+                continue;
+            }
+            for y in [positive_tick, -positive_tick] {
+                chart.draw_series(LineSeries::new(
+                    [(x_min, y), (x_max, y)],
+                    ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
+                ))?;
+            }
+        }
+
+        for (family, series_points) in plot_data.series {
+            let style = adduct_family_shape_style(family, alpha);
             chart.draw_series(PointSeries::of_element(
-                points.iter().copied(),
+                series_points
+                    .iter()
+                    .map(|&(x, y)| (x, if clamp_y { y.clamp(y_min, y_max) } else { y })),
                 1.6,
                 style,
                 &|coord, size, style| Circle::new(coord, size, style.filled()),
@@ -209,6 +217,26 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String,
     ))
 }
 
+/// Renders a scatter plot of signed mass-bias errors by adduct family.
+///
+/// # Errors
+///
+/// Returns an error if the SVG backend cannot fill or present the drawing area.
+pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String, MgfError> {
+    let plot_data = prepare_scatter_plot_data(
+        points,
+        |point| point.ms2_precursor_peak.or(Some(point.pepmass_header)),
+        |point| {
+            point
+                .signed_error_da
+                .is_finite()
+                .then_some(point.signed_error_da)
+        },
+        fallback_y_limit_for_unit("mDa") / 1000.0,
+    );
+    render_scatter_svg(title, plot_data, "Signed error (Da)", &[], 0.4, false)
+}
+
 /// Renders a scatter plot of signed mass-bias errors using the requested display unit.
 ///
 /// # Errors
@@ -220,15 +248,6 @@ pub fn render_absolute_mass_bias_svg(
     unit: &str,
     ticks: &[f64],
 ) -> Result<String, MgfError> {
-    use plotters::prelude::*;
-    use plotters::series::{LineSeries, PointSeries};
-
-    let width = 900u32;
-    let height = 520u32;
-    let mut buffer = String::new();
-    let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
-    root.fill(&WHITE)?;
-
     let plot_data = prepare_scatter_plot_data(
         points,
         |point| {
@@ -243,84 +262,8 @@ pub fn render_absolute_mass_bias_svg(
         },
         fallback_y_limit_for_unit(unit),
     );
-    let legend_items = plot_data.legend_items;
-    let x_min = plot_data.x_min;
-    let x_max = plot_data.x_max;
-    let y_limit = plot_data.y_limit;
-    let y_min = -y_limit;
-    let y_max = y_limit;
-    let points_by_family = plot_data.series;
-    let signed_error_label = format!("Signed error ({unit})");
-
-    {
-        let mut chart = ChartBuilder::on(&root)
-            .margin_top(28)
-            .margin_right(32)
-            .margin_bottom(36)
-            .margin_left(48)
-            .caption(title, ("sans-serif", 18).into_font())
-            .set_label_area_size(LabelAreaPosition::Left, 72)
-            .set_label_area_size(LabelAreaPosition::Bottom, 64)
-            .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-
-        chart
-            .configure_mesh()
-            .axis_style(ShapeStyle::from(&RGBColor(148, 163, 184)))
-            .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
-            .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
-            .x_desc("Observed precursor 𝑚/𝑧")
-            .y_desc(signed_error_label)
-            .x_label_style(("sans-serif", 11).into_font())
-            .y_label_style(("sans-serif", 11).into_font())
-            .draw()?;
-
-        chart.draw_series(LineSeries::new(
-            [(x_min, 0.0), (x_max, 0.0)],
-            ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
-        ))?;
-
-        for tick in ticks {
-            if *tick <= 0.0 {
-                continue;
-            }
-            let positive_tick = (*tick).min(y_limit);
-            let negative_tick = -positive_tick;
-            if !(y_min..=y_max).contains(&positive_tick) {
-                continue;
-            }
-            chart.draw_series(LineSeries::new(
-                [(x_min, positive_tick), (x_max, positive_tick)],
-                ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
-            ))?;
-            chart.draw_series(LineSeries::new(
-                [(x_min, negative_tick), (x_max, negative_tick)],
-                ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
-            ))?;
-        }
-
-        for (family, points) in points_by_family {
-            let style = adduct_family_shape_style(family, 0.3);
-            chart.draw_series(PointSeries::of_element(
-                points
-                    .iter()
-                    .map(|(x, value)| (*x, value.clamp(-y_limit, y_limit))),
-                1.6,
-                style,
-                &|coord, size, style| Circle::new(coord, size, style.filled()),
-            ))?;
-        }
-
-        root.present()?;
-    }
-
-    drop(root);
-    Ok(embed_svg_legend(
-        buffer,
-        &legend_items,
-        "Adducts",
-        900.0,
-        520.0,
-    ))
+    let y_desc = format!("Signed error ({unit})");
+    render_scatter_svg(title, plot_data, &y_desc, ticks, 0.3, true)
 }
 
 #[cfg(test)]

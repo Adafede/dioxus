@@ -200,6 +200,55 @@ pub fn render_error_quartet(
     Ok(buffer)
 }
 
+fn render_cumulative_chart(
+    title: &str,
+    x_desc: &str,
+    curves: &[(&[f64], plotters::prelude::RGBColor)],
+) -> Result<Option<String>, MgfError> {
+    use plotters::prelude::*;
+
+    let mut prepared = Vec::with_capacity(curves.len());
+    let mut min_error = f64::INFINITY;
+    let mut max_error = f64::NEG_INFINITY;
+    for &(values, color) in curves {
+        let pts = cumulative_points(values);
+        let (Some(&(lo, _)), Some(&(hi, _))) = (pts.first(), pts.last()) else {
+            return Ok(None);
+        };
+        min_error = min_error.min(lo);
+        max_error = max_error.max(hi);
+        prepared.push((pts, color));
+    }
+
+    let margin = (max_error - min_error).abs().max(1.0) * 0.1;
+    let mut buffer = String::new();
+    {
+        let root = SVGBackend::with_string(&mut buffer, (1200, 600)).into_drawing_area();
+        root.fill(&WHITE)?;
+
+        let mut chart = ChartBuilder::on(&root)
+            .caption(title, ("sans-serif", 18))
+            .margin(15)
+            .x_label_area_size(60)
+            .y_label_area_size(70)
+            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)?;
+
+        chart
+            .configure_mesh()
+            .x_desc(x_desc)
+            .y_desc("Cumulative Percentage (%)")
+            .draw()?;
+
+        for (pts, color) in prepared {
+            draw_cumulative_curve(&mut chart, pts, color, 1);
+        }
+
+        root.present()?;
+    }
+
+    Ok(Some(buffer))
+}
+
 /// Cumulative error distribution curves comparing MS1 and recalibrated MS2 errors.
 ///
 /// Shows how many precursors have error magnitude ≤ x ppm, allowing comparison
@@ -212,53 +261,16 @@ pub fn render_cumulative_error_curves(
     error_ppm_ms1: &[f64],
     error_ppm_after: &[f64],
 ) -> Result<String, MgfError> {
-    use plotters::prelude::*;
-
-    let mut buffer = String::new();
-
-    let ms1_points = cumulative_points(error_ppm_ms1);
-    let ms2_points = cumulative_points(error_ppm_after);
-
-    let (Some(&(ms1_min, _)), Some(&(ms1_max, _)), Some(&(ms2_min, _)), Some(&(ms2_max, _))) = (
-        ms1_points.first(),
-        ms1_points.last(),
-        ms2_points.first(),
-        ms2_points.last(),
-    ) else {
-        return Ok(buffer);
-    };
-
-    let min_error = ms1_min.min(ms2_min);
-    let max_error = ms1_max.max(ms2_max);
-    let margin = (max_error - min_error).abs().max(1.0) * 0.1;
-
-    {
-        let root = SVGBackend::with_string(&mut buffer, (1200, 600)).into_drawing_area();
-        root.fill(&WHITE)?;
-
-        let mut chart = ChartBuilder::on(&root)
-            .caption(
-                "Cumulative Error Distribution: MS1 vs Recalibrated MS2",
-                ("sans-serif", 18),
-            )
-            .margin(15)
-            .x_label_area_size(60)
-            .y_label_area_size(70)
-            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)?;
-
-        chart
-            .configure_mesh()
-            .x_desc("Absolute Error (ppm)")
-            .y_desc("Cumulative Percentage (%)")
-            .draw()?;
-
-        draw_cumulative_curve(&mut chart, ms1_points, RGBColor(68, 119, 170), 1);
-        draw_cumulative_curve(&mut chart, ms2_points, RGBColor(51, 153, 51), 1);
-
-        root.present()?;
-    }
-
-    Ok(buffer)
+    use plotters::style::RGBColor;
+    Ok(render_cumulative_chart(
+        "Cumulative Error Distribution: MS1 vs Recalibrated MS2",
+        "Absolute Error (ppm)",
+        &[
+            (error_ppm_ms1, RGBColor(68, 119, 170)),
+            (error_ppm_after, RGBColor(51, 153, 51)),
+        ],
+    )?
+    .unwrap_or_default())
 }
 
 /// Render cumulative error distribution with three curves: ms1, `ms2_before`, `ms2_after`
@@ -273,64 +285,17 @@ pub fn render_cumulative_error_three_curves(
     unit: &str,
     _thresholds: &[f64],
 ) -> Result<String, MgfError> {
-    use plotters::prelude::*;
-
-    let mut buffer = String::new();
-
-    let ms1_points = cumulative_points(error_ms1);
-    let before_points = cumulative_points(error_before);
-    let after_points = cumulative_points(error_after);
-
-    let (
-        Some(&(ms1_min, _)),
-        Some(&(ms1_max, _)),
-        Some(&(before_min, _)),
-        Some(&(before_max, _)),
-        Some(&(after_min, _)),
-        Some(&(after_max, _)),
-    ) = (
-        ms1_points.first(),
-        ms1_points.last(),
-        before_points.first(),
-        before_points.last(),
-        after_points.first(),
-        after_points.last(),
-    )
-    else {
-        return Ok(buffer);
-    };
-
-    let min_error = ms1_min.min(before_min).min(after_min);
-    let max_error = ms1_max.max(before_max).max(after_max);
-
-    let margin = (max_error - min_error).abs().max(1.0) * 0.1;
-
-    {
-        let root = SVGBackend::with_string(&mut buffer, (1200, 600)).into_drawing_area();
-        root.fill(&WHITE)?;
-
-        let title = format!("Cumulative Error Distribution ({unit})");
-        let mut chart = ChartBuilder::on(&root)
-            .caption(&title, ("sans-serif", 18))
-            .margin(15)
-            .x_label_area_size(60)
-            .y_label_area_size(70)
-            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)?;
-
-        chart
-            .configure_mesh()
-            .x_desc(format!("Error ({unit})"))
-            .y_desc("Cumulative Percentage (%)")
-            .draw()?;
-
-        draw_cumulative_curve(&mut chart, ms1_points, RGBColor(68, 119, 170), 1);
-        draw_cumulative_curve(&mut chart, before_points, RGBColor(255, 140, 0), 1);
-        draw_cumulative_curve(&mut chart, after_points, RGBColor(51, 153, 51), 1);
-
-        root.present()?;
-    }
-
-    Ok(append_cumulative_legend(buffer))
+    use plotters::style::RGBColor;
+    Ok(render_cumulative_chart(
+        &format!("Cumulative Error Distribution ({unit})"),
+        &format!("Error ({unit})"),
+        &[
+            (error_ms1, RGBColor(68, 119, 170)),
+            (error_before, RGBColor(255, 140, 0)),
+            (error_after, RGBColor(51, 153, 51)),
+        ],
+    )?
+    .map_or_else(String::new, append_cumulative_legend))
 }
 
 #[cfg(test)]
