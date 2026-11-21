@@ -139,6 +139,93 @@ fn no_workflow_expression_contains_rust() -> Result<()> {
     Ok(())
 }
 
+/// GitHub Pages upload and deploy must live in separate jobs.
+///
+/// `actions/deploy-pages` calls `listArtifacts()` once without retries or
+/// `latest: true`, so uploading and deploying in the same job can race artifact
+/// finalization and then fail every "Re-run failed jobs" attempt with
+/// `Multiple artifacts named "github-pages" were unexpectedly found`.
+#[test]
+fn pages_upload_and_deploy_use_separate_jobs() -> Result<()> {
+    let mut offenders = Vec::new();
+    let mut saw_upload = false;
+    let mut saw_deploy = false;
+
+    for name in workflow_files()? {
+        let yaml = read(&format!(".github/workflows/{name}"))?;
+        let (found_upload, found_deploy) = scan_pages_jobs(&name, &yaml, &mut offenders);
+        saw_upload |= found_upload;
+        saw_deploy |= found_deploy;
+    }
+
+    assert!(
+        saw_upload && saw_deploy,
+        "expected both `actions/upload-pages-artifact` and `actions/deploy-pages` \
+         in `.github/workflows/`; scraper broken?"
+    );
+    assert!(
+        offenders.is_empty(),
+        "Pages upload and deploy must be in separate jobs:\n  {}",
+        offenders.join("\n  ")
+    );
+    Ok(())
+}
+
+/// Scans one workflow's `jobs:` map and records any job that invokes both
+/// `actions/upload-pages-artifact` and `actions/deploy-pages`.
+fn scan_pages_jobs(name: &str, yaml: &str, offenders: &mut Vec<String>) -> (bool, bool) {
+    let mut in_jobs = false;
+    let mut current_job: Option<&str> = None;
+    let mut job_has_upload = false;
+    let mut job_has_deploy = false;
+    let mut job_reported = false;
+    let mut saw_upload = false;
+    let mut saw_deploy = false;
+
+    for line in yaml.lines() {
+        let code = line.split('#').next().unwrap_or("");
+        let trimmed = code.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if !code.starts_with([' ', '\t']) {
+            in_jobs = trimmed == "jobs:";
+            current_job = None;
+            continue;
+        }
+        if !in_jobs {
+            continue;
+        }
+        if let Some(rest) = code.strip_prefix("  ")
+            && !rest.starts_with([' ', '\t'])
+            && let Some(job_id) = rest.trim().strip_suffix(':')
+        {
+            current_job = Some(job_id);
+            job_has_upload = false;
+            job_has_deploy = false;
+            job_reported = false;
+            continue;
+        }
+        let Some(job) = current_job else {
+            continue;
+        };
+        if code.contains("actions/upload-pages-artifact") {
+            saw_upload = true;
+            job_has_upload = true;
+        }
+        if code.contains("actions/deploy-pages") {
+            saw_deploy = true;
+            job_has_deploy = true;
+        }
+        if job_has_upload && job_has_deploy && !job_reported {
+            offenders.push(format!("{name}: job `{job}`"));
+            job_reported = true;
+        }
+    }
+
+    (saw_upload, saw_deploy)
+}
+
 /// Workflow file names, read from the directory so a new workflow is covered
 /// without editing this list.
 fn workflow_files() -> Result<Vec<String>> {

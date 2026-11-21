@@ -117,16 +117,15 @@ jobs:
           path: target/dx/${{ matrix.pkg }}/release/web/public
           retention-days: 7
 
-  deploy:
-    name: Deploy
+  package:
+    name: Package site
     needs: build-apps
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: read
+    outputs:
+      artifact_name: github-pages-${{ github.run_attempt }}
     steps:
       # `download-artifact`, not `upload-artifact`: the two are different
       # actions with different repositories, and the run before this one failed
@@ -135,6 +134,7 @@ jobs:
       # repository that owns it, on the weekly schedule.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
+          pattern: app-*
           path: _site
 
       # The landing page is the site root; every other app keeps its own
@@ -150,9 +150,29 @@ jobs:
           done
           ls _final_site
 
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v3
+      # Uploaded in a separate job from `deploy` and keyed by `run_attempt`:
+      # `actions/deploy-pages` calls `listArtifacts()` once without retries or
+      # `latest: true`, so uploading and deploying in the same job can race
+      # artifact finalization and then deadlock any "Re-run failed jobs"
+      # attempt with "Multiple artifacts named ...".
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
+          name: github-pages-${{ github.run_attempt }}
           path: _final_site
 
-      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v4
+  deploy:
+    name: Deploy
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         id: deployment
+        with:
+          artifact_name: ${{ needs.package.outputs.artifact_name }}
