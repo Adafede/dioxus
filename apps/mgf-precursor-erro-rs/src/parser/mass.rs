@@ -44,13 +44,7 @@ fn exact_mass_from_smiles_uncached(smiles: &str) -> Option<f64> {
     }));
 
     match parsed {
-        Ok(mass) => {
-            #[cfg(target_arch = "wasm32")]
-            if mass.is_none() {
-                console::warn_1(&format!("SMILES parse failed for: {smiles}").into());
-            }
-            mass
-        }
+        Ok(mass) => mass,
         Err(panic) => {
             let _ = &panic;
             #[cfg(target_arch = "wasm32")]
@@ -82,16 +76,9 @@ pub(crate) fn exact_mass_from_formula_cached<S: std::hash::BuildHasher>(
         return *mass;
     }
 
-    let parsed: std::result::Result<ChemicalFormula<u32, i32>, _> =
-        ChemicalFormula::<u32, i32>::from_str(trimmed);
-    let mass = parsed.map_or_else(
-        |_| {
-            #[cfg(target_arch = "wasm32")]
-            console::warn_1(&format!("Formula parse failed for: {trimmed}").into());
-            None
-        },
-        |parsed_formula| Some(parsed_formula.isotopologue_mass()),
-    );
+    let mass = ChemicalFormula::<u32, i32>::from_str(trimmed)
+        .ok()
+        .map(|parsed_formula| parsed_formula.isotopologue_mass());
     cache.insert(trimmed.to_string(), mass);
     mass
 }
