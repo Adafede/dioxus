@@ -12,13 +12,10 @@ use std::collections::HashMap;
 // The browser's `fetch`, through the pooled client `lotus-search` builds for it.
 // Constructed once per enrichment run and passed to every query, because a
 // client per query is a fresh connection pool per query.
-#[cfg(target_arch = "wasm32")]
 use lotus_search::reqwest_client::ReqwestClient;
 
-#[cfg(target_arch = "wasm32")]
 const QUERY_CHUNK_SIZE: usize = 50;
 
-#[cfg(target_arch = "wasm32")]
 pub(crate) async fn enrich_sources(
     inchikeys: &[String],
     mut set_status: impl FnMut(String),
@@ -83,7 +80,6 @@ pub(crate) async fn enrich_sources(
     }
 }
 
-#[cfg(target_arch = "wasm32")]
 async fn probe_endpoint(http: &ReqwestClient, name: &str, endpoint: &str) -> EndpointStatus {
     match run_query(http, endpoint, "ASK {}", ResponseFormat::SparqlJson).await {
         Ok(_) => EndpointStatus {
@@ -101,7 +97,6 @@ async fn probe_endpoint(http: &ReqwestClient, name: &str, endpoint: &str) -> End
     }
 }
 
-#[cfg(target_arch = "wasm32")]
 async fn fetch_lotus_with_fallback(
     http: &ReqwestClient,
     inchikeys: &[String],
@@ -156,7 +151,6 @@ async fn fetch_lotus_with_fallback(
     }
 }
 
-#[cfg(target_arch = "wasm32")]
 async fn fetch_lotus_hits_by_inchikey(
     http: &ReqwestClient,
     endpoint: &str,
@@ -205,7 +199,6 @@ async fn fetch_lotus_hits_by_inchikey(
     Ok(summary)
 }
 
-#[cfg(target_arch = "wasm32")]
 async fn fetch_pubchem_hits(
     http: &ReqwestClient,
     inchikeys: &[String],
@@ -234,7 +227,6 @@ async fn fetch_pubchem_hits(
     Ok(summary)
 }
 
-#[cfg(target_arch = "wasm32")]
 async fn sparql_bindings(
     http: &ReqwestClient,
     endpoint: &str,
@@ -262,7 +254,6 @@ async fn sparql_bindings(
         .collect())
 }
 
-#[cfg(target_arch = "wasm32")]
 fn binding_str<'a>(binding: &'a serde_json::Map<String, Value>, key: &str) -> &'a str {
     binding
         .get(key)

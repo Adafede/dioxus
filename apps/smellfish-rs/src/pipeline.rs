@@ -7,9 +7,7 @@ use crate::model::{
     DatasetMotifContext, EndpointStatus, EnrichmentOutcome, MoleculeRow, MotifSummary,
     RdkitDescriptors, SubstituentCounts,
 };
-#[cfg(target_arch = "wasm32")]
 use crate::qlever::enrich_sources;
-#[cfg(target_arch = "wasm32")]
 use crate::rdkit::{rdkit_inspect, read_file_text};
 use dioxus::prelude::{Signal, WritableExt, spawn};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -19,7 +17,6 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 /// # Errors
 ///
 /// Returns an error if file reading or row processing fails.
-#[cfg(target_arch = "wasm32")]
 pub(crate) async fn import_csv(
     file: web_sys::Blob,
     mut status: Signal<String>,
@@ -35,11 +32,9 @@ pub(crate) async fn import_csv(
 /// # Errors
 ///
 /// Returns an error if CSV parsing or row inspection fails.
-#[cfg(target_arch = "wasm32")]
 #[allow(
-    clippy::too_many_lines,       // wasm pipeline orchestrator: single-pass import flow
-    clippy::too_many_arguments,   // wasm pipeline: signal handles forwarded to async spawn
-    clippy::assigning_clones      // clone-before-overwrite pattern in buffer processing
+    clippy::too_many_lines,  // wasm pipeline orchestrator: single-pass import flow
+    clippy::assigning_clones // clone-before-overwrite pattern in buffer processing
 )]
 async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<ImportOutcome, String> {
     status.set("Parsing CSV…".to_string());
@@ -240,7 +235,6 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
 /// A motif is considered "dataset-common" when it appears in ≥
 /// `common_threshold` molecules, where `common_threshold` is the larger of
 /// `ceil(total / 10)` and 2 — i.e. at least 10 % of the set (minimum 2).
-#[cfg(target_arch = "wasm32")]
 fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> DatasetMotifContext {
     let mut motif_counts: HashMap<String, usize> = HashMap::with_capacity(motif_summaries.len());
     for motif in motif_summaries {
@@ -255,7 +249,6 @@ fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> Da
     }
 }
 
-#[cfg(target_arch = "wasm32")]
 #[derive(Debug)]
 pub(crate) struct ImportOutcome {
     pub rows: Vec<MoleculeRow>,
@@ -266,7 +259,6 @@ pub(crate) struct ImportOutcome {
     pub warnings: Vec<String>,
 }
 
-#[cfg(target_arch = "wasm32")]
 fn apply_import_outcome(
     outcome: ImportOutcome,
     prefix: &str,
@@ -295,7 +287,6 @@ fn apply_import_outcome(
     ));
 }
 
-#[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_arguments)] // wasm entry point: signal handles for async import
 pub(crate) fn begin_import(
     file: web_sys::Blob,
@@ -331,7 +322,6 @@ pub(crate) fn begin_import(
     });
 }
 
-#[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn begin_import_from_text(
     text: String,
@@ -375,8 +365,6 @@ pub(crate) fn begin_import_from_text(
     });
 }
 
-#[cfg(target_arch = "wasm32")]
-#[allow(clippy::assigning_clones)] // clone-then-overwrite in enrichment merge loop
 fn merge_enrichment(
     mut rows: Vec<MoleculeRow>,
     enrichment_outcome: &EnrichmentOutcome,
@@ -393,7 +381,8 @@ fn merge_enrichment(
                 if let Some(row) = rows.get_mut(idx) {
                     row.lotus_taxa = summary.taxa.iter().cloned().collect();
                     row.lotus_compounds = summary.compounds.iter().cloned().collect();
-                    row.lotus_compounds_with_taxa = summary.compounds_with_taxa.clone();
+                    row.lotus_compounds_with_taxa
+                        .clone_from(&summary.compounds_with_taxa);
                 }
             }
         }
@@ -413,7 +402,6 @@ fn merge_enrichment(
     rows
 }
 
-#[cfg(target_arch = "wasm32")]
 fn sorted_motifs(mut motifs: Vec<MotifSummary>) -> Vec<MotifSummary> {
     motifs.sort_by(|left, right| {
         right
@@ -427,7 +415,6 @@ fn sorted_motifs(mut motifs: Vec<MotifSummary>) -> Vec<MotifSummary> {
     motifs
 }
 
-#[cfg(target_arch = "wasm32")]
 fn error_row(index: usize, label: String, smiles: String, error: String) -> MoleculeRow {
     MoleculeRow {
         index,

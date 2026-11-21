@@ -37,11 +37,9 @@ pub(crate) mod verdict;
 pub(crate) use assessment::np_likeness_label;
 #[allow(clippy::module_name_repetitions)] // EvidenceXxx re-exports preserve domain naming
 pub(crate) use assessment::{EvidenceInputs, assess_np_evidence};
-#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) use chemist::run_checks;
 #[cfg(test)]
 pub(crate) use chemist::{is_known_np_motif, is_scaffold_motif};
-#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) use verdict::row_verdict;
 
 #[cfg(test)]

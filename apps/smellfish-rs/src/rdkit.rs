@@ -12,7 +12,6 @@ use wasm_bindgen_futures::JsFuture;
 ///
 /// Returns an error if the file read promise is rejected or does not resolve
 /// to a string.
-#[cfg(target_arch = "wasm32")]
 pub(crate) async fn read_file_text(file: &web_sys::Blob) -> Result<String, String> {
     let promise = file.text();
     let value = JsFuture::from(promise)
@@ -29,7 +28,6 @@ pub(crate) async fn read_file_text(file: &web_sys::Blob) -> Result<String, Strin
 ///
 /// Returns an error if the bridge call fails or the JSON response cannot be
 /// deserialized.
-#[cfg(target_arch = "wasm32")]
 #[allow(clippy::module_name_repetitions)] // RdkitInspectResponse preserves domain naming
 pub(crate) async fn rdkit_inspect(smiles: &str) -> Result<RdkitInspectResponse, String> {
     let value = rdkit_bridge_call("inspect", smiles).await?;
@@ -40,7 +38,6 @@ pub(crate) async fn rdkit_inspect(smiles: &str) -> Result<RdkitInspectResponse, 
     serde_json::from_str(&text).map_err(|err| err.to_string())
 }
 
-#[cfg(target_arch = "wasm32")]
 async fn rdkit_bridge_call(method: &str, smiles: &str) -> Result<JsValue, String> {
     let window = web_sys::window().ok_or_else(|| "window is unavailable".to_string())?;
     let window_value = JsValue::from(window);

@@ -7,9 +7,7 @@
 //! `ring_family` for structural classification.  The CSV categorization
 //! helper (`category`) lives in `app::csv_export`.
 
-use super::chemist::EvidenceCounts;
-#[cfg(any(test, target_arch = "wasm32"))]
-use super::chemist::count_evidence;
+use super::chemist::{EvidenceCounts, count_evidence};
 
 /// Verdict string shown prominently in the UI.
 ///
@@ -20,7 +18,6 @@ use super::chemist::count_evidence;
 /// assessment is chemistry-grounded and verifiable on native — it is not
 /// derived from any LLM heuristic, and a score-only signal is never elevated
 /// to "novel".
-#[cfg(any(test, target_arch = "wasm32"))]
 #[must_use]
 pub(crate) fn row_verdict(row: &crate::model::MoleculeRow) -> String {
     if let Some(err) = row.error.as_deref() {
