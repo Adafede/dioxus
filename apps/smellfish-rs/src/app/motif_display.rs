@@ -3,35 +3,28 @@
 
 //! Motif classification + display formatting.
 //!
-//! The original `results.rs` had two near-identical sets of helpers —
-//! `summary_is_natural` / `motif_is_natural` etc. — differing only by
-//! whether they wrapped `MotifSummary` or `RdkitMotifHit`.  Both types
-//! expose a `source_class: String` field, so the classification logic
-//! collapses to a single function that takes `&str`.
+//! Shared `&str`-based helpers serve both `MotifSummary` and `RdkitMotifHit`:
+//! both types expose a `source_class: String` field, so the classification logic
+//! collapses to shared functions that take `&str`.
 
-use crate::model::{MotifSummary, RdkitMotifHit, normalized_source_class};
-
-/// Classify a source-class string into one of three buckets.
-fn classify_source(source_class: &str) -> &str {
-    normalized_source_class(source_class)
-}
+use crate::model::normalized_source_class;
 
 /// Returns `true` when the source class indicates a natural-product origin.
 #[must_use]
 pub(super) fn is_natural_source(source_class: &str) -> bool {
-    classify_source(source_class) == "natural"
+    normalized_source_class(source_class) == "natural"
 }
 
 /// Returns `true` when the source class indicates a synthetic origin.
 #[must_use]
 pub(super) fn is_synthetic_source(source_class: &str) -> bool {
-    classify_source(source_class) == "synthetic"
+    normalized_source_class(source_class) == "synthetic"
 }
 
 /// Returns `true` when the source class is unclassified (neither natural nor synthetic).
 #[must_use]
 pub(super) fn is_unclassified_source(source_class: &str) -> bool {
-    classify_source(source_class) == "unknown"
+    normalized_source_class(source_class) == "unknown"
 }
 
 /// Returns `"chip chip-np"` for natural sources, `"chip alt"` otherwise.
@@ -66,70 +59,6 @@ pub(super) fn display_label(
     } else {
         format!("unclassified \u{00b7} {label}")
     }
-}
-
-// ─── Thin wrappers for MotifSummary ───────────────────────────────────
-
-#[must_use]
-pub(super) fn summary_is_natural(motif: &MotifSummary) -> bool {
-    is_natural_source(&motif.source_class)
-}
-
-#[must_use]
-pub(super) fn summary_is_synthetic(motif: &MotifSummary) -> bool {
-    is_synthetic_source(&motif.source_class)
-}
-
-#[must_use]
-pub(super) fn summary_is_unclassified(motif: &MotifSummary) -> bool {
-    is_unclassified_source(&motif.source_class)
-}
-
-#[must_use]
-pub(super) fn summary_chip_class(motif: &MotifSummary) -> &'static str {
-    chip_class_for(&motif.source_class)
-}
-
-#[must_use]
-pub(super) fn summary_display_label(motif: &MotifSummary) -> String {
-    display_label(
-        &motif.source_class,
-        &motif.label,
-        &motif.kingdom,
-        &motif.kingdoms,
-    )
-}
-
-// ─── Thin wrappers for RdkitMotifHit ──────────────────────────────────
-
-#[must_use]
-pub(super) fn motif_is_natural(motif: &RdkitMotifHit) -> bool {
-    is_natural_source(&motif.source_class)
-}
-
-#[must_use]
-pub(super) fn motif_is_synthetic(motif: &RdkitMotifHit) -> bool {
-    is_synthetic_source(&motif.source_class)
-}
-
-#[must_use]
-pub(super) fn motif_is_unclassified(motif: &RdkitMotifHit) -> bool {
-    is_unclassified_source(&motif.source_class)
-}
-
-#[must_use]
-pub(super) fn motif_chip_class(motif: &RdkitMotifHit) -> &'static str {
-    chip_class_for(&motif.source_class)
-}
-
-#[must_use]
-pub(super) fn motif_display_label(motif: &RdkitMotifHit) -> String {
-    display_label(
-        &motif.source_class,
-        &motif.label,
-        &motif.kingdom,
-        &motif.kingdoms,
-    )
 }
 
 #[cfg(test)]

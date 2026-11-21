@@ -160,7 +160,10 @@ fn parse_smiles_lines(text: &str) -> Result<Vec<RawRow>, String> {
 }
 
 fn detect_column(headers: &[String], names: &[&str]) -> Option<usize> {
-    let normalized: Vec<String> = headers.iter().map(|h| normalize_column_header(h)).collect();
+    let normalized: Vec<String> = headers
+        .iter()
+        .map(|h| strip_header_prefix(h).to_ascii_lowercase())
+        .collect();
     // Exact match first, then whole alphanumeric token, then substring so `"id"` beats `"lipid"`.
     if let Some(idx) = normalized
         .iter()
@@ -177,10 +180,6 @@ fn detect_column(headers: &[String], names: &[&str]) -> Option<usize> {
     normalized
         .iter()
         .position(|h| names.iter().any(|needle| h.contains(needle)))
-}
-
-fn normalize_column_header(header: &str) -> String {
-    strip_header_prefix(header).to_ascii_lowercase()
 }
 
 fn label_for_record(record: &[String], label_idx: Option<usize>, line_no: usize) -> String {
