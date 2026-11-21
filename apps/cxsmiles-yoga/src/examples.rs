@@ -16,87 +16,72 @@ pub struct ExampleSet {
     pub smiles: &'static str,
 }
 
-/// The six demo example sets.
-pub const EXAMPLE_SETS: &[ExampleSet] = &[
-    ExampleSet {
-        id: "biphenyl_cl",
-        label: "Cl on a biphenyl (m: block)",
-        smiles: "Clc1ccccc1-c2ccccc2
+macro_rules! example_sets {
+    ($( ($id:literal, $label:literal, $smiles:literal) ),* $(,)?) => {
+        /// The six demo example sets.
+        pub const EXAMPLE_SETS: &[ExampleSet] = &[
+            $( ExampleSet { id: $id, label: $label, smiles: $smiles }, )*
+        ];
+
+        const EXAMPLE_ITEMS: &[ui::prelude::SegmentedControlItem] = &[
+            $( ui::prelude::SegmentedControlItem { label: $label, value: $id }, )*
+        ];
+    };
+}
+
+example_sets! {
+    (
+        "biphenyl_cl",
+        "Cl on a biphenyl (m: block)",
+        "Clc1ccccc1-c2ccccc2
 Clc1cccc(-c2ccccc2)c1
-Clc1ccc(-c2ccccc2)cc1",
-    },
-    ExampleSet {
-        id: "omf_moving",
-        label: "Methoxy on a triol (m: block)",
-        smiles: "COc1c(O)cc(O)cc1
+Clc1ccc(-c2ccccc2)cc1"
+    ),
+    (
+        "omf_moving",
+        "Methoxy on a triol (m: block)",
+        "COc1c(O)cc(O)cc1
 Oc1c(OC)cc(O)cc1
-Oc1c(O)cc(OC)cc1",
-    },
-    ExampleSet {
-        id: "acetyl",
-        label: "Acetate on a biphenyl (double m: block)",
-        smiles: "CC(=O)Oc1ccccc1-c2ccccc2
+Oc1c(O)cc(OC)cc1"
+    ),
+    (
+        "acetyl",
+        "Acetate on a biphenyl (double m: block)",
+        "CC(=O)Oc1ccccc1-c2ccccc2
 CC(=O)Oc1cccc(-c2ccccc2)c1
-CC(=O)Oc1ccc(-c2ccccc2)cc1",
-    },
-    ExampleSet {
-        id: "pfas",
-        label: "PFAS -CF2- repeats (Sg:n:)",
-        smiles: "OC(=O)C(F)(F)C(F)F
+CC(=O)Oc1ccc(-c2ccccc2)cc1"
+    ),
+    (
+        "pfas",
+        "PFAS -CF2- repeats (Sg:n:)",
+        "OC(=O)C(F)(F)C(F)F
 OC(=O)C(F)(F)C(F)(F)C(F)F
-OC(=O)C(F)(F)C(F)(F)C(F)(F)C(F)F",
-    },
-    ExampleSet {
-        id: "alkyl",
-        label: "Alkyl -CH2- repeats (Sg:n:)",
-        smiles: "CCCCCCC
+OC(=O)C(F)(F)C(F)(F)C(F)(F)C(F)F"
+    ),
+    (
+        "alkyl",
+        "Alkyl -CH2- repeats (Sg:n:)",
+        "CCCCCCC
 CCCCCCCC
-CCCCCCCCC",
-    },
-    ExampleSet {
-        id: "constitutional",
-        label: "Constitutional isomers (best-effort)",
-        smiles: "CC(C)(C)O
+CCCCCCCCC"
+    ),
+    (
+        "constitutional",
+        "Constitutional isomers (best-effort)",
+        "CC(C)(C)O
 CC(C)CO
 CC(O)CC
 OCCCC
 CCOCC
-COCCC",
-    },
-];
+COCCC"
+    ),
+}
 
 /// Look up an example set by `id`.
 #[must_use]
 pub fn example_smiles(id: &str) -> Option<&'static str> {
     EXAMPLE_SETS.iter().find(|e| e.id == id).map(|e| e.smiles)
 }
-
-const EXAMPLE_ITEMS: &[ui::prelude::SegmentedControlItem] = &[
-    ui::prelude::SegmentedControlItem {
-        label: "Cl on a biphenyl (m: block)",
-        value: "biphenyl_cl",
-    },
-    ui::prelude::SegmentedControlItem {
-        label: "Methoxy on a triol (m: block)",
-        value: "omf_moving",
-    },
-    ui::prelude::SegmentedControlItem {
-        label: "Acetate on a biphenyl (double m: block)",
-        value: "acetyl",
-    },
-    ui::prelude::SegmentedControlItem {
-        label: "PFAS -CF2- repeats (Sg:n:)",
-        value: "pfas",
-    },
-    ui::prelude::SegmentedControlItem {
-        label: "Alkyl -CH2- repeats (Sg:n:)",
-        value: "alkyl",
-    },
-    ui::prelude::SegmentedControlItem {
-        label: "Constitutional isomers (best-effort)",
-        value: "constitutional",
-    },
-];
 
 /// The `SegmentedControl` items for the example picker.
 #[must_use]
