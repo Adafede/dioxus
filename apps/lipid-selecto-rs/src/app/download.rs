@@ -96,9 +96,10 @@ pub(super) fn build_filtered_smiles_content(
     build_smiles_from_blocks(&filtered, gallery, all_classes)
 }
 
-/// Download filtered MGF content with class tags, applying all filter selections.
+/// Download filtered content (MGF or SMILES) with class tags, applying all filter selections.
 #[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
-pub(super) fn download_filtered_mgf(
+pub(super) fn download_filtered(
+    format: crate::format::LipidFormat,
     blocks: &[SpectrumBlock],
     gallery: &[GalleryItem],
     all_classes: &[ChemicalClass],
@@ -109,49 +110,38 @@ pub(super) fn download_filtered_mgf(
     adduct_val: &str,
     selected: &[String],
 ) {
-    let mgf_content = build_filtered_mgf_content(
-        blocks,
-        gallery,
-        all_classes,
-        mz_min_val,
-        mz_max_val,
-        prec_min_val,
-        prec_max_val,
-        adduct_val,
-        selected,
-    );
+    let (content, filename) = match format {
+        crate::format::LipidFormat::Mgf => (
+            build_filtered_mgf_content(
+                blocks,
+                gallery,
+                all_classes,
+                mz_min_val,
+                mz_max_val,
+                prec_min_val,
+                prec_max_val,
+                adduct_val,
+                selected,
+            ),
+            "lipids_filtered.mgf",
+        ),
+        crate::format::LipidFormat::Smiles => (
+            build_filtered_smiles_content(
+                blocks,
+                gallery,
+                all_classes,
+                mz_min_val,
+                mz_max_val,
+                prec_min_val,
+                prec_max_val,
+                adduct_val,
+                selected,
+            ),
+            "lipids.smi",
+        ),
+    };
     #[cfg(target_arch = "wasm32")]
-    drop(upload::download_text(&mgf_content, "lipids_filtered.mgf"));
+    drop(upload::download_text(&content, filename));
     #[cfg(not(target_arch = "wasm32"))]
-    drop(mgf_content);
-}
-
-/// Download filtered SMILES content with class tags, applying all filter selections.
-#[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
-pub(super) fn download_filtered_smiles(
-    blocks: &[SpectrumBlock],
-    gallery: &[GalleryItem],
-    all_classes: &[ChemicalClass],
-    mz_min_val: f64,
-    mz_max_val: f64,
-    prec_min_val: f64,
-    prec_max_val: f64,
-    adduct_val: &str,
-    selected: &[String],
-) {
-    let smiles_content = build_filtered_smiles_content(
-        blocks,
-        gallery,
-        all_classes,
-        mz_min_val,
-        mz_max_val,
-        prec_min_val,
-        prec_max_val,
-        adduct_val,
-        selected,
-    );
-    #[cfg(target_arch = "wasm32")]
-    drop(upload::download_text(&smiles_content, "lipids.smi"));
-    #[cfg(not(target_arch = "wasm32"))]
-    drop(smiles_content);
+    drop((content, filename));
 }

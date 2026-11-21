@@ -221,27 +221,15 @@ fn parse_first_float(text: &str) -> Option<f64> {
         .and_then(|value| value.parse::<f64>().ok())
 }
 
-/// Detect the `BEGIN IONS` header (case-insensitive, tolerate inline tokens).
+/// Detect an MGF section marker (`BEGIN IONS` / `END IONS`, case-insensitive).
 #[cfg(any(test, target_arch = "wasm32"))]
-fn is_begin_ions(line: &str) -> bool {
+fn is_ions_marker(line: &str, marker: &str) -> bool {
     let trimmed = line.trim();
     trimmed
-        .get(.."BEGIN IONS".len())
-        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("BEGIN IONS"))
+        .get(..marker.len())
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(marker))
         && trimmed
-            .get("BEGIN IONS".len()..)
-            .is_some_and(|rest| rest.is_empty() || rest.starts_with(char::is_whitespace))
-}
-
-/// Detect the `END IONS` terminus (case-insensitive).
-#[cfg(any(test, target_arch = "wasm32"))]
-fn is_end_ions(line: &str) -> bool {
-    let trimmed = line.trim();
-    trimmed
-        .get(.."END IONS".len())
-        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("END IONS"))
-        && trimmed
-            .get("END IONS".len()..)
+            .get(marker.len()..)
             .is_some_and(|rest| rest.is_empty() || rest.starts_with(char::is_whitespace))
 }
 
@@ -289,7 +277,7 @@ impl BlockExtractor {
             return;
         }
 
-        if is_begin_ions(line) {
+        if is_ions_marker(line, "BEGIN IONS") {
             if !self.saw_mgf {
                 self.saw_mgf = true;
                 if self.format.is_none() {
@@ -311,7 +299,7 @@ impl BlockExtractor {
         }
 
         if let Some(block) = self.current.as_mut() {
-            if is_end_ions(line) {
+            if is_ions_marker(line, "END IONS") {
                 block.raw.push_str(line);
                 block.raw.push('\n');
                 if let Some(finished) = self.current.take() {
@@ -325,7 +313,7 @@ impl BlockExtractor {
         } else if self.format.is_none() {
             // Unknown extension before any `BEGIN IONS`: tentatively parse as SMILES lines.
             let trimmed = line.trim();
-            if trimmed.is_empty() || trimmed.starts_with('#') || is_end_ions(line) {
+            if trimmed.is_empty() || trimmed.starts_with('#') || is_ions_marker(line, "END IONS") {
                 return;
             }
             self.index += 1;

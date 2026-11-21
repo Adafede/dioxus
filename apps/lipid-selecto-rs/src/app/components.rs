@@ -13,7 +13,7 @@ use ui::prelude::*;
 use crate::chemical_class::ChemicalClass;
 
 use super::analysis::{collect_adduct_options, group_classes_by_family};
-use super::download::{download_filtered_mgf, download_filtered_smiles};
+use super::download::download_filtered;
 use super::gallery::passes_item_filters;
 use super::types::SummaryFilters;
 
@@ -327,52 +327,33 @@ fn download_buttons(
     let precursor_max = filters.precursor_max;
     let adduct_filter = filters.adduct_filter;
     let selected_classes = filters.selected_classes;
+    let label = match input_format {
+        crate::format::LipidFormat::Mgf => "Download Filtered Lipids",
+        crate::format::LipidFormat::Smiles => "Download SMILES",
+    };
 
     rsx! {
         div { style: StyleBuilder::new().display("flex").gap("0.5rem").property("margin-top", "0.75rem").build(),
-            if input_format == crate::format::LipidFormat::Mgf {
-                button {
-                    r#type: "button",
-                    style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
-                    onclick: move |_| {
-                        if let Some(analysis) = analysis_signal.read().as_ref() {
-                            download_filtered_mgf(
-                                &analysis.blocks,
-                                &analysis.gallery,
-                                &analysis.all_classes,
-                                *mz_min.read(),
-                                *mz_max.read(),
-                                *precursor_min.read(),
-                                *precursor_max.read(),
-                                &adduct_filter.read(),
-                                &selected_classes.read(),
-                            );
-                        }
-                    },
-                    "Download Filtered Lipids"
-                }
-            }
-            if input_format == crate::format::LipidFormat::Smiles {
-                button {
-                    r#type: "button",
-                    style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
-                    onclick: move |_| {
-                        if let Some(analysis) = analysis_signal.read().as_ref() {
-                            download_filtered_smiles(
-                                &analysis.blocks,
-                                &analysis.gallery,
-                                &analysis.all_classes,
-                                *mz_min.read(),
-                                *mz_max.read(),
-                                *precursor_min.read(),
-                                *precursor_max.read(),
-                                &adduct_filter.read(),
-                                &selected_classes.read(),
-                            );
-                        }
-                    },
-                    "Download SMILES"
-                }
+            button {
+                r#type: "button",
+                style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
+                onclick: move |_| {
+                    if let Some(analysis) = analysis_signal.read().as_ref() {
+                        download_filtered(
+                            input_format,
+                            &analysis.blocks,
+                            &analysis.gallery,
+                            &analysis.all_classes,
+                            *mz_min.read(),
+                            *mz_max.read(),
+                            *precursor_min.read(),
+                            *precursor_max.read(),
+                            &adduct_filter.read(),
+                            &selected_classes.read(),
+                        );
+                    }
+                },
+                "{label}"
             }
         }
     }
@@ -417,7 +398,7 @@ pub(super) fn summary(
             }
             { filter_controls_row(mz_min, mz_max, precursor_min, precursor_max, adduct_filter, &adduct_options) }
             { family_filter_panel(all_classes, selected_classes, &families) }
-            { download_buttons(&SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, input_format, analysis_signal) }
+            { download_buttons(filters, input_format, analysis_signal) }
         }
     }
 }
