@@ -218,67 +218,43 @@ fn unescape_json_string(raw: &[u8]) -> String {
                 }
                 break;
             };
-            match escaped {
-                b'"' => {
-                    out.push('"');
-                    i += 2;
-                }
-                b'\\' => {
-                    out.push('\\');
-                    i += 2;
-                }
-                b'/' => {
-                    out.push('/');
-                    i += 2;
-                }
-                b'b' => {
-                    out.push('\u{8}');
-                    i += 2;
-                }
-                b'f' => {
-                    out.push('\u{c}');
-                    i += 2;
-                }
-                b'n' => {
-                    out.push('\n');
-                    i += 2;
-                }
-                b'r' => {
-                    out.push('\r');
-                    i += 2;
-                }
-                b't' => {
-                    out.push('\t');
-                    i += 2;
-                }
-                b'u' if raw.get(i + 2..i + 6).is_some() => {
-                    if let Some(code) = unicode_code_unit(raw, i + 2) {
-                        if (0xD800..=0xDBFF).contains(&code)
-                            && raw.get(i + 6..i + 8) == Some(b"\\u")
-                            && let Some(low) = unicode_code_unit(raw, i + 8)
-                            && (0xDC00..=0xDFFF).contains(&low)
-                        {
-                            let scalar = 0x10000
-                                + ((u32::from(code) - 0xD800) << 10)
-                                + (u32::from(low) - 0xDC00);
-                            out.push(char::from_u32(scalar).unwrap_or('\u{FFFD}'));
-                            i += 12;
-                        } else if (0xD800..=0xDFFF).contains(&code) {
-                            // Lone high or lone low UTF-16 surrogate emits U+FFFD.
-                            out.push('\u{FFFD}');
-                            i += 6;
-                        } else {
-                            out.push(char::from_u32(u32::from(code)).unwrap_or('\u{FFFD}'));
-                            i += 6;
-                        }
+            if escaped == b'u' && raw.get(i + 2..i + 6).is_some() {
+                if let Some(code) = unicode_code_unit(raw, i + 2) {
+                    if (0xD800..=0xDBFF).contains(&code)
+                        && raw.get(i + 6..i + 8) == Some(b"\\u")
+                        && let Some(low) = unicode_code_unit(raw, i + 8)
+                        && (0xDC00..=0xDFFF).contains(&low)
+                    {
+                        let scalar = 0x10000
+                            + ((u32::from(code) - 0xD800) << 10)
+                            + (u32::from(low) - 0xDC00);
+                        out.push(char::from_u32(scalar).unwrap_or('\u{FFFD}'));
+                        i += 12;
+                    } else if (0xD800..=0xDFFF).contains(&code) {
+                        // Lone high or lone low UTF-16 surrogate emits U+FFFD.
+                        out.push('\u{FFFD}');
+                        i += 6;
                     } else {
+                        out.push(char::from_u32(u32::from(code)).unwrap_or('\u{FFFD}'));
                         i += 6;
                     }
+                } else {
+                    i += 6;
                 }
-                other => {
-                    out.push(other as char);
-                    i += 2;
-                }
+            } else {
+                let ch = match escaped {
+                    b'"' => '"',
+                    b'\\' => '\\',
+                    b'/' => '/',
+                    b'b' => '\u{8}',
+                    b'f' => '\u{c}',
+                    b'n' => '\n',
+                    b'r' => '\r',
+                    b't' => '\t',
+                    other => other as char,
+                };
+                out.push(ch);
+                i += 2;
             }
         } else {
             let Some(rest) = raw.get(i..) else {
