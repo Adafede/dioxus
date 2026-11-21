@@ -131,44 +131,30 @@ fn is_windows_reserved_stem(stem: &str) -> bool {
 }
 
 #[cfg(any(target_arch = "wasm32", test))]
-fn floor_char_boundary(s: &str, max_bytes: usize) -> usize {
-    let mut end = max_bytes.min(s.len());
-    while end > 0 && !s.is_char_boundary(end) {
-        end -= 1;
-    }
-    end
-}
-
-#[cfg(any(target_arch = "wasm32", test))]
 fn truncate_utf8_filename(name: String, max_bytes: usize) -> String {
     if name.len() <= max_bytes {
         return name;
     }
-    let truncated = if let Some((stem, ext)) = name.rsplit_once('.')
+    if let Some((stem, ext)) = name.rsplit_once('.')
         && !stem.is_empty()
         && !ext.is_empty()
         && ext.len() + 1 < max_bytes
         && ext.len() <= 32
     {
-        let stem_budget = max_bytes - ext.len() - 1;
-        let cut = floor_char_boundary(stem, stem_budget);
+        let cut = stem.floor_char_boundary(max_bytes - ext.len() - 1);
         if cut > 0 {
             let mut out = stem.get(..cut).unwrap_or_default().to_string();
             out.push('.');
             out.push_str(ext);
-            out
-        } else {
-            let cut = floor_char_boundary(&name, max_bytes);
-            name.get(..cut).unwrap_or_default().to_string()
+            return out;
         }
-    } else {
-        let cut = floor_char_boundary(&name, max_bytes);
-        name.get(..cut).unwrap_or_default().to_string()
-    };
+    }
+    let cut = name.floor_char_boundary(max_bytes);
+    let truncated = name.get(..cut).unwrap_or_default();
     if truncated.is_empty() {
         "download.txt".to_string()
     } else {
-        truncated
+        truncated.to_string()
     }
 }
 

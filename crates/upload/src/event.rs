@@ -43,14 +43,13 @@ pub fn extract_blob_from_file_data(files: &[FileData]) -> Result<Option<Extracte
     #[cfg(target_arch = "wasm32")]
     {
         use wasm_bindgen::JsCast;
-        type WebFile = web_sys::File;
 
-        let Some(file) = files.iter().next() else {
+        let Some(file) = files.first() else {
             return Ok(None);
         };
 
         let file_name = file.name();
-        let Some(web_file) = file.inner().downcast_ref::<WebFile>() else {
+        let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
             return Err("This file type is not supported in the browser.".to_string());
         };
 
