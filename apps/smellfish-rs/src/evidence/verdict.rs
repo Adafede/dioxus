@@ -26,11 +26,7 @@ pub(crate) fn row_verdict(row: &crate::model::MoleculeRow) -> String {
 
     let has_lotus = !row.lotus_taxa.is_empty();
     let has_pubchem = !row.pubchem_cids.is_empty();
-    let np_score = if row.np_score_available {
-        Some(row.np_likeness)
-    } else {
-        None
-    };
+    let np_score = row.np_score_available.then_some(row.np_likeness);
 
     // Structural evidence (RDKit-derived — chemistry, not heuristic). The counts
     // are shared with `assess_np_evidence` via `chemist::count_evidence`, so the

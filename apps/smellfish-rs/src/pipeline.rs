@@ -6,7 +6,7 @@ use crate::csv::parse_csv_rows;
 use crate::evidence::{EvidenceInputs, assess_np_evidence, row_verdict, run_checks};
 use crate::model::{
     DatasetMotifContext, EndpointStatus, EnrichmentOutcome, MoleculeRow, MotifSummary,
-    RdkitDescriptors, SubstituentCounts,
+    SubstituentCounts,
 };
 use crate::qlever::enrich_sources;
 use crate::rdkit::{rdkit_inspect, read_file_text};
@@ -114,23 +114,13 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                     motif_hits: motifs_list,
                     substituents_counts,
                     lotus_scaffolds: inspect.lotus_scaffolds,
-                    lotus_taxa: Vec::new(),
-                    lotus_compounds: Vec::new(),
-                    lotus_compounds_with_taxa: BTreeSet::new(),
-                    pubchem_cids: Vec::new(),
                     np_likeness: inspect.np_score.unwrap_or(0.0),
-                    np_label: String::new(),
                     np_confidence: inspect.np_confidence.unwrap_or(0.0),
                     np_score_available: inspect.np_score.is_some(),
-                    ring_family: String::new(),
-                    evidence_notes: Vec::new(),
-                    motif_context: String::new(),
-                    chemist_checks: Vec::new(),
-                    verdict: String::new(),
-                    error: None,
                     descriptors,
                     stereo_tags,
                     num_atoms: inspect.num_atoms.unwrap_or(0),
+                    ..MoleculeRow::default()
                 });
             }
             Err(err) => rows.push(error_row(raw.index, raw.label, raw.smiles, err)),
@@ -237,16 +227,12 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
 /// `common_threshold` molecules, where `common_threshold` is the larger of
 /// `ceil(total / 10)` and 2 — i.e. at least 10 % of the set (minimum 2).
 fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> DatasetMotifContext {
-    let mut motif_counts: HashMap<String, usize> = HashMap::with_capacity(motif_summaries.len());
-    for motif in motif_summaries {
-        motif_counts.insert(motif.label.clone(), motif.count);
-    }
-
-    let common_threshold = total.div_ceil(10).max(2);
-
     DatasetMotifContext {
-        motif_counts,
-        common_threshold,
+        motif_counts: motif_summaries
+            .iter()
+            .map(|motif| (motif.label.clone(), motif.count))
+            .collect(),
+        common_threshold: total.div_ceil(10).max(2),
     }
 }
 
@@ -385,28 +371,8 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         index,
         label,
         smiles,
-        inchikey: String::new(),
-        svg: None,
-        motifs: Vec::new(),
-        substituents_counts: SubstituentCounts::new(),
-        lotus_scaffolds: Vec::new(),
-        lotus_taxa: Vec::new(),
-        lotus_compounds: Vec::new(),
-        lotus_compounds_with_taxa: BTreeSet::new(),
-        pubchem_cids: Vec::new(),
-        np_likeness: 0.0,
         np_label: "—".to_string(),
-        np_confidence: 0.0,
-        np_score_available: false,
-        ring_family: String::new(),
-        evidence_notes: Vec::new(),
-        motif_context: String::new(),
-        chemist_checks: Vec::new(),
-        verdict: String::new(),
         error: Some(error),
-        descriptors: RdkitDescriptors::default(),
-        stereo_tags: Vec::new(),
-        num_atoms: 0,
-        motif_hits: Vec::new(),
+        ..MoleculeRow::default()
     }
 }

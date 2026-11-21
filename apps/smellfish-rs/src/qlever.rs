@@ -26,10 +26,7 @@ pub(crate) async fn enrich_sources(
         Ok(http) => http,
         Err(err) => {
             return EnrichmentOutcome {
-                enrichment: Enrichment {
-                    lotus: HashMap::new(),
-                    pubchem: HashMap::new(),
-                },
+                enrichment: Enrichment::default(),
                 endpoints: vec![EndpointStatus {
                     name: "HTTP client".to_string(),
                     endpoint: String::new(),

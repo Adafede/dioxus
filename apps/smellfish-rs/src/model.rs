@@ -34,7 +34,7 @@ pub(crate) struct ChemistCheck {
 /// A molecule row displayed in the UI.  Fields marked `#[cfg(...)]` are
 /// only needed during the wasm evidence pipeline; they exist so the struct
 /// can be fully populated and assessed in the browser.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct MoleculeRow {
     pub index: usize,
     pub label: String,

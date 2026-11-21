@@ -118,7 +118,7 @@ pub(crate) fn assess_np_evidence(inputs: EvidenceInputs<'_>) -> EvidenceAssessme
         np_confidence: confidence,
         ring_family,
         evidence_notes: notes,
-        motif_context: motif_context_label(counts, natural_only_hits, kingdom_support),
+        motif_context: motif_context_label(counts, natural_only_hits, kingdom_support).to_string(),
     }
 }
 
@@ -190,7 +190,7 @@ fn motif_evidence_notes(
             .iter()
             .filter(|m| is_known_np_motif(m))
             .take(3)
-            .cloned()
+            .map(String::as_str)
             .collect::<Vec<_>>()
             .join(", ");
         notes.push(format!(
@@ -203,19 +203,10 @@ fn motif_evidence_notes(
              supportive only, not Ertl-enriched by itself"
         ));
     }
-    if kingdom_enriched_hits > 0 || natural_only_hits > 0 || synthetic_hits > 0 || unknown_hits > 0
-    {
-        let total = kingdom_enriched_hits + natural_only_hits + synthetic_hits + unknown_hits;
-        let natural_pct = if total > 0 {
-            (kingdom_enriched_hits + natural_only_hits) as f64 * 100.0 / total as f64
-        } else {
-            0.0
-        };
-        let synthetic_pct = if total > 0 {
-            synthetic_hits as f64 * 100.0 / total as f64
-        } else {
-            0.0
-        };
+    let total = kingdom_enriched_hits + natural_only_hits + synthetic_hits + unknown_hits;
+    if total > 0 {
+        let natural_pct = (kingdom_enriched_hits + natural_only_hits) as f64 * 100.0 / total as f64;
+        let synthetic_pct = synthetic_hits as f64 * 100.0 / total as f64;
         notes.push(format!(
             "motif balance: {kingdom_enriched_hits} kingdom-enriched / {natural_only_hits} \
              natural-only / {synthetic_hits} synthetic / {unknown_hits} unclassified \
@@ -247,30 +238,30 @@ fn motif_evidence_notes(
 
 /// One-line summary of the dataset-level structural-motif picture, mirroring
 /// the Ertl structural-support hierarchy.
-fn motif_context_label(
+const fn motif_context_label(
     counts: EvidenceCounts,
     natural_only_hits: usize,
     kingdom_support: bool,
-) -> String {
+) -> &'static str {
     if counts.np_core_hits > 0 && counts.scaffold_hits > 0 {
-        "Ertl-style NP core with structural support".to_string()
+        "Ertl-style NP core with structural support"
     } else if counts.np_core_hits > 0 {
-        "Ertl-style NP core motifs".to_string()
+        "Ertl-style NP core motifs"
     } else if counts.scaffold_hits > 0 && kingdom_support {
-        "kingdom-enriched structural motifs".to_string()
+        "kingdom-enriched structural motifs"
     } else if counts.scaffold_hits > 0 && natural_only_hits > 0 {
-        "natural-only structural motifs".to_string()
+        "natural-only structural motifs"
     } else if counts.scaffold_hits > 0 {
-        "structural support motifs".to_string()
+        "structural support motifs"
     } else if kingdom_support && counts.kingdom_enriched_hits > counts.synthetic_hits {
-        "kingdom-enriched motifs".to_string()
+        "kingdom-enriched motifs"
     } else if natural_only_hits > counts.synthetic_hits && natural_only_hits > 0 {
-        "natural-leaning motifs".to_string()
+        "natural-leaning motifs"
     } else if counts.synthetic_hits > counts.natural_hits && counts.synthetic_hits > 0 {
-        "synthetic-leaning motifs".to_string()
+        "synthetic-leaning motifs"
     } else if counts.decoration_hits > 0 {
-        "decoration motifs only".to_string()
+        "decoration motifs only"
     } else {
-        "no structural motifs detected".to_string()
+        "no structural motifs detected"
     }
 }

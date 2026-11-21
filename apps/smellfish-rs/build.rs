@@ -89,13 +89,9 @@ fn download_and_filter_lotus_scaffolds(dst: &Path, url: &str) {
     }
     let text = fetch_url(url);
     let mut kept: Vec<String> = Vec::new();
-    let mut in_header = true;
-    for raw_line in text.lines() {
+    // skip header row
+    for raw_line in text.lines().skip(1) {
         let line = raw_line.trim();
-        if in_header {
-            in_header = false;
-            continue; // skip header row
-        }
         if line.is_empty() {
             continue;
         }
@@ -113,7 +109,7 @@ fn download_and_filter_lotus_scaffolds(dst: &Path, url: &str) {
         /* Reject scaffolds shorter than 5 characters — single atoms,
          * diatomic fragments, and very short chains are too
          * non-specific to be meaningful structural motifs. */
-        if mol_pct > 0.01 && !smiles.is_empty() && smiles.len() >= 5 {
+        if mol_pct > 0.01 && smiles.len() >= 5 {
             kept.push(smiles.to_string());
         }
     }

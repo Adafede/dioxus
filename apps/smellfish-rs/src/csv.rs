@@ -30,19 +30,18 @@ pub(crate) fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
     .unwrap_or(0);
     let label_idx = detect_column(&headers, &["name", "label", "id", "compound"]);
 
-    let mut rows = Vec::new();
-    for (line, record) in records.enumerate() {
-        let smiles = record
-            .get(smiles_idx)
-            .map_or("", String::as_str)
-            .trim()
-            .to_string();
-        rows.push(RawRow {
+    let rows: Vec<RawRow> = records
+        .enumerate()
+        .map(|(line, record)| RawRow {
             index: line + 1,
             label: label_for_record(&record, label_idx, line + 1),
-            smiles,
-        });
-    }
+            smiles: record
+                .get(smiles_idx)
+                .map_or("", String::as_str)
+                .trim()
+                .to_string(),
+        })
+        .collect();
 
     if rows.is_empty() {
         return Err("CSV does not contain any data rows".to_string());
@@ -183,16 +182,11 @@ fn detect_column(headers: &[String], names: &[&str]) -> Option<usize> {
 }
 
 fn label_for_record(record: &[String], label_idx: Option<usize>, line_no: usize) -> String {
-    let label = label_idx
+    label_idx
         .and_then(|idx| record.get(idx))
         .map(|s| s.trim())
         .filter(|value| !value.is_empty())
-        .unwrap_or("");
-    if label.is_empty() {
-        format!("Molecule {line_no}")
-    } else {
-        label.to_string()
-    }
+        .map_or_else(|| format!("Molecule {line_no}"), str::to_string)
 }
 
 #[cfg(test)]
