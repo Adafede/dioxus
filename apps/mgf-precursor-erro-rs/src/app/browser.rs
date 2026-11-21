@@ -121,24 +121,19 @@ pub(super) fn download_recalibrated_mgf(filename: &str, _content: &str) -> Resul
 #[cfg(target_arch = "wasm32")]
 fn start_analysis(
     blob: Blob,
-    status: Signal<String>,
-    metrics: Signal<Option<PrecursorStats>>,
-    busy: Signal<bool>,
-    original_mgf_content: Signal<String>,
+    mut status: Signal<String>,
+    mut metrics: Signal<Option<PrecursorStats>>,
+    mut busy: Signal<bool>,
+    mut original_mgf_content: Signal<String>,
 ) {
-    let mut status_for_progress = status;
-    let mut metrics_for_results = metrics;
-    let mut busy_for_results = busy;
-    let mut original_content_signal = original_mgf_content;
-
     spawn(async move {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         // blob.slice_with_f64_and_f64 requires f64 args, cast from u64
         let total_bytes = blob.size() as u64;
-        status_for_progress.set(format!("Scanning {total_bytes} bytes..."));
+        status.set(format!("Scanning {total_bytes} bytes..."));
 
         match scan_blob_with_progress(&blob, |processed, total| {
-            status_for_progress.set(format!(
+            status.set(format!(
                 "Scanning... {}/{} bytes",
                 processed.min(total),
                 total
@@ -147,20 +142,20 @@ fn start_analysis(
         .await
         {
             Ok((result, raw_content)) => {
-                status_for_progress.set(format!("Processed {} spectra.", result.total_spectra));
-                original_content_signal.set(raw_content);
-                metrics_for_results.set(Some(result));
+                status.set(format!("Processed {} spectra.", result.total_spectra));
+                original_mgf_content.set(raw_content);
+                metrics.set(Some(result));
             }
             Err(UploadError::UnexpectedEof) => {
-                status_for_progress.set("Unexpected end of file while reading.".to_string());
-                metrics_for_results.set(Some(PrecursorStats::default()));
+                status.set("Unexpected end of file while reading.".to_string());
+                metrics.set(Some(PrecursorStats::default()));
             }
             Err(error) => {
-                status_for_progress.set(format!("Error scanning MGF: {error}"));
-                metrics_for_results.set(Some(PrecursorStats::default()));
+                status.set(format!("Error scanning MGF: {error}"));
+                metrics.set(Some(PrecursorStats::default()));
             }
         }
-        busy_for_results.set(false);
+        busy.set(false);
     });
 }
 
@@ -169,32 +164,20 @@ fn start_analysis(
 pub(crate) fn begin_analysis_from_blob(
     blob: Blob,
     file_name: String,
-    file_name_signal: Signal<String>,
-    status: Signal<String>,
-    metrics: Signal<Option<PrecursorStats>>,
-    busy: Signal<bool>,
-    drag_active: Signal<bool>,
+    mut file_name_signal: Signal<String>,
+    mut status: Signal<String>,
+    mut metrics: Signal<Option<PrecursorStats>>,
+    mut busy: Signal<bool>,
+    mut drag_active: Signal<bool>,
     original_mgf_content: Signal<String>,
 ) {
-    let mut file_name_for_state = file_name_signal;
-    let mut status_for_state = status;
-    let mut metrics_for_state = metrics;
-    let mut busy_for_state = busy;
-    let mut drag_active_for_state = drag_active;
+    file_name_signal.set(file_name);
+    busy.set(true);
+    drag_active.set(false);
+    status.set("Reading MGF...".to_string());
+    metrics.set(None);
 
-    file_name_for_state.set(file_name);
-    busy_for_state.set(true);
-    drag_active_for_state.set(false);
-    status_for_state.set("Reading MGF...".to_string());
-    metrics_for_state.set(None);
-
-    start_analysis(
-        blob,
-        status_for_state,
-        metrics_for_state,
-        busy_for_state,
-        original_mgf_content,
-    );
+    start_analysis(blob, status, metrics, busy, original_mgf_content);
 }
 
 /// Extracts a blob from the given file data and dispatches it to the analysis
@@ -243,36 +226,25 @@ pub(super) fn attempt_analysis_from_files(
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn load_example_mgf(
-    status: Signal<String>,
-    metrics: Signal<Option<PrecursorStats>>,
-    busy: Signal<bool>,
-    file_name: Signal<String>,
+    mut status: Signal<String>,
+    mut metrics: Signal<Option<PrecursorStats>>,
+    mut busy: Signal<bool>,
+    mut file_name: Signal<String>,
     original_mgf_content: Signal<String>,
 ) {
-    let mut status_for_progress = status;
-    let mut metrics_for_results = metrics;
-    let mut busy_for_results = busy;
-    let mut file_name_for_results = file_name;
-
     spawn(async move {
-        status_for_progress.set("Loading example MGF...".to_string());
-        busy_for_results.set(true);
-        metrics_for_results.set(None);
+        status.set("Loading example MGF...".to_string());
+        busy.set(true);
+        metrics.set(None);
 
         match fetch_remote_blob(EXAMPLE_MGF_URL).await {
             Ok(blob) => {
-                file_name_for_results.set("multims2_spectra.mgf".to_string());
-                start_analysis(
-                    blob,
-                    status_for_progress,
-                    metrics_for_results,
-                    busy_for_results,
-                    original_mgf_content,
-                );
+                file_name.set("multims2_spectra.mgf".to_string());
+                start_analysis(blob, status, metrics, busy, original_mgf_content);
             }
             Err(error) => {
-                status_for_progress.set(error);
-                busy_for_results.set(false);
+                status.set(error);
+                busy.set(false);
             }
         }
     });

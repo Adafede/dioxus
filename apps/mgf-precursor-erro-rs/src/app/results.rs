@@ -24,10 +24,6 @@ use crate::plotting::{
 };
 use crate::recalibration::CalibrationModel;
 
-fn format_lambda(lambda: f64) -> String {
-    format!("{lambda:.2}")
-}
-
 /// Renders the post-upload results panel: summary statistics, recalibration
 /// controls, the recalibrated-MGF download, diagnostics, and cumulative-error
 /// plots. Extracted from `app` so the route component stays focused on
@@ -244,7 +240,7 @@ pub fn ResultsPanel(
                             div {
                                 label {
                                     style: StyleBuilder::new().display("block").font_weight("600").color("#1e40af").property("margin-bottom", "0.4rem").build(),
-                                    "Lambda (λ): {format_lambda(*lambda_value.read())}"
+                                    "Lambda (λ): {*lambda_value.read():.2}"
                                 }
                                 input {
                                     r#type: "range",

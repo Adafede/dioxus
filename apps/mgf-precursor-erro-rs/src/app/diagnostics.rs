@@ -12,16 +12,12 @@ pub(crate) fn update_recalibration_diagnostics(
     model: CalibrationModel,
     diagnostics_signal: &mut Signal<Option<RecalibrationStats>>,
 ) {
-    if matches!(model, CalibrationModel::None) {
+    let Some(lambda) = model.lambda() else {
         diagnostics_signal.set(None);
         return;
-    }
+    };
 
     let mut diag = RecalibrationStats::new();
-    let lambda = match model {
-        CalibrationModel::TOFDa { lambda } | CalibrationModel::OrbitrapPPM { lambda } => lambda,
-        CalibrationModel::None => 0.0,
-    };
 
     let ppm = |delta: f64, reference: f64| {
         if reference > 0.0 {

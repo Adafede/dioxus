@@ -358,20 +358,12 @@ fn parse_charge_magnitude(text: &str) -> Option<f64> {
 }
 
 fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {
-    if let Some(value) = charge
-        && let Some(parsed) = parse_charge_magnitude(value)
-    {
-        return Some(parsed);
-    }
-
-    if let Some(adduct) = adduct
-        && let Some((_, suffix)) = adduct.trim().split_once(']')
-        && let Some(parsed) = parse_charge_magnitude(suffix)
-    {
-        return Some(parsed);
-    }
-
-    None
+    charge.and_then(parse_charge_magnitude).or_else(|| {
+        adduct?
+            .trim()
+            .split_once(']')
+            .and_then(|(_, suffix)| parse_charge_magnitude(suffix))
+    })
 }
 
 #[must_use]

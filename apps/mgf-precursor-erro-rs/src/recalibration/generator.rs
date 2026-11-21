@@ -72,13 +72,8 @@ pub fn generate_recalibrated_mgf(
     calibration_model: CalibrationModel,
     _diagnostics: Option<&RecalibrationStats>,
 ) -> String {
-    if matches!(calibration_model, CalibrationModel::None) {
+    let Some(lambda) = calibration_model.lambda() else {
         return original_content.to_string();
-    }
-
-    let lambda = match calibration_model {
-        CalibrationModel::TOFDa { lambda } | CalibrationModel::OrbitrapPPM { lambda } => lambda,
-        CalibrationModel::None => 0.0,
     };
 
     let mut result = String::with_capacity(original_content.len());
@@ -182,11 +177,6 @@ pub fn recalibrate_fragments(
     precursor_ms2: f64,
     model: CalibrationModel,
 ) {
-    // Skip if no model is active
-    if !model.is_active() {
-        return;
-    }
-
     // Skip if either precursor is missing or invalid
     if !precursor_ms1.is_finite() || !precursor_ms2.is_finite() {
         return;
@@ -199,7 +189,7 @@ pub fn recalibrate_fragments(
 
     match model {
         CalibrationModel::None => {
-            // Already handled above
+            // Skip if no model is active
         }
         CalibrationModel::OrbitrapPPM { lambda } => {
             apply_orbitrap_correction(fragments, precursor_ms1, precursor_ms2, lambda);
