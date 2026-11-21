@@ -312,12 +312,11 @@ pub(crate) fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usiz
     let rpos_a = pos_in_unit(ep_a);
     let rpos_b = pos_in_unit(ep_b);
 
-    let sn = scaffold.atom_count();
     let mut b = MoleculeBuilder::new();
-    let mut sc: Vec<AtomIdx> = Vec::with_capacity(sn);
-    for (_, atom) in scaffold.atoms() {
-        sc.push(b.add_atom(atom.clone()));
-    }
+    let sc: Vec<AtomIdx> = scaffold
+        .atoms()
+        .map(|(_, atom)| b.add_atom(atom.clone()))
+        .collect();
     // copies of the unit: copy 0 = original (in scaffold), copies 1..n = new.
     let mut copy_atoms: Vec<Vec<AtomIdx>> = Vec::with_capacity(n);
     copy_atoms.push(
@@ -403,12 +402,11 @@ fn add_scaffold_bonds(
 /// — so the `0` stands only for the case that cannot occur, as `anchor_a` and
 /// `anchor_b` above already do.
 pub(crate) fn endpoint_for(scaffold: &Molecule, unit: &[u32], anchor: u32) -> u32 {
-    for (nbr, _) in scaffold.neighbors(AtomIdx(anchor)) {
-        if unit.contains(&nbr.0) {
-            return nbr.0;
-        }
-    }
-    unit.first().copied().unwrap_or(0)
+    scaffold
+        .neighbors(AtomIdx(anchor))
+        .find_map(|(nbr, _)| unit.contains(&nbr.0).then_some(nbr.0))
+        .or_else(|| unit.first().copied())
+        .unwrap_or(0)
 }
 
 #[cfg(test)]

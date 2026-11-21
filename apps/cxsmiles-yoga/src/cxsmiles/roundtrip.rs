@@ -176,10 +176,10 @@ fn build_one(
     combo: &[usize],
 ) -> Molecule {
     let mut b = MoleculeBuilder::new();
-    let mut sc: Vec<AtomIdx> = Vec::with_capacity(scaffold.atom_count());
-    for (_, atom) in scaffold.atoms() {
-        sc.push(b.add_atom(atom.clone()));
-    }
+    let sc: Vec<AtomIdx> = scaffold
+        .atoms()
+        .map(|(_, atom)| b.add_atom(atom.clone()))
+        .collect();
     for (_, be) in scaffold.bonds() {
         if let (Some(ma), Some(mc)) = (
             sc.get(be.atom1.0 as usize).copied(),
@@ -310,13 +310,10 @@ pub(crate) fn enumerate_repeating(
 /// Round-trip report: how many original inputs re-appear after expanding CX-SMILES.
 #[must_use]
 pub(crate) fn roundtrip_coverage(enumerated: &[String], group: &[Molecule]) -> (usize, Coverage) {
-    let mut covered = 0;
-    for mol in group {
-        let c = canonical_smiles(mol);
-        if enumerated.contains(&c) {
-            covered += 1;
-        }
-    }
+    let covered = group
+        .iter()
+        .filter(|mol| enumerated.contains(&canonical_smiles(mol)))
+        .count();
     (
         covered,
         Coverage {

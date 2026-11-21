@@ -117,11 +117,10 @@ pub(crate) fn build_positional_with_options(group: &[Molecule], aromatic: bool) 
 
     // m: fields (one per star / def). `defs`, `targets` and `star_indices` all have
     // one entry per floating group, so the three walk together.
-    let fields: Vec<String> = defs
+    let fields: Vec<String> = targets
         .iter()
-        .zip(&targets)
         .zip(&star_indices)
-        .map(|((_, target), &star)| {
+        .map(|(target, &star)| {
             let pos = match target {
                 Target::Variable(p) => p
                     .iter()
@@ -371,8 +370,7 @@ fn equiv_positions(
     let target_multiset = (!comp.is_empty()).then(|| super::repeating::multiset(comp, rep));
     let mut positions: Vec<usize> = Vec::new();
     for mol in group {
-        let hits = find_matches(scaffold_q, mol);
-        let Some(hit) = hits.first().cloned() else {
+        let Some(hit) = find_matches(scaffold_q, mol).into_iter().next() else {
             continue;
         };
         let matched = matched_mask(&hit, mol);
@@ -457,9 +455,7 @@ fn split_floating_and_recovered(
         if boundary_edges(comp, matched, mol) == 1 {
             floating.push(comp.clone());
         } else {
-            for a in comp {
-                recovered.push(*a);
-            }
+            recovered.extend_from_slice(comp);
         }
     }
     (floating, recovered)

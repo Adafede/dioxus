@@ -154,8 +154,7 @@ pub(crate) fn unmatched_atoms(matched: &[bool]) -> Vec<u32> {
     matched
         .iter()
         .enumerate()
-        .filter(|&(_, &m)| !m)
-        .map(|(i, _)| i as u32)
+        .filter_map(|(i, &m)| (!m).then_some(i as u32))
         .collect()
 }
 

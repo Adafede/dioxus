@@ -216,7 +216,6 @@ fn floating_badges(res: &CxResult) -> Element {
 /// Renders the shared scaffold with its floating groups drawn alongside.
 fn results(res: &CxResult) -> Element {
     let frac = res.confidence.coverage.fraction() * 100.0;
-    let coverage_pct = format!("{frac:.0}%");
     let tone = if res.confidence.clean {
         NoticeTone::Success
     } else {
@@ -252,7 +251,7 @@ fn results(res: &CxResult) -> Element {
                     span { style: StyleBuilder::new().font_size("0.8rem").color("#64748b").build(), "{construct_label}" }
                 }
                 NoticeBar {
-                    label: format!("Round-trip recall: {coverage_pct} ({}/{})", res.confidence.coverage.covered, res.confidence.coverage.total),
+                    label: format!("Round-trip recall: {frac:.0}% ({}/{})", res.confidence.coverage.covered, res.confidence.coverage.total),
                     tone,
                 }
                 div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "1fr 1fr").gap("0.75rem").build(),
