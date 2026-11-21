@@ -85,49 +85,21 @@ impl SpectrumBlock {
     /// Parse a single metadata line (`KEY=VALUE`) into the appropriate field.
     #[cfg(any(test, target_arch = "wasm32"))]
     fn consume_metadata(&mut self, line: &str) {
-        let trimmed = line.trim();
-        if let Some(value) = trimmed.strip_prefix("SMILES=") {
-            self.psm_smiles = Some(value.trim().to_string());
+        let Some((key, value)) = line.trim().split_once('=') else {
             return;
-        }
-        if let Some(value) = trimmed.strip_prefix("FORMULA=") {
-            self.formula = Some(value.trim().to_string());
-            return;
-        }
-        if let Some(value) = trimmed.strip_prefix("CHARGE=") {
-            self.charge = Some(value.trim().to_string());
-            return;
-        }
-        if let Some(value) = trimmed.strip_prefix("ADDUCT=") {
-            self.adduct = Some(value.trim().to_string());
-            return;
-        }
-        if let Some(value) = trimmed.strip_prefix("IONMODE=") {
-            self.ion_mode = Some(value.trim().to_ascii_lowercase());
-            return;
-        }
-        if let Some(value) = trimmed.strip_prefix("PEPMASS=") {
-            self.precursor_mz = parse_first_float(value);
-            return;
-        }
-        if let Some(value) = trimmed.strip_prefix("PRECURSOR_MZ=") {
-            self.precursor_mz = value.trim().parse().ok();
-            return;
-        }
-        if let Some(value) = trimmed.strip_prefix("TITLE=") {
-            self.title = Some(value.trim().to_string());
-            return;
-        }
-        if let Some(value) = trimmed.strip_prefix("NAME=") {
-            if self.title.is_none() {
-                self.title = Some(value.trim().to_string());
-            }
-            return;
-        }
-        if let Some(value) = trimmed.strip_prefix("SCANS=")
-            && self.title.is_none()
-        {
-            self.title = Some(value.trim().to_string());
+        };
+        let value = value.trim();
+        match key {
+            "SMILES" => self.psm_smiles = Some(value.to_string()),
+            "FORMULA" => self.formula = Some(value.to_string()),
+            "CHARGE" => self.charge = Some(value.to_string()),
+            "ADDUCT" => self.adduct = Some(value.to_string()),
+            "IONMODE" => self.ion_mode = Some(value.to_ascii_lowercase()),
+            "PEPMASS" => self.precursor_mz = parse_first_float(value),
+            "PRECURSOR_MZ" => self.precursor_mz = value.parse().ok(),
+            "TITLE" => self.title = Some(value.to_string()),
+            "NAME" | "SCANS" if self.title.is_none() => self.title = Some(value.to_string()),
+            _ => {}
         }
     }
 
@@ -166,9 +138,8 @@ impl SpectrumBlock {
 
         if let Some(smiles_str) = self.psm_smiles.as_deref().map(str::trim)
             && !smiles_str.is_empty()
-            && let Some(Ok(molecule)) =
+            && let Ok(Ok(molecule)) =
                 std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| smiles::parse(smiles_str)))
-                    .ok()
         {
             self.exact_mass = chem::exact_mass(&molecule);
             if is_acyclic(&molecule) {
@@ -415,7 +386,6 @@ fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
     let is_valid_smiles = |s: &str| {
         !s.contains(char::is_whitespace)
             && std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| smiles::parse(s).is_ok()))
-                .ok()
                 .unwrap_or(false)
     };
     let looks_like_id = |s: &str| {

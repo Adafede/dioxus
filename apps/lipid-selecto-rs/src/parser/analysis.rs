@@ -120,17 +120,12 @@ pub(crate) fn build_gallery(
     limit: usize,
     classes: &[ChemicalClass],
 ) -> Vec<GalleryItem> {
-    let mut gallery = Vec::new();
-    for block in blocks {
-        if gallery.len() >= limit {
-            break;
-        }
-        if !block.is_lipid() {
-            continue;
-        }
-        gallery.push(gallery_item(block, classes));
-    }
-    gallery
+    blocks
+        .iter()
+        .filter(|block| block.is_lipid())
+        .take(limit)
+        .map(|block| gallery_item(block, classes))
+        .collect()
 }
 
 /// A lightweight, owned view of one spectrum used to render the gallery.

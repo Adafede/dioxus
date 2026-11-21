@@ -116,19 +116,9 @@ impl ElementCounts {
     pub(crate) fn formula_string(&self) -> String {
         use std::fmt::Write as _;
         let mut out = String::new();
-        if self.carbon > 0 {
-            out.push('C');
-            if self.carbon > 1 {
-                let _ = write!(out, "{}", self.carbon);
-            }
-        }
-        let h = self.hydrogen;
-        if h == 1 {
-            out.push('H');
-        } else if h > 1 {
-            let _ = write!(out, "H{h}");
-        }
         for (symbol, count) in [
+            ("C", self.carbon),
+            ("H", self.hydrogen),
             ("Cl", self.halogens),
             ("N", self.nitrogen),
             ("O", self.oxygen),

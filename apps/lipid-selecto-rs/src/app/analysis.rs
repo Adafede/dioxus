@@ -18,15 +18,7 @@ pub(super) fn collect_adduct_options(blocks: &[SpectrumBlock]) -> Vec<String> {
         .cloned()
         .collect();
     let mut adduct_options: Vec<String> = adduct_values.into_iter().collect();
-    adduct_options.sort_by(|a, b| {
-        let a_plus = a.contains('+');
-        let b_plus = b.contains('+');
-        match (a_plus, b_plus) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.cmp(b),
-        }
-    });
+    adduct_options.sort_by(|a, b| b.contains('+').cmp(&a.contains('+')).then_with(|| a.cmp(b)));
     adduct_options
 }
 

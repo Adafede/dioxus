@@ -55,13 +55,11 @@ pub(super) fn lipid_classes_card() -> Element {
                         for (idx, (family, classes)) in families.iter().enumerate() {
                             // Family header with color bar
                             {
-                                let family_clone = family.clone();
                                 let family_color = classes.first().map_or_else(|| "#cbd5e1".to_string(), |c| c.color.clone());
-                                let idx_copy = idx;
                                 let mut family_expanded_signal = family_expanded;
                                 let is_expanded = family_expanded.read().contains(&idx);
                                 rsx! {
-                                    div { style: StyleBuilder::new().build(),
+                                    div {
                                         div {
                                             style: StyleBuilder::new()
                                                 .display("flex")
@@ -73,16 +71,16 @@ pub(super) fn lipid_classes_card() -> Element {
                                                 .build(),
                                             onclick: move |_| {
                                                 let mut expanded = family_expanded_signal.read().clone();
-                                                if expanded.contains(&idx_copy) {
-                                                    expanded.retain(|&i| i != idx_copy);
+                                                if expanded.contains(&idx) {
+                                                    expanded.retain(|&i| i != idx);
                                                 } else {
-                                                    expanded.push(idx_copy);
+                                                    expanded.push(idx);
                                                 }
                                                 family_expanded_signal.set(expanded);
                                             },
                                             div { style: StyleBuilder::new().display("flex").align_items("center").gap("0.3rem").build(),
                                                 span { style: StyleBuilder::new().width("10px").height("10px").border_radius("50%").property("background", &family_color).build(), }
-                                                strong { style: StyleBuilder::new().font_size("0.82rem").font_weight("700").color("#0f172a").build(), "{family_clone}" }
+                                                strong { style: StyleBuilder::new().font_size("0.82rem").font_weight("700").color("#0f172a").build(), "{family}" }
                                             }
                                             span { style: StyleBuilder::new().font_size("0.72rem").color("#94a3b8").build(), "{classes.len()} classes" }
                                         }
@@ -147,15 +145,6 @@ fn filter_controls_row(
     mut adduct_filter: Signal<String>,
     adduct_options: &[String],
 ) -> Element {
-    // Pre-build adduct option elements outside rsx! to avoid scoping issues
-    let adduct_option_elements: Vec<Element> = adduct_options
-        .iter()
-        .map(|opt| {
-            let opt_opt = opt.clone();
-            rsx! { option { value: "{opt_opt}", "{opt_opt}" } }
-        })
-        .collect();
-
     rsx! {
         div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.75rem").align_items("flex-end").property("margin", "0.75rem 0").build(),
             // Exact mass range filter
@@ -186,8 +175,8 @@ fn filter_controls_row(
                     },
                     style: StyleBuilder::new().width("110px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
                     option { value: "", "All" }
-                    for elem in adduct_option_elements.iter() {
-                        { elem }
+                    for opt in adduct_options {
+                        option { value: "{opt}", "{opt}" }
                     }
                 }
             }
@@ -239,14 +228,13 @@ pub(super) fn family_entry(
     family_classes: &[ChemicalClass],
     mut selected_classes: Signal<Vec<String>>,
 ) -> Element {
-    let family_clone = family.to_string();
-    let family_classes_clone = family_classes.to_vec();
+    let family_names: Vec<String> = family_classes.iter().map(|c| c.name.clone()).collect();
 
-    let selected_count = family_classes_clone
+    let selected_count = family_names
         .iter()
-        .filter(|c| selected_classes.read().contains(&c.name))
+        .filter(|name| selected_classes.read().contains(name))
         .count();
-    let all_family_selected = selected_count == family_classes_clone.len();
+    let all_family_selected = selected_count == family_names.len();
     let some_family_selected = selected_count > 0 && !all_family_selected;
 
     rsx! {
@@ -258,13 +246,13 @@ pub(super) fn family_entry(
                     onchange: move |_| {
                         let mut classes = selected_classes.read().clone();
                         if all_family_selected || some_family_selected {
-                            for c in &family_classes_clone {
-                                classes.retain(|name| name != &c.name);
+                            for name in &family_names {
+                                classes.retain(|selected| selected != name);
                             }
                         } else {
-                            for c in &family_classes_clone {
-                                if !classes.contains(&c.name) {
-                                    classes.push(c.name.clone());
+                            for name in &family_names {
+                                if !classes.contains(name) {
+                                    classes.push(name.clone());
                                 }
                             }
                         }
@@ -272,7 +260,7 @@ pub(super) fn family_entry(
                     },
                     style: StyleBuilder::new().width("16px").height("16px").cursor("pointer").build(),
                 }
-                span { style: StyleBuilder::new().font_size("0.85rem").font_weight("700").color("#0f172a").build(), "{family_clone}" }
+                span { style: StyleBuilder::new().font_size("0.85rem").font_weight("700").color("#0f172a").build(), "{family}" }
                 if some_family_selected {
                     span { style: StyleBuilder::new().font_size("0.7rem").color("#94a3b8").build(), "({selected_count}/{family_classes.len()})" }
                 }
