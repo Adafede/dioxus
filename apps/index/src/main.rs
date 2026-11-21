@@ -54,7 +54,7 @@ fn app() -> Element {
         .margin(&format!("{} 0 0 0", Spacing::XL))
         .build();
 
-    let disclaimer_heading_style = StyleBuilder::new()
+    let section_heading_style = StyleBuilder::new()
         .font_size(Typography::H2)
         .font_weight("600")
         .color(ColorScheme::LIGHT.text)
@@ -70,13 +70,6 @@ fn app() -> Element {
     let disclaimer_link_style = StyleBuilder::new()
         .color(ColorScheme::LIGHT.accent)
         .text_decoration("underline")
-        .build();
-
-    let apps_heading_style = StyleBuilder::new()
-        .font_size(Typography::H2)
-        .font_weight("600")
-        .color(ColorScheme::LIGHT.text)
-        .margin("0 0 10px 0")
         .build();
 
     rsx! {
@@ -119,7 +112,7 @@ fn app() -> Element {
 
             main { id: "main-content", style: main_style,
                 section { aria_labelledby: "apps-heading",
-                    h2 { id: "apps-heading", style: &apps_heading_style, "Applications" }
+                    h2 { id: "apps-heading", style: &section_heading_style, "Applications" }
                     div { style: grid_style,
                         {APPS.iter().map(|&app| {
                             rsx! {
@@ -130,7 +123,7 @@ fn app() -> Element {
                 }
 
                 aside { aria_labelledby: "disclaimer-heading", style: disclaimer_style,
-                    h2 { id: "disclaimer-heading", style: disclaimer_heading_style,
+                    h2 { id: "disclaimer-heading", style: &section_heading_style,
                         span { aria_hidden: "true", "⚠️ " }
                         "About These Prototypes"
                     }
