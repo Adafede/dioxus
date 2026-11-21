@@ -16,7 +16,7 @@ name = "mgf-precursor-erro-rs"
 path = "src/main.rs"
 
 [dependencies]
-chematic = { version = "1.2", default-features = false, features = ["chem", "smiles"] }
+chematic = { workspace = true, features = ["chem", "smiles"] }
 dioxus = { workspace = true }
 molecular-formulas = { version = "0.3", default-features = false }
 plotters = { version = "0.3", default-features = false, features = ["line_series", "point_series", "svg_backend"] }
@@ -28,7 +28,7 @@ upload = { path = "../../crates/upload", version = "0.1" }
 js-sys = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
-web-sys = { workspace = true, features = ["Blob", "File", "FileList", "FileReader", "HtmlAnchorElement", "HtmlInputElement", "Response", "Url", "Window"] }
+web-sys = { workspace = true, features = ["Response", "console"] }
 
 [lints]
 workspace = true

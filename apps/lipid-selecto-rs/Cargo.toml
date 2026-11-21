@@ -12,7 +12,7 @@ categories = ["science", "wasm", "web-programming"]
 publish = false
 
 [dependencies]
-chematic = { version = "1.2", default-features = false, features = ["chem", "depict", "smarts", "smiles"] }
+chematic = { workspace = true, features = ["chem", "depict", "smarts", "smiles"] }
 dioxus = { workspace = true }
 gloo-timers = { workspace = true }
 ui = { path = "../../crates/ui", version = "0.1" }
@@ -22,7 +22,7 @@ upload = { path = "../../crates/upload", version = "0.1" }
 js-sys = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
-web-sys = { workspace = true, features = ["Blob", "Document", "File", "FileList", "FileReader", "HtmlAnchorElement", "HtmlInputElement", "Url", "Window", "console"] }
+web-sys = { workspace = true }
 
 [lints]
 workspace = true
