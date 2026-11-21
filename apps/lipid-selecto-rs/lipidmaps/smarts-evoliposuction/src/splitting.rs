@@ -105,29 +105,12 @@ pub struct Dataset {
     pub rows: Vec<DatasetRow>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum SplitError {
-    Csv(csv::Error),
+    #[error("CSV error: {0}")]
+    Csv(#[from] csv::Error),
+    #[error("missing column(s) in CSV header: {}", .0.join(", "))]
     MissingColumns(Vec<String>),
-}
-
-impl fmt::Display for SplitError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Csv(e) => write!(f, "CSV error: {e}"),
-            Self::MissingColumns(cols) => {
-                write!(f, "missing column(s) in CSV header: {}", cols.join(", "))
-            }
-        }
-    }
-}
-
-impl std::error::Error for SplitError {}
-
-impl From<csv::Error> for SplitError {
-    fn from(e: csv::Error) -> Self {
-        Self::Csv(e)
-    }
 }
 
 /// Parse CSV text (already in memory) into a [`Dataset`].
@@ -164,9 +147,6 @@ pub fn parse_csv(csv_text: &str, columns: &ColumnNames) -> Result<Dataset, Split
     }
     if sub_idx.is_none() {
         missing.push(columns.subclass.clone());
-    }
-    if !missing.is_empty() {
-        return Err(SplitError::MissingColumns(missing));
     }
     // One `match` instead of three `unwrap`s. Each of those was unreachable --
     // `missing` is empty only when all three are `Some` -- but "provably safe

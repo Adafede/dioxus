@@ -37,7 +37,7 @@ pub async fn download_to(url: &str, dest: &Path, on_progress: ProgressFn) -> Res
         tokio::fs::create_dir_all(parent).await?;
     }
 
-    let resp = reqwest::get(url).await?;
+    let mut resp = reqwest::get(url).await?;
     if !resp.status().is_success() {
         return Err(Error::HttpStatus(resp.status().as_u16(), url.to_string()));
     }
@@ -48,8 +48,7 @@ pub async fn download_to(url: &str, dest: &Path, on_progress: ProgressFn) -> Res
     let mut file = tokio::fs::File::create(dest).await?;
     let mut downloaded: usize = 0;
 
-    let mut stream = resp;
-    while let Some(chunk) = stream.chunk().await? {
+    while let Some(chunk) = resp.chunk().await? {
         file.write_all(&chunk).await?;
         downloaded += chunk.len();
         on_progress(downloaded, total);

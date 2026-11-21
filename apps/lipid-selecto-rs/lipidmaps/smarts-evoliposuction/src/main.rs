@@ -351,7 +351,7 @@ fn split_step(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments, clippy::ptr_arg, clippy::too_many_lines)]
+#[allow(clippy::too_many_arguments)]
 fn evolve_step(
     manifest: &Path,
     output: &Path,

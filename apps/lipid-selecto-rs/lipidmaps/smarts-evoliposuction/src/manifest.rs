@@ -38,12 +38,9 @@ pub struct ManifestRow {
 /// Returns an error if the file cannot be read or parsed as CSV.
 #[allow(clippy::module_name_repetitions)]
 pub fn read_manifest(path: &Path) -> Result<Vec<ManifestRow>, csv::Error> {
-    let mut reader = csv::Reader::from_path(path)?;
-    let mut rows = Vec::new();
-    for record in reader.deserialize::<ManifestRow>() {
-        rows.push(record?);
-    }
-    Ok(rows)
+    csv::Reader::from_path(path)?
+        .deserialize::<ManifestRow>()
+        .collect()
 }
 
 /// Write a manifest CSV to `path`, creating parent dirs if needed.
@@ -54,11 +51,9 @@ pub fn read_manifest(path: &Path) -> Result<Vec<ManifestRow>, csv::Error> {
 #[allow(clippy::module_name_repetitions)]
 pub fn write_manifest(path: &Path, rows: &[ManifestRow]) -> Result<(), csv::Error> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| csv::Error::from(std::io::Error::other(e)))?;
+        std::fs::create_dir_all(parent)?;
     }
-    let file =
-        std::fs::File::create(path).map_err(|e| csv::Error::from(std::io::Error::other(e)))?;
-    let mut writer = csv::Writer::from_writer(file);
+    let mut writer = csv::Writer::from_path(path)?;
     for row in rows {
         writer.serialize(row)?;
     }
