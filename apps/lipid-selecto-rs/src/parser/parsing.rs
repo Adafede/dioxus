@@ -11,8 +11,6 @@
 // parsing and per-block classification in one cohesive unit; cross-block
 // aggregation lives in `super::analysis`.
 
-#![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
-
 #[cfg(any(test, target_arch = "wasm32"))]
 use crate::chemical_class::ChemicalClass;
 #[cfg(any(test, target_arch = "wasm32"))]

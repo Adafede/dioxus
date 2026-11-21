@@ -14,8 +14,6 @@
 //! - `analysis`: aggregation, summary, gallery, class matching across the
 //!   collection, and filtered-MGF generation.
 
-#![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
-
 mod analysis;
 mod parsing;
 

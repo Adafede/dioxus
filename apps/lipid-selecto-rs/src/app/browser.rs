@@ -5,31 +5,21 @@
 //! (cooperative) lipid classification pass off the render thread, and triggers
 //! a file download.
 
-#[cfg(target_arch = "wasm32")]
 use dioxus::prelude::*;
 
-#[cfg(target_arch = "wasm32")]
 use super::UploadCtx;
-#[cfg(target_arch = "wasm32")]
 use crate::examples::example_smiles;
-#[cfg(target_arch = "wasm32")]
 use crate::format::LipidFormat;
-#[cfg(target_arch = "wasm32")]
 use crate::parser::{BlockExtractor, build_analysis_from_classified, classify_blocks};
-#[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
-#[cfg(target_arch = "wasm32")]
 use upload::{BlobLines, BlobSource, UploadError};
-#[cfg(target_arch = "wasm32")]
 use web_sys::Blob;
 
 /// Cap the number of structure diagrams rendered (each costs a chem parse +
 /// force-directed layout), keeping the initial render snappy.
-#[cfg(target_arch = "wasm32")]
 const MAX_GALLERY_ITEMS: usize = 96;
 
 /// Reads the blob in streaming chunks, classifies lipids, and populates signals.
-#[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_lines)] // wasm async dispatch needs streaming loop and chunked yield
 pub(super) fn start_analysis(
     blob: Blob,
@@ -123,7 +113,6 @@ pub(super) fn start_analysis(
 }
 
 /// Loads the curated example lipid dataset (204 SMILES) and runs analysis.
-#[cfg(target_arch = "wasm32")]
 pub(super) fn load_example_dataset(mut ctx: UploadCtx) {
     let fmt = Some(LipidFormat::Smiles);
     ctx.input_format.set(fmt);

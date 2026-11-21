@@ -19,6 +19,7 @@ use crate::format::LipidFormat;
 use crate::parser::Analysis;
 
 mod analysis;
+#[cfg(target_arch = "wasm32")]
 mod browser;
 mod class_tags;
 mod components;

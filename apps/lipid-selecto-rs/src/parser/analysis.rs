@@ -6,8 +6,6 @@
 // filtered-MGF generation. Already-parsed blocks are pulled in from
 // `super::parsing`.
 
-#![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
-
 use super::parsing::SpectrumBlock;
 #[cfg(test)]
 use super::parsing::extract_blocks;
@@ -29,8 +27,6 @@ pub(crate) struct Summary {
     /// Blocks with no SMILES or FORMULA annotation at all.
     pub skipped: usize,
 }
-
-impl Summary {}
 
 /// Tally items from a parsed block collection.
 #[must_use]

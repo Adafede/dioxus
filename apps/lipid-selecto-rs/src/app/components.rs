@@ -117,7 +117,6 @@ pub(super) fn parse_filter_bound(raw: &str, empty_default: f64) -> Option<f64> {
     trimmed.parse::<f64>().ok().filter(|v| v.is_finite())
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 fn bound_input(
     mut target: Signal<f64>,
     placeholder: &'static str,
@@ -140,7 +139,6 @@ fn bound_input(
 }
 
 /// Renders the filter controls row: exact mass range, precursor m/z range, and adduct dropdown.
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 fn filter_controls_row(
     mz_min: Signal<f64>,
     mz_max: Signal<f64>,
@@ -198,7 +196,6 @@ fn filter_controls_row(
 }
 
 /// Renders the family selection panel with a "Select All" checkbox.
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 fn family_filter_panel(
     all_classes: &[ChemicalClass],
     mut selected_classes: Signal<Vec<String>>,
@@ -237,7 +234,6 @@ fn family_filter_panel(
     }
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 pub(super) fn family_entry(
     family: &str,
     family_classes: &[ChemicalClass],
@@ -320,7 +316,6 @@ pub(super) fn family_entry(
     }
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 fn download_buttons(
     filters: &SummaryFilters,
     input_format: crate::format::LipidFormat,
