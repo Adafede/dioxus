@@ -21,7 +21,6 @@ LOCAL_SETUP=(install-panache)
 
 # Standard gates this repository runs its own way.
 LOCAL_OVERRIDES=(
-  test             # nextest, then the doctests
   wasm=check-wasm  # each app for wasm32, one by one with its own features
 )
 # Repository gates added to ./mk ci.

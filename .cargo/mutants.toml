@@ -76,3 +76,8 @@ minimum_test_timeout = 20
 # nextest is what the suite runs under elsewhere, and a mutant evaluated against
 # a different harness is evaluated against a different suite.
 test_tool = "nextest"
+
+# Skip gitignored target artifacts (~5-10x faster working-tree copies) and cap
+# denied lints during mutation so non-fatal diagnostics do not mask real mutants.
+gitignore = true
+cap_lints = true
