@@ -58,7 +58,7 @@ chematic = { version = "1.2", default-features = false }
 dioxus = { version = "0.7", features = ["web"] }
 futures = "0.3"
 futures-executor = "0.3"
-gloo-timers = { version = "0.3", features = ["futures"] }
+gloo-timers = { version = "0.4", features = ["futures"] }
 js-sys = "0.3"
 # The transport and query crates of the LOTUS explorer, consumed by
 # `apps/smellfish-rs`. Tracked on a branch rather than a rev so the app keeps
