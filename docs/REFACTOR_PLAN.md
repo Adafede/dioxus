@@ -60,7 +60,7 @@ every gate green on each commit.
   - *Verify*: `./mk ci-fast`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 8 — Extract `crates/smellfish-core` & slim `apps/smellfish-rs`**:
+- [x] **Step 8 — Extract `crates/smellfish-core` & slim `apps/smellfish-rs`**:
   Move evidence, typed verdicts, CSV I/O, pipeline aggregation, and generic-HTTP
   SPARQL/QLever enrichment into `smellfish-core`; eliminate concurrent drop races;
   split `styles.rs` and `results.rs`; fix `build.rs` CSV parsing.

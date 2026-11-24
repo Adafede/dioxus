@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-use crate::model::RdkitInspectResponse;
+#![expect(
+    clippy::future_not_send,
+    reason = "wasm32 JsFuture and JsValue interop futures are single-threaded"
+)]
+
 use js_sys::{JSON, Promise, Reflect};
+use smellfish_core::model::{RdkitInspectResponse, parse_rdkit_inspect_json};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 
@@ -22,23 +27,21 @@ pub(crate) async fn read_file_text(file: &web_sys::Blob) -> Result<String, Strin
         .ok_or_else(|| "file did not resolve to text".to_string())
 }
 
-/// Inspect a SMILES string via the RDKit.js bridge.
+/// Inspect a SMILES string via the `RDKit.js` bridge.
 ///
 /// # Errors
 ///
-/// Returns an error if the bridge call fails or the JSON response cannot be
-/// deserialized.
-#[allow(clippy::module_name_repetitions)] // RdkitInspectResponse preserves domain naming
-pub(crate) async fn rdkit_inspect(smiles: &str) -> Result<RdkitInspectResponse, String> {
-    let value = rdkit_bridge_call("inspect", smiles).await?;
+/// Returns an error if the bridge call fails or the JSON response cannot be deserialized.
+pub(crate) async fn inspect_smiles(smiles: &str) -> Result<RdkitInspectResponse, String> {
+    let value = bridge_call("inspect", smiles).await?;
     let text = JSON::stringify(&value)
         .ok()
-        .and_then(|value| value.as_string())
+        .and_then(|val| val.as_string())
         .ok_or_else(|| "rdkit.js returned a non-serializable value".to_string())?;
-    serde_json::from_str(&text).map_err(|err| err.to_string())
+    parse_rdkit_inspect_json(&text).map_err(|err| err.to_string())
 }
 
-async fn rdkit_bridge_call(method: &str, smiles: &str) -> Result<JsValue, String> {
+async fn bridge_call(method: &str, smiles: &str) -> Result<JsValue, String> {
     let window = web_sys::window().ok_or_else(|| "window is unavailable".to_string())?;
     let window_value = JsValue::from(window);
     let bridge = Reflect::get(&window_value, &JsValue::from_str("__smilesRdkit"))

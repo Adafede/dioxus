@@ -15,27 +15,27 @@ fn main() {
         .unwrap_or_else(|err| panic!("CARGO_MANIFEST_DIR is not set: {err}"));
     let manifest_dir = Path::new(&manifest_dir);
 
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=public/ertl_source_vs_synthetic.txt");
-    println!("cargo:rerun-if-changed=public/ertl_kingdom_enrichment.txt");
-    println!("cargo:rerun-if-changed=public/group_names.txt");
-    println!("cargo:rerun-if-changed=public/user_source_vs_synthetic.txt");
-    println!("cargo:rerun-if-changed=public/user_kingdom_enrichment.txt");
-    println!("cargo:rerun-if-changed=public/motif-library.js");
-    // Add rerun-if-changed for downloaded files so Cargo does not re-trigger
-    // the build script (and thus the curl download) when they haven't changed.
-    println!("cargo:rerun-if-changed=public/ertl_npsubstituents.txt");
-    println!("cargo:rerun-if-changed=public/lotus_1percent_scaffolds.txt");
+    for path in [
+        "build.rs",
+        "assets/smellfish.css",
+        "assets/rdkit_bridge.js",
+        "public/ertl_source_vs_synthetic.txt",
+        "public/ertl_kingdom_enrichment.txt",
+        "public/group_names.txt",
+        "public/user_source_vs_synthetic.txt",
+        "public/user_kingdom_enrichment.txt",
+        "public/motif-library.js",
+        "public/ertl_npsubstituents.txt",
+        "public/lotus_1percent_scaffolds.txt",
+    ] {
+        println!("cargo:rerun-if-changed={path}");
+    }
+
     download_with_header(
         &manifest_dir.join("public/ertl_npsubstituents.txt"),
         "https://peter-ertl.com/molecular/data/npsubstituents.txt",
         "# Source: Peter Ertl npsubstituents.txt from https://peter-ertl.com/molecular/data/npsubstituents.txt\n",
     );
-    /* Download the LOTUS mortar scaffold-frequency CSV by Rutz et al. and
-     * pre-filter to scaffolds with MoleculePercentage > 1 % (i.e. > 0.01
-     * as a 0–1 fraction).  Only the surviving SMILES are written to
-     * public/lotus_1percent_scaffolds.txt so the browser doesn't have to
-     * ship or parse the full 100k-line file. */
     download_and_filter_lotus_scaffolds(
         &manifest_dir.join("public/lotus_1percent_scaffolds.txt"),
         "https://raw.githubusercontent.com/Adafede/marimo/refs/heads/main/apps/public/mortar/Fragments_Scaffold_Generator.csv",
@@ -56,9 +56,6 @@ fn fetch_url(url: &str) -> String {
 }
 
 fn download_with_header(dst: &Path, url: &str, header: &str) {
-    // Skip download if the file already exists and is non-empty. The data
-    // files are committed to the repo, so a fresh clone does not need network
-    // access to build. This also avoids re-running curl on every build.
     if fs::metadata(dst).is_ok_and(|m| m.len() > 0) {
         return;
     }
@@ -73,13 +70,7 @@ fn download_with_header(dst: &Path, url: &str, header: &str) {
     fs::write(dst, out).unwrap_or_else(|err| panic!("failed to write {}: {err}", dst.display()));
 }
 
-/// Download the LOTUS `Fragments_Scaffold_Generator.csv` (mortar fragmentation
-/// by Rutz et al.) and extract scaffold SMILES whose `MoleculePercentage`
-/// column exceeds 1 % (0.01 as a 0–1 fraction).  The result is written as
-/// one SMILES per line to `dst`.
 fn download_and_filter_lotus_scaffolds(dst: &Path, url: &str) {
-    // Skip download if the file already exists and is non-empty. See
-    // `download_with_header` for rationale.
     if fs::metadata(dst).is_ok_and(|m| m.len() > 0) {
         eprintln!(
             "lotus_scaffolds: {} already exists, skipping download",
@@ -89,26 +80,17 @@ fn download_and_filter_lotus_scaffolds(dst: &Path, url: &str) {
     }
     let text = fetch_url(url);
     let mut kept: Vec<String> = Vec::new();
-    // skip header row
     for raw_line in text.lines().skip(1) {
         let line = raw_line.trim();
         if line.is_empty() {
             continue;
         }
-        // Columns: SMILES,Frequency,Percentage,MoleculeFrequency,MoleculePercentage
-        let parts: Vec<&str> = line.split(',').collect();
-        // A row with fewer than five columns is skipped, exactly as the
-        // previous `if parts.len() < 5 { continue; }` guard did. Binding the
-        // slice pattern with `let ... else` checks the bound at compile-checked
-        // run time via `get` rather than panicking on an out-of-range index.
-        let Some([smiles, .., mol_pct]) = parts.get(..5) else {
+        let parts = parse_csv_line(line);
+        let [smiles, _, _, _, mol_pct, ..] = parts.as_slice() else {
             continue;
         };
         let smiles = smiles.trim();
         let mol_pct: f64 = mol_pct.trim().parse().unwrap_or(0.0);
-        /* Reject scaffolds shorter than 5 characters — single atoms,
-         * diatomic fragments, and very short chains are too
-         * non-specific to be meaningful structural motifs. */
         if mol_pct > 0.01 && smiles.len() >= 5 {
             kept.push(smiles.to_string());
         }
@@ -128,4 +110,32 @@ fn download_and_filter_lotus_scaffolds(dst: &Path, url: &str) {
         "lotus_scaffolds: retained {} scaffolds above 1 %",
         kept.len()
     );
+}
+
+fn parse_csv_line(line: &str) -> Vec<String> {
+    let mut fields = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+    let mut chars = line.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if in_quotes {
+            if ch == '"' && chars.peek() == Some(&'"') {
+                let _ = chars.next();
+                current.push('"');
+            } else if ch == '"' {
+                in_quotes = false;
+            } else {
+                current.push(ch);
+            }
+        } else if ch == '"' && current.trim().is_empty() {
+            current.clear();
+            in_quotes = true;
+        } else if ch == ',' {
+            fields.push(std::mem::take(&mut current));
+        } else {
+            current.push(ch);
+        }
+    }
+    fields.push(current);
+    fields
 }

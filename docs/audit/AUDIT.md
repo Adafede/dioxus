@@ -68,7 +68,7 @@ Baseline snapshot of the workspace prior to structural refactoring.
    - `apps/lipid-selecto-rs/src/chemical_class/lmsd.rs` (703 LOC), `app/components.rs` (521 LOC; gallery-filter component 97 LOC, 7 params).
    - `apps/mgf-precursor-erro-rs/src/app/results.rs` (488 LOC; `ResultsPanel` 456 LOC, 8 params), `diagnostics.rs` (471 LOC), `parser/adduct.rs` (424 LOC), `plotting/diagnostics.rs` (423 LOC), `parser/block.rs` (416 LOC).
    - `apps/cxsmiles-yoga/src/cxsmiles/positional.rs` (509 LOC; `build_positional_with_options` 122 LOC), `app.rs` (451 LOC), `repeating.rs` (439 LOC), `roundtrip.rs` (349 LOC) with bidirectional `positional`/`repeating` ↔ `roundtrip` module cycles.
-   - `apps/smellfish-rs/src/styles.rs` (548 LOC), `rdkit_bridge.rs` (519 LOC), `app/results.rs` (398 LOC; `MoleculeCard` 147 LOC), `pipeline.rs` (378 LOC; `import_csv_text` 183 LOC), `evidence/verdict.rs` (`classify_np_evidence` 158 LOC).
+   - `apps/smellfish-rs/src/styles.rs` (548 LOC), `rdkit_bridge.rs` (519 LOC), `app/results.rs` (398 LOC; `MoleculeCard` 147 LOC), `pipeline.rs` (378 LOC; CSV import pipeline 183 LOC), `evidence/verdict.rs` (`classify_np_evidence` 158 LOC).
    - `smarts-evoliposuction/src/splitting.rs` (728 LOC; `split_dataset` 169 LOC), `main.rs` (727 LOC; `split_step` 135 LOC, `evolve_step` 120 LOC, 11 params), `evolve.rs` (495 LOC), `lipidsdl/sdf.rs` (367 LOC).
 
 9. **Severe algorithmic, memory, and UI re-render hotspots**

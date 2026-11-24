@@ -1,31 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-//! Smellfish app shell — signal wiring + composition.
-//!
-//! The heavy rendering subtrees live in `results` (`Hero`, `MotifPanel`,
-//! `ResultsView`, `MoleculeCard`, `Footer`) and the upload dispatch lives in
-//! `browser` (`attempt_import` / `attempt_import_from_text`), mirroring the
-//! `mgf-precursor-erro-rs` `app/` layout. `app()` keeps only signal declaration,
-//! a handful of 2-line handler closures, and the inline `InputPanel` block
-//! (kept inline because its `oninput`/`onfocus` closures need the local
-//! `pasted_smiles`/`demo_cleared` signals).
+//! Smellfish app shell — signal declaration and component composition.
+
 use crate::document_head::SmellfishDocumentHead;
-use dioxus::events::{DragData, FormData};
-use dioxus::html::HasFileData;
 use dioxus::prelude::*;
-use ui::prelude::{Button, ButtonVariant, SimpleAnalyticsBadge, skip_link};
+use ui::prelude::{SimpleAnalyticsBadge, skip_link};
 
 pub(crate) mod browser;
-mod csv_export;
+mod footer;
 mod formatting;
+mod input_panel;
+mod molecule_card;
 mod motif_display;
 mod results;
 
-use self::results::{Footer, Hero, MotifPanel, ResultsView};
+use self::footer::Footer;
+use self::input_panel::InputPanel;
+use self::results::{Hero, MotifPanel, ResultsView};
 
-/// Ten representative natural-product SMILES, pre-loaded as the default
-/// paste-buffer content so the tool is ready to run out of the box.
 const DEMO_SMILES: &str = "\
 COC1=CC(=CC2=C1OCO2)C3C4COC(C4CO3)C5=CC(=C(C(=C5)OC)OC)OC
 CC1=C(C(CCC1)(C)C)C=CC(=CC=CC(=CC#CC=C(C)C=O)C)C
@@ -38,23 +31,16 @@ COC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC
 C1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O
 CCCCCCCC=CCCCCCCCC(N)=O";
 
-/// The `app` entry point is intentionally **not** annotated with `#[component]`.
-///
-/// The function lives in a `pub mod app;` module that is re-exported via
-/// `pub use app::app;` in `lib.rs`. The `#[component]` macro generates a
-/// type-level binding named `app` that conflicts with the module name in the
-/// type namespace (E0255). Since `app()` takes no props, `dioxus::launch`
-/// accepts it directly as a plain function — same pattern used by
-/// `lipid-selecto-rs` and `mgf-precursor-erro-rs`.
+/// Root Dioxus application component for `smellfish-rs`.
 ///
 /// # Errors
 ///
-/// Returns a rendering error only if the RSX tree cannot be constructed.
-#[allow(clippy::too_many_lines)] // UI composition functions are inherently verbose
+/// Returns a rendering error only if the RSX tree fails to build.
 pub fn app() -> Element {
     ui::shared_signal!(file_name, String::new);
 
-    let mut signals = browser::ImportSignals {
+    let signals = browser::ImportSignals {
+        generation: use_signal(|| 0_u64),
         file_name,
         status: use_signal(String::new),
         busy: use_signal(|| false),
@@ -64,127 +50,23 @@ pub fn app() -> Element {
         endpoints: use_signal(Vec::new),
         warnings: use_signal(Vec::new),
     };
-    let mut pasted_smiles = use_signal(|| DEMO_SMILES.to_string());
-    let mut demo_cleared = use_signal(|| false);
-
-    let on_file_change = move |evt: Event<FormData>| {
-        browser::attempt_import(&evt.data().files(), signals);
-    };
-    let on_drag_activate = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        signals.drag_active.set(true);
-    };
-    let on_drag_leave = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        signals.drag_active.set(false);
-    };
-    let on_drop = move |evt: Event<DragData>| {
-        browser::attempt_import(&evt.data().files(), signals);
-    };
-    let submit_pasted_smiles = move |_| {
-        browser::attempt_import_from_text(pasted_smiles.read().trim(), signals);
-    };
-
-    let ep_list = signals.endpoints.read();
+    let pasted_smiles = use_signal(|| DEMO_SMILES.to_string());
+    let demo_cleared = use_signal(|| false);
 
     rsx! {
         SmellfishDocumentHead {}
         skip_link {}
         div { class: "shell",
-
             Hero {}
-
             main { id: "main-content",
-                section { class: "panel input-panel",
-                    div { class: "input-split",
-                        label { class: if *signals.drag_active.read() { "input-card dropzone dragging" } else { "input-card dropzone" },
-                            r#for: "smiles-csv",
-                            ondragenter: on_drag_activate,
-                            ondragover: on_drag_activate,
-                            ondragleave: on_drag_leave,
-                            ondrop: on_drop,
-
-                            div { class: "input-card-body",
-                                strong { "Drop a CSV or click to browse" }
-                                div { class: "small muted", "CSV with a smiles column" }
-                            }
-
-                            input {
-                                id: "smiles-csv",
-                                r#type: "file",
-                                accept: ".csv,text/csv",
-                                disabled: *signals.busy.read(),
-                                onchange: on_file_change,
-                            }
-                        }
-
-                        div { class: "input-card paste-card",
-                            div { class: "input-card-body",
-                                div { class: "paste-head",
-                                    strong { "Paste SMILES" }
-                                    span { class: "small muted", "One per line" }
-                                }
-                                label { r#for: "smiles-paste", class: "visually-hidden", "SMILES structures, one per line" }
-                                textarea {
-                                    id: "smiles-paste",
-                                    class: "smiles-textarea",
-                                    placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
-                                    disabled: *signals.busy.read(),
-                                    value: "{pasted_smiles}",
-                                    onfocus: move |_| {
-                                        if !*demo_cleared.read() {
-                                            demo_cleared.set(true);
-                                            pasted_smiles.set(String::new());
-                                        }
-                                    },
-                                    oninput: move |evt| pasted_smiles.set(evt.value()),
-                                }
-                            }
-                            div { class: "paste-actions",
-                                Button {
-                                    label: "Analyze pasted SMILES",
-                                    variant: ButtonVariant::Primary,
-                                    disabled: *signals.busy.read(),
-                                    onclick: Some(EventHandler::new(submit_pasted_smiles)),
-                                }
-                            }
-                        }
-                    }
-
-                    if !signals.status.read().is_empty() || *signals.busy.read() {
-                        p { class: "status", role: "status", aria_live: "polite", aria_atomic: "true",
-                            if *signals.busy.read() {
-                                span { class: "spinner" }
-                            }
-                            "{signals.status}"
-                        }
-                    }
-                    if !ep_list.is_empty() {
-                        div { class: "endpoint-status",
-                            for ep in ep_list.iter() {
-                                span { class: "endpoint-chip", class: if ep.reachable { "ok" } else { "down" }, "{ep.name}: {ep.detail} ({ep.endpoint})" }
-                            }
-                        }
-                    }
-
-                    if !signals.file_name.read().is_empty() {
-                        p { class: "small muted", "Loaded: {signals.file_name}" }
-                    }
-
-                    if !signals.warnings.read().is_empty() {
-                        div { class: "alert", "{signals.warnings.read().join(\" • \")}" }
-                    }
-                }
-
+                InputPanel { signals, pasted_smiles, demo_cleared }
                 if !signals.motifs.read().is_empty() {
                     MotifPanel { motifs: signals.motifs }
                 }
-
                 if !signals.rows.read().is_empty() {
                     ResultsView { rows: signals.rows }
                 }
             }
-
             Footer {}
         }
         SimpleAnalyticsBadge {

@@ -1,254 +1,152 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
+//! Wasm32 async import orchestrator delegating pure Pass-1/Pass-2 logic to
+//! `smellfish_core` while guarding signals against concurrent import races.
+
 use crate::app::browser::ImportSignals;
-use crate::csv::parse_csv_rows;
-use crate::evidence::{EvidenceInputs, assess_np_evidence, row_verdict, run_checks};
-use crate::model::{
-    DatasetMotifContext, EndpointStatus, EnrichmentOutcome, MoleculeRow, MotifSummary,
-    SubstituentCounts,
-};
-use crate::qlever::enrich_sources;
-use crate::rdkit::{rdkit_inspect, read_file_text};
-use dioxus::prelude::{Signal, WritableExt, spawn};
-use std::collections::{BTreeSet, HashMap, HashSet};
-
-/// Import a [`web_sys::Blob`] CSV, parsing and inspecting each row.
-///
-/// # Errors
-///
-/// Returns an error if file reading or row processing fails.
-pub(crate) async fn import_csv(
-    file: web_sys::Blob,
-    mut status: Signal<String>,
-) -> Result<ImportOutcome, String> {
-    status.set("Reading CSV file…".to_string());
-    let text = read_file_text(&file).await?;
-    import_csv_text(&text, status).await
-}
-
-/// Import SMILES rows from text, running `RDKit` inspection and evidence
-/// assessment for each molecule.
-///
-/// # Errors
-///
-/// Returns an error if CSV parsing or row inspection fails.
-#[allow(
-    clippy::too_many_lines,  // wasm pipeline orchestrator: single-pass import flow
-    clippy::assigning_clones // clone-before-overwrite pattern in buffer processing
-)]
-async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<ImportOutcome, String> {
-    status.set("Parsing CSV…".to_string());
-    let raw_rows = parse_csv_rows(text)?;
-    let total = raw_rows.len();
-
-    let mut motif_counts: HashMap<
-        String,
-        (
-            String,
-            String,
-            std::collections::BTreeSet<String>,
-            HashSet<usize>,
-        ),
-    > = HashMap::new();
-    let mut inchikeys = BTreeSet::new();
-    let mut rows = Vec::with_capacity(total);
-
-    // ═══════════════════════════════════════════════════════════════════
-    // PASS 1 — RDKit inspection + raw data collection
-    // ═══════════════════════════════════════════════════════════════════
-    status.set("Loading RDKit module…".to_string());
-    for (i, raw) in raw_rows.into_iter().enumerate() {
-        status.set(format!("Inspecting structure {i}/{total}…"));
-        match rdkit_inspect(&raw.smiles).await {
-            Ok(inspect) => {
-                if let Some(err) = inspect.error {
-                    rows.push(error_row(raw.index, raw.label, raw.smiles, err));
-                    continue;
-                }
-
-                let motifs_list = inspect.motifs.unwrap_or_default();
-                let motif_labels = motifs_list
-                    .iter()
-                    .map(|hit| hit.label.clone())
-                    .collect::<Vec<_>>();
-
-                // Record per-motif molecule membership for dataset prevalence.
-                for hit in &motifs_list {
-                    let entry = motif_counts.entry(hit.label.clone()).or_insert_with(|| {
-                        (
-                            hit.source_class.clone(),
-                            hit.kingdom.clone(),
-                            hit.kingdoms.iter().cloned().collect(),
-                            HashSet::new(),
-                        )
-                    });
-                    entry.2.extend(hit.kingdoms.iter().cloned());
-                    entry.3.insert(raw.index);
-                }
-
-                let inchikey = inspect.inchikey.unwrap_or_default();
-                if !inchikey.is_empty() {
-                    inchikeys.insert(inchikey.clone());
-                }
-
-                let descriptors = inspect.descriptors.unwrap_or_default();
-                let stereo_tags = inspect.stereo_tags.unwrap_or_default();
-                // Count substituent occurrences for proper multiplicity display
-                let substituents_counts: SubstituentCounts = inspect.substituents.into_iter().fold(
-                    SubstituentCounts::new(),
-                    |mut acc, s| {
-                        *acc.entry(s).or_insert(0) += 1;
-                        acc
-                    },
-                );
-
-                // Placeholder row — evidence is filled in pass 2.
-                rows.push(MoleculeRow {
-                    index: raw.index,
-                    label: raw.label,
-                    smiles: raw.smiles,
-                    inchikey,
-                    svg: inspect.svg,
-                    motifs: motif_labels,
-                    motif_hits: motifs_list,
-                    substituents_counts,
-                    lotus_scaffolds: inspect.lotus_scaffolds,
-                    np_likeness: inspect.np_score.unwrap_or(0.0),
-                    np_confidence: inspect.np_confidence.unwrap_or(0.0),
-                    np_score_available: inspect.np_score.is_some(),
-                    descriptors,
-                    stereo_tags,
-                    num_atoms: inspect.num_atoms.unwrap_or(0),
-                    ..MoleculeRow::default()
-                });
-            }
-            Err(err) => rows.push(error_row(raw.index, raw.label, raw.smiles, err)),
-        }
-    }
-
-    let motif_summary = sorted_motifs(
-        motif_counts
-            .into_iter()
-            .map(
-                |(label, (source_class, kingdom, kingdoms, rows_set))| MotifSummary {
-                    label,
-                    source_class,
-                    kingdom,
-                    kingdoms: kingdoms.into_iter().collect(),
-                    count: rows_set.len(),
-                },
-            )
-            .collect(),
-    );
-
-    // ═══════════════════════════════════════════════════════════════════
-    // Dataset-level context — computed once, used by every row
-    // ═══════════════════════════════════════════════════════════════════
-    let dataset_context = compute_dataset_context(&motif_summary, rows.len());
-
-    // ═══════════════════════════════════════════════════════════════════
-    // Database enrichment (LOTUS / PubChem) — batched for all rows
-    // ═══════════════════════════════════════════════════════════════════
-    status.set("Probing LOTUS and PubChem…".to_string());
-    let unique_keys = inchikeys.into_iter().collect::<Vec<_>>();
-
-    // Build mapping from InChIKey 14-char connectivity layer to row indices for matching results
-    let inchikey_to_indices: std::collections::HashMap<String, Vec<usize>> = {
-        let mut map = std::collections::HashMap::new();
-        for (idx, row) in rows.iter().enumerate() {
-            if !row.inchikey.is_empty() {
-                let key = row
-                    .inchikey
-                    .split('-')
-                    .next()
-                    .unwrap_or(&row.inchikey)
-                    .to_string();
-                map.entry(key).or_insert_with(Vec::new).push(idx);
-            }
-        }
-        map
-    };
-
-    let enrichment_outcome = enrich_sources(&unique_keys, |msg| status.set(msg)).await;
-    let mut rows = merge_enrichment(rows, &enrichment_outcome, &inchikey_to_indices);
-
-    // ═══════════════════════════════════════════════════════════════════
-    // PASS 2 — Evidence assessment using dataset context + Ertl score
-    // ═══════════════════════════════════════════════════════════════════
-    status.set("Assessing NP evidence…".to_string());
-
-    // Count unique Ertl substituents found across the dataset.
-    let unique_substituents: usize = rows
-        .iter()
-        .flat_map(|r| r.substituents_counts.keys())
-        .collect::<std::collections::HashSet<_>>()
-        .len();
-
-    for row in &mut rows {
-        if row.error.is_none() {
-            let evidence = assess_np_evidence(EvidenceInputs {
-                descriptors: &row.descriptors,
-                motifs: &row.motifs,
-                motif_hits: &row.motif_hits,
-                stereo_tags: &row.stereo_tags,
-                np_score: row.np_score_available.then_some(row.np_likeness),
-                np_confidence: row.np_score_available.then_some(row.np_confidence),
-                dataset_context: &dataset_context,
-                lotus_scaffolds: &row.lotus_scaffolds,
-            });
-
-            row.np_likeness = evidence.np_likeness;
-            row.np_label = evidence.np_label;
-            row.np_confidence = evidence.np_confidence;
-            row.ring_family = evidence.ring_family;
-            row.motif_context = evidence.motif_context.clone();
-            let mut notes = evidence.evidence_notes;
-            notes.push(evidence.motif_context);
-            row.evidence_notes = notes;
-            row.chemist_checks = run_checks(row);
-        }
-        row.verdict = row_verdict(row);
-    }
-
-    Ok(ImportOutcome {
-        rows,
-        motifs: motif_summary,
-        unique_inchikeys: unique_keys.len(),
-        unique_substituents,
-        endpoints: enrichment_outcome.endpoints,
-        warnings: enrichment_outcome.warnings,
-    })
-}
-
-/// Build a `DatasetMotifContext` from the per-motif molecule counts.
-///
-/// A motif is considered "dataset-common" when it appears in ≥
-/// `common_threshold` molecules, where `common_threshold` is the larger of
-/// `ceil(total / 10)` and 2 — i.e. at least 10 % of the set (minimum 2).
-fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> DatasetMotifContext {
-    DatasetMotifContext {
-        motif_counts: motif_summaries
-            .iter()
-            .map(|motif| (motif.label.clone(), motif.count))
-            .collect(),
-        common_threshold: total.div_ceil(10).max(2),
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct ImportOutcome {
-    pub rows: Vec<MoleculeRow>,
-    pub motifs: Vec<MotifSummary>,
-    pub unique_inchikeys: usize,
-    pub unique_substituents: usize,
-    pub endpoints: Vec<EndpointStatus>,
-    pub warnings: Vec<String>,
-}
+use crate::rdkit::{inspect_smiles, read_file_text};
+use dioxus::prelude::{ReadableExt, Signal, WritableExt, spawn};
+use lotus_search::reqwest_client::ReqwestClient;
+use smellfish_core::csv::parse_csv_rows;
+use smellfish_core::model::{EndpointStatus, Enrichment, EnrichmentOutcome};
+use smellfish_core::pipeline::{ImportOutcome, RowInspection, finalize_pass2, prepare_pass1};
+use smellfish_core::qlever::enrich_sources;
 
 pub(crate) enum ImportSource {
     Blob(web_sys::Blob),
     Text(String),
+}
+
+pub(crate) fn begin_import(
+    source: ImportSource,
+    file_name_value: String,
+    mut signals: ImportSignals,
+) {
+    let is_blob = matches!(source, ImportSource::Blob(_));
+    let expected_gen = {
+        let next = *signals.generation.peek() + 1;
+        signals.generation.set(next);
+        next
+    };
+
+    signals.file_name.set(file_name_value);
+    signals.busy.set(true);
+    signals.drag_active.set(false);
+    signals.status.set(
+        if is_blob {
+            "Preparing…"
+        } else {
+            "Preparing demo…"
+        }
+        .to_string(),
+    );
+    signals.rows.set(Vec::new());
+    signals.motifs.set(Vec::new());
+    signals.endpoints.set(Vec::new());
+    signals.warnings.set(Vec::new());
+
+    spawn(async move {
+        let outcome = run_import(source, signals.generation, expected_gen, signals.status).await;
+        if *signals.generation.peek() != expected_gen {
+            return;
+        }
+        match outcome {
+            Ok(outcome) => {
+                let prefix = if is_blob { "Done" } else { "Demo loaded" };
+                apply_import_outcome(outcome, prefix, signals);
+            }
+            Err(err) => {
+                let msg = if is_blob {
+                    format!("Error reading CSV: {err}")
+                } else {
+                    format!("Error loading demo data: {err}")
+                };
+                signals.status.set(msg);
+            }
+        }
+        signals.busy.set(false);
+    });
+}
+
+#[expect(
+    clippy::future_not_send,
+    reason = "wasm32 JS Blob/bridge futures are single-threaded (!Send)"
+)]
+async fn run_import(
+    source: ImportSource,
+    generation: Signal<u64>,
+    expected_gen: u64,
+    status: Signal<String>,
+) -> Result<ImportOutcome, String> {
+    let text = match source {
+        ImportSource::Blob(file) => {
+            set_status_if_current(status, generation, expected_gen, "Reading CSV file…");
+            read_file_text(&file).await?
+        }
+        ImportSource::Text(text) => text,
+    };
+
+    set_status_if_current(status, generation, expected_gen, "Parsing CSV…");
+    let raw_rows = parse_csv_rows(&text).map_err(|err| err.to_string())?;
+    let total = raw_rows.len();
+
+    set_status_if_current(status, generation, expected_gen, "Loading RDKit module…");
+    let mut inspections = Vec::with_capacity(total);
+    for (idx, raw) in raw_rows.into_iter().enumerate() {
+        if *generation.peek() != expected_gen {
+            break;
+        }
+        set_status_if_current(
+            status,
+            generation,
+            expected_gen,
+            &format!("Inspecting structure {idx}/{total}…"),
+        );
+        let outcome = inspect_smiles(&raw.smiles).await;
+        inspections.push(RowInspection { raw, outcome });
+    }
+
+    let batch = prepare_pass1(inspections);
+    set_status_if_current(
+        status,
+        generation,
+        expected_gen,
+        "Probing LOTUS and PubChem…",
+    );
+
+    let enrichment = match ReqwestClient::new() {
+        Ok(http) => {
+            enrich_sources(&http, &batch.unique_inchikeys, |msg| {
+                set_status_if_current(status, generation, expected_gen, msg);
+            })
+            .await
+        }
+        Err(err) => EnrichmentOutcome {
+            enrichment: Enrichment::default(),
+            endpoints: vec![EndpointStatus {
+                name: "HTTP client".to_string(),
+                endpoint: String::new(),
+                reachable: false,
+                detail: err.to_string(),
+            }],
+            warnings: vec![format!("could not open an HTTP client: {err}")],
+        },
+    };
+
+    set_status_if_current(status, generation, expected_gen, "Assessing NP evidence…");
+    Ok(finalize_pass2(batch, enrichment))
+}
+
+fn set_status_if_current(
+    mut status: Signal<String>,
+    generation: Signal<u64>,
+    expected_gen: u64,
+    message: &str,
+) {
+    if *generation.peek() == expected_gen {
+        status.set(message.to_string());
+    }
 }
 
 fn apply_import_outcome(outcome: ImportOutcome, prefix: &str, mut signals: ImportSignals) {
@@ -269,110 +167,4 @@ fn apply_import_outcome(outcome: ImportOutcome, prefix: &str, mut signals: Impor
     signals.status.set(format!(
         "{prefix}{suffix} — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys"
     ));
-}
-
-pub(crate) fn begin_import(
-    source: ImportSource,
-    file_name_value: String,
-    mut signals: ImportSignals,
-) {
-    let is_blob = matches!(source, ImportSource::Blob(_));
-    signals.file_name.set(file_name_value);
-    signals.busy.set(true);
-    signals.drag_active.set(false);
-    signals.status.set(
-        if is_blob {
-            "Preparing…"
-        } else {
-            "Preparing demo…"
-        }
-        .to_string(),
-    );
-    signals.rows.set(Vec::new());
-    signals.motifs.set(Vec::new());
-    signals.endpoints.set(Vec::new());
-    signals.warnings.set(Vec::new());
-
-    spawn(async move {
-        let outcome = match source {
-            ImportSource::Blob(file) => import_csv(file, signals.status).await,
-            ImportSource::Text(text) => import_csv_text(&text, signals.status).await,
-        };
-        match outcome {
-            Ok(outcome) => {
-                let prefix = if is_blob { "Done" } else { "Demo loaded" };
-                apply_import_outcome(outcome, prefix, signals);
-            }
-            Err(err) => {
-                let msg = if is_blob {
-                    format!("Error reading CSV: {err}")
-                } else {
-                    format!("Error loading demo data: {err}")
-                };
-                signals.status.set(msg);
-            }
-        }
-        signals.busy.set(false);
-    });
-}
-
-fn merge_enrichment(
-    mut rows: Vec<MoleculeRow>,
-    enrichment_outcome: &EnrichmentOutcome,
-    inchikey_to_indices: &std::collections::HashMap<String, Vec<usize>>,
-) -> Vec<MoleculeRow> {
-    for (inchikey_connectivity, indices) in inchikey_to_indices {
-        // Check lotus by the InChIKey connectivity layer key
-        if let Some(summary) = enrichment_outcome
-            .enrichment
-            .lotus
-            .get(inchikey_connectivity)
-        {
-            for &idx in indices {
-                if let Some(row) = rows.get_mut(idx) {
-                    row.lotus_taxa = summary.taxa.iter().cloned().collect();
-                    row.lotus_compounds = summary.compounds.iter().cloned().collect();
-                    row.lotus_compounds_with_taxa
-                        .clone_from(&summary.compounds_with_taxa);
-                }
-            }
-        }
-        // Check pubchem by the InChIKey connectivity layer key
-        if let Some(summary) = enrichment_outcome
-            .enrichment
-            .pubchem
-            .get(inchikey_connectivity)
-        {
-            for &idx in indices {
-                if let Some(row) = rows.get_mut(idx) {
-                    row.pubchem_cids = summary.cids.iter().cloned().collect();
-                }
-            }
-        }
-    }
-    rows
-}
-
-fn sorted_motifs(mut motifs: Vec<MotifSummary>) -> Vec<MotifSummary> {
-    motifs.sort_by(|left, right| {
-        right
-            .count
-            .cmp(&left.count)
-            .then(left.source_class.cmp(&right.source_class))
-            .then(left.kingdom.cmp(&right.kingdom))
-            .then(left.kingdoms.len().cmp(&right.kingdoms.len()))
-            .then(left.label.cmp(&right.label))
-    });
-    motifs
-}
-
-fn error_row(index: usize, label: String, smiles: String, error: String) -> MoleculeRow {
-    MoleculeRow {
-        index,
-        label,
-        smiles,
-        np_label: "—".to_string(),
-        error: Some(error),
-        ..MoleculeRow::default()
-    }
 }

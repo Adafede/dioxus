@@ -19,6 +19,7 @@ members = [
   "crates/lipid-core",
   "crates/mgf",
   "crates/mgf-analysis-core",
+  "crates/smellfish-core",
   "crates/stream-io",
   "crates/ui",
   "crates/upload",

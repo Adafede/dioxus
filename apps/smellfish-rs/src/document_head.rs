@@ -4,7 +4,7 @@
 //! Programmatic document `<head>` management for smellfish-rs.
 //!
 //! Sets meta tags, loads CDN scripts, the local motif-library bridge, and the
-//! stylesheet from [`crate::styles::CSS`].
+//! stylesheet from `assets/smellfish.css`.
 //!
 //! The RDKit/NP-likeness bridge JavaScript lives in [`crate::rdkit_bridge`].
 

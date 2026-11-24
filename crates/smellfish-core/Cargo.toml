@@ -1,0 +1,26 @@
+[package]
+name = "smellfish-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Pure-Rust natural-product evidence assessment, CSV parsing/export, SPARQL queries, and pipeline logic"
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["lotus", "metabolomics", "natural-products", "np-likeness", "sparql"]
+categories = ["science"]
+publish = false
+
+[dependencies]
+futures = { workspace = true }
+lotus-search = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+futures-executor = { workspace = true }
+lotus-search = { workspace = true, features = ["testing"] }
+
+[lints]
+workspace = true

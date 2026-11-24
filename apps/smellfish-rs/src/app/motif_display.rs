@@ -1,63 +1,49 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-//! Motif classification + display formatting.
-//!
-//! Shared `&str`-based helpers serve both `MotifSummary` and `RdkitMotifHit`:
-//! both types expose a `source_class: String` field, so the classification logic
-//! collapses to shared functions that take `&str`.
+//! Motif classification and chip display formatting over [`SourceClass`].
 
-use crate::model::normalized_source_class;
+use smellfish_core::model::SourceClass;
 
-/// Returns `true` when the source class indicates a natural-product origin.
-#[must_use]
-pub(super) fn is_natural_source(source_class: &str) -> bool {
-    normalized_source_class(source_class) == "natural"
+pub(super) const fn is_natural_source(source_class: SourceClass) -> bool {
+    matches!(source_class, SourceClass::Natural)
 }
 
-/// Returns `true` when the source class indicates a synthetic origin.
-#[must_use]
-pub(super) fn is_synthetic_source(source_class: &str) -> bool {
-    normalized_source_class(source_class) == "synthetic"
+pub(super) const fn is_synthetic_source(source_class: SourceClass) -> bool {
+    matches!(source_class, SourceClass::Synthetic)
 }
 
-/// Returns `true` when the source class is unclassified (neither natural nor synthetic).
-#[must_use]
-pub(super) fn is_unclassified_source(source_class: &str) -> bool {
-    normalized_source_class(source_class) == "unknown"
+pub(super) const fn is_unclassified_source(source_class: SourceClass) -> bool {
+    matches!(source_class, SourceClass::Unknown)
 }
 
-/// Returns `"chip chip-np"` for natural sources, `"chip alt"` otherwise.
 #[must_use]
-pub(super) fn chip_class_for(source_class: &str) -> &'static str {
-    if is_natural_source(source_class) {
-        "chip chip-np"
-    } else {
-        "chip alt"
+pub(super) const fn chip_class_for(source_class: SourceClass) -> &'static str {
+    match source_class {
+        SourceClass::Natural => "chip chip-np",
+        SourceClass::Synthetic | SourceClass::Unknown => "chip alt",
     }
 }
 
-/// Build the display label for a motif, including kingdom attribution
-/// for natural sources.
 #[must_use]
 pub(super) fn display_label(
-    source_class: &str,
+    source_class: SourceClass,
     label: &str,
     kingdom: &str,
     kingdoms: &[String],
 ) -> String {
-    if is_natural_source(source_class) {
-        if let [only] = kingdoms {
-            format!("{only} \u{00b7} {label}")
-        } else if kingdoms.is_empty() {
-            format!("{kingdom} \u{00b7} {label}")
-        } else {
-            format!("{} \u{00b7} {label}", kingdoms.join(" + "))
+    match source_class {
+        SourceClass::Natural => {
+            if let [only] = kingdoms {
+                format!("{only} \u{00b7} {label}")
+            } else if kingdoms.is_empty() {
+                format!("{kingdom} \u{00b7} {label}")
+            } else {
+                format!("{} \u{00b7} {label}", kingdoms.join(" + "))
+            }
         }
-    } else if is_synthetic_source(source_class) {
-        format!("synthetic \u{00b7} {label}")
-    } else {
-        format!("unclassified \u{00b7} {label}")
+        SourceClass::Synthetic => format!("synthetic \u{00b7} {label}"),
+        SourceClass::Unknown => format!("unclassified \u{00b7} {label}"),
     }
 }
 

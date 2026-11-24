@@ -24,7 +24,7 @@ dx build --profile wasm-release --platform web --package smellfish-rs
 ## Tests
 
 ```bash
-cargo nextest run -p smellfish-rs
+cargo nextest run -p smellfish-core -p smellfish-rs
 ```
 
 ## License

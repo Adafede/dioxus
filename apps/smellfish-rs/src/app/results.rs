@@ -1,30 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-//! Renderable result-view components for smellfish-rs.
-//!
-//! Each `#[component]` owns one responsibility so `app.rs` only wires
-//! signals and composes them. Formatting helpers live in [`super::formatting`],
-//! motif classification in [`super::motif_display`], and CSV export in
-//! [`super::csv_export`].
+//! Top-level result summary components (`Hero`, `MotifPanel`, `ResultsView`).
+
 #![expect(
     clippy::empty_enums,
-    reason = "Dioxus component macro generates Props helper empty enums"
+    reason = "Dioxus #[component] macro generates empty Props enums for zero-arg components"
 )]
 
-use crate::literature::LITERATURE;
-use crate::model::MoleculeRow;
 use dioxus::prelude::*;
+use smellfish_core::csv::build_csv;
+use smellfish_core::model::{MoleculeRow, MotifSummary, SourceClass};
 
-use super::csv_export::download_csv;
-use super::formatting::{format_score, scaffold_emoji, verdict_color};
+use super::molecule_card::MoleculeCard;
 use super::motif_display::{
     chip_class_for, display_label, is_natural_source, is_synthetic_source, is_unclassified_source,
 };
 
-type MotifPredicate = fn(&str) -> bool;
+pub(super) type MotifPredicate = fn(SourceClass) -> bool;
 
-const MOTIF_GROUPS: [(&str, &str, MotifPredicate); 3] = [
+pub(super) const MOTIF_GROUPS: [(&str, &str, MotifPredicate); 3] = [
     ("Natural", "Natural-product motif", is_natural_source),
     (
         "Synthetic-leaning",
@@ -49,9 +44,9 @@ pub fn Hero() -> Element {
     }
 }
 
-/// Motif chip summary panel (only rendered when motifs were detected).
+/// Motif chip summary panel rendered when structural motifs are present.
 #[component]
-pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
+pub fn MotifPanel(motifs: Signal<Vec<MotifSummary>>) -> Element {
     let motifs_ref = motifs.read();
     rsx! {
         section { class: "panel",
@@ -61,8 +56,12 @@ pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
                     div { class: "motif-group",
                         h3 { class: "small", "{heading}" }
                         div { class: "chip-list",
-                            for motif in motifs_ref.iter().filter(|m| matches_group(&m.source_class)).take(12) {
-                                span { class: "{chip_class_for(&motif.source_class)}", title: "{title}", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)} ({motif.count})" }
+                            for motif in motifs_ref.iter().filter(|m| matches_group(m.source_class)).take(12) {
+                                span {
+                                    class: "{chip_class_for(motif.source_class)}",
+                                    title: "{title}",
+                                    "{display_label(motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)} ({motif.count})"
+                                }
                             }
                         }
                     }
@@ -72,7 +71,7 @@ pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
     }
 }
 
-/// Header + card list (rendered when `rows` is non-empty).
+/// Header + card grid rendered once `rows` is non-empty.
 #[component]
 pub fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
     let rows_ref = rows.read();
@@ -85,7 +84,8 @@ pub fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
                     href: "#",
                     onclick: move |evt| {
                         evt.prevent_default();
-                        download_csv(&rows.read());
+                        let csv = build_csv(&rows.read());
+                        drop(upload::download_text(&csv, "smellfish-results.csv"));
                     },
                     "Download CSV"
                 }
@@ -96,303 +96,5 @@ pub fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
                 MoleculeCard { key: "{row.index}", row: row.clone() }
             }
         }
-    }
-}
-
-/// A single molecule result card.
-#[component]
-pub fn MoleculeCard(row: MoleculeRow) -> Element {
-    rsx! {
-        article { class: "card",
-            div { class: "card-head",
-                div {
-                    strong { "{row.label}" }
-                }
-                div { class: "small muted smiles-display", "Row {row.index} \u{00b7} {row.num_atoms} heavy atoms" }
-                div { class: "small-muted smiles-small", "SMILES: {row.smiles}" }
-                if let Some(err) = row.error.as_deref() {
-                    div { class: "error small", "{err}" }
-                }
-            }
-            div { class: "card-body",
-                div { class: "svg-wrap",
-                    if let Some(svg) = row.svg.as_deref().filter(|s| is_safe_svg(s)) {
-                        div { dangerous_inner_html: "{svg}" }
-                    } else {
-                        div { class: "small muted", "No structure." }
-                    }
-                }
-
-                div { class: "meta",
-                    strong { "Ertl NP-likeness" }
-                    div { class: "chip-list",
-                        if row.np_score_available {
-                            span { class: "chip good", "{format_score(row.np_likeness)}" }
-                        } else {
-                            span { class: "chip warn", "model unloaded" }
-                        }
-                        span { class: "chip alt", "{row.np_label}" }
-                    }
-                    div { class: "small", "{scaffold_emoji(&row.ring_family)} {row.ring_family}" }
-                    if !row.motif_context.is_empty() && row.motif_context != "no motif signal" {
-                        div { class: "small muted", "{row.motif_context}" }
-                    }
-                }
-
-                div { class: "meta",
-                    strong { "Chemist's checklist" }
-                    if row.chemist_checks.is_empty() {
-                        div { class: "small muted", "No checks available." }
-                    } else {
-                        div { class: "checklist",
-                            for check in row.chemist_checks.iter() {
-                                div { class: "check-row",
-                                    span { class: "check-status {check.status}", "{check.name}" }
-                                    span { class: "small muted", "{check.detail}" }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if !row.lotus_compounds.is_empty() {
-                    div { class: "meta small",
-                        strong { class: "blue", "LOTUS" }
-                        div { class: "chip-list",
-                            for qid in row.lotus_compounds.iter() {
-                                a {
-                                    class: if row.lotus_compounds_with_taxa.contains(qid) {
-                                        "cid-link green"
-                                    } else {
-                                        "cid-link red"
-                                    },
-                                    href: "https://www.wikidata.org/wiki/{qid}",
-                                    target: "_blank",
-                                    rel: "noopener noreferrer",
-                                    "{qid}"
-                                }
-                            }
-                        }
-                    }
-                }
-                if !row.pubchem_cids.is_empty() {
-                    div { class: "meta small",
-                        strong { class: "blue", "PubChem" }
-                        div { class: "chip-list",
-                            for cid in row.pubchem_cids.iter() {
-                                a { class: "cid-link",
-                                    href: "https://pubchem.ncbi.nlm.nih.gov/compound/{cid}",
-                                    target: "_blank",
-                                    rel: "noopener noreferrer",
-                                    "CID {cid}"
-                                }
-                            }
-                        }
-                    }
-                }
-                if !row.motifs.is_empty() {
-                    div { class: "meta",
-                        strong { "Functional groups" }
-                        div { class: "motif-groups",
-                            for (heading, title, matches_group) in MOTIF_GROUPS {
-                                div { class: "motif-group",
-                                    h4 { class: "small", "{heading}" }
-                                    div { class: "chip-list",
-                                        for motif in row.motif_hits.iter().filter(|m| matches_group(&m.source_class)) {
-                                            span { class: "{chip_class_for(&motif.source_class)}", title: "{title}", "{display_label(&motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)}" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if !row.substituents_counts.is_empty() {
-                    div { class: "meta",
-                        strong { "Ertl substituents" }
-                        div { class: "chip-list",
-                            for (substituent, count) in row.substituents_counts.iter().take(6) {
-                                span { class: "chip alt", title: "Occurrence count: {count}", "{substituent}" }
-                            }
-                            if row.substituents_counts.len() > 6 {
-                                span { class: "chip alt", "+{row.substituents_counts.len() - 6} more" }
-                            }
-                        }
-                    }
-                }
-                if !row.lotus_scaffolds.is_empty() {
-                    div { class: "meta",
-                        strong { "LOTUS 1% scaffolds" }
-                        div { class: "chip-list",
-                            for scaffold in row.lotus_scaffolds.iter() {
-                                span { class: "chip lotus", title: "LOTUS scaffold (Rutz et al.) present above 1% frequency", "{scaffold}" }
-                            }
-                        }
-                    }
-                }
-            }
-            if !row.evidence_notes.is_empty() {
-                div { class: "evidence",
-                    details { open: true,
-                        summary { class: "small", "Evidence" }
-                        ul { class: "evidence-list",
-                            for note in row.evidence_notes.iter() {
-                                li { "{note}" }
-                            }
-                        }
-                    }
-                }
-            }
-
-            div { class: "verdict {verdict_color(&row.verdict)}", "{row.verdict}" }
-        }
-    }
-}
-
-/// Static footer with citation / data / code / references / program links.
-#[component]
-pub fn Footer() -> Element {
-    rsx! {
-        footer { class: "app-footer",
-            div { class: "footer-line",
-                div { class: "footer-row",
-                    span { class: "footer-label", "Citation" }
-                    ul { class: "footer-links", role: "list",
-                        li {
-                            a { class: "footer-link red", href: "https://doi.org/10.7554/eLife.70780", target: "_blank", rel: "noopener noreferrer", "LOTUS Article" }
-                        }
-                    }
-                }
-            }
-            div { class: "footer-line",
-                div { class: "footer-row",
-                    span { class: "footer-label", "Data" }
-                    ul { class: "footer-links", role: "list",
-                        li { a { class: "footer-link green", href: "https://www.wikidata.org/wiki/Q104225190", target: "_blank", rel: "noopener noreferrer", "LOTUS Initiative" } }
-                        li { a { class: "footer-link green", href: "https://www.wikidata.org/", target: "_blank", rel: "noopener noreferrer", "Wikidata" } }
-                        li { a { class: "footer-link green", href: "https://pubchem.ncbi.nlm.nih.gov/", target: "_blank", rel: "noopener noreferrer", "PubChem" } }
-                    }
-                }
-                div { class: "footer-row",
-                    span { class: "footer-label", "Code" }
-                    ul { class: "footer-links", role: "list",
-                        li { a { class: "footer-link blue", href: "https://github.com/Adafede/dioxus/tree/main/apps/smellfish-rs", target: "_blank", rel: "noopener noreferrer", "smellfish-rs" } }
-                    }
-                }
-            }
-            div { class: "footer-line",
-                div { class: "footer-row",
-                    span { class: "footer-label", "References" }
-                    ul { class: "footer-links", role: "list",
-                        for paper in LITERATURE {
-                            li {
-                                a { class: "footer-link purple", href: "https://doi.org/{paper.doi}", target: "_blank", rel: "noopener noreferrer", title: "{paper.note}", "{paper.title}" }
-                            }
-                        }
-                    }
-                }
-            }
-            div { class: "footer-line",
-                div { class: "footer-row",
-                    span { class: "footer-label", "Programs" }
-                    ul { class: "footer-links", role: "list",
-                        li { a { class: "footer-link blue", href: "https://qlever.dev/wikidata", target: "_blank", rel: "noopener noreferrer", "QLever" } }
-                        li { a { class: "footer-link blue", href: "https://www.rdkitjs.com", target: "_blank", rel: "noopener noreferrer", "RDKit.js" } }
-                    }
-                }
-                div { class: "footer-row",
-                    span { class: "footer-label", "License" }
-                    ul { class: "footer-links", role: "list",
-                        li { a { class: "footer-link blue", href: "https://www.gnu.org/licenses/agpl-3.0.html", target: "_blank", rel: "noopener noreferrer", "AGPL-3.0" } }
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub(crate) fn is_safe_svg(svg: &str) -> bool {
-    const FORBIDDEN: [&str; 8] = [
-        "<script",
-        "<foreignobject",
-        "<iframe",
-        "<object",
-        "<embed",
-        "javascript:",
-        "vbscript:",
-        "data:text/html",
-    ];
-    let lower = svg.to_ascii_lowercase();
-    let trimmed = lower.trim();
-    let body = trimmed
-        .strip_prefix("<?xml")
-        .and_then(|rest| rest.split_once("?>").map(|(_, after)| after.trim_start()))
-        .unwrap_or(trimmed);
-    if !body.starts_with("<svg") || !trimmed.ends_with("</svg>") {
-        return false;
-    }
-    if FORBIDDEN.iter().any(|needle| trimmed.contains(needle)) {
-        return false;
-    }
-    !has_inline_event_handler(body)
-}
-
-fn has_inline_event_handler(svg_lower: &str) -> bool {
-    for segment in svg_lower.split('<').skip(1) {
-        let Some((tag, _)) = segment.split_once('>') else {
-            return true;
-        };
-        for (eq_idx, _) in tag.match_indices('=') {
-            let Some(before_eq) = tag.get(..eq_idx) else {
-                continue;
-            };
-            let attr = before_eq
-                .trim_end()
-                .rsplit(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_'))
-                .next()
-                .unwrap_or("");
-            if let Some(rest) = attr.strip_prefix("on")
-                && !rest.is_empty()
-                && rest.bytes().all(|b| b.is_ascii_alphabetic())
-            {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-#[cfg(test)]
-mod tests {
-    use super::is_safe_svg;
-
-    #[test]
-    fn is_safe_svg_accepts_rdkit_svg_and_blocks_active_payloads() {
-        assert!(
-            is_safe_svg(
-                r#"<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0" opacity="0.5"/></svg>"#
-            ),
-            "plain SVG markup must pass"
-        );
-        assert!(
-            !is_safe_svg(r"<svg><script>alert(1)</script></svg>"),
-            "must block <script>"
-        );
-        assert!(
-            !is_safe_svg(r#"<svg ONLOAD="alert(1)"></svg>"#),
-            "must block inline onload"
-        );
-        assert!(
-            !is_safe_svg(r#"<svg onload = "alert(1)"></svg>"#),
-            "must block spaced onload"
-        );
-        assert!(
-            !is_safe_svg(r#"<svg><a href="javascript:alert(1)">x</a></svg>"#),
-            "must block javascript:"
-        );
-        assert!(
-            !is_safe_svg(r"<svg><foreignObject><body/></foreignObject></svg>"),
-            "must block foreignObject"
-        );
     }
 }

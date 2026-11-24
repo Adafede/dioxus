@@ -27,6 +27,7 @@ dependencies = [
   "check-wasm-mgf",
   "check-wasm-mgf-analysis-core",
   "check-wasm-mgf-crate",
+  "check-wasm-smellfish-core",
   "check-wasm-smellfish-rs",
   "check-wasm-stream-io",
 ]
@@ -95,6 +96,11 @@ script = "cargo check -p json-count-core --target wasm32-unknown-unknown --locke
 cwd = "${REPO_ROOT}"
 description = "Type-check mgf-analysis-core for wasm32-unknown-unknown."
 script = "cargo check -p mgf-analysis-core --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-smellfish-core"]
+cwd = "${REPO_ROOT}"
+description = "Type-check smellfish-core for wasm32-unknown-unknown."
+script = "cargo check -p smellfish-core --target wasm32-unknown-unknown --locked"
 
 # Every feature combination in the workspace.
 #

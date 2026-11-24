@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-//! Upload dispatch — mirrors `mgf-precursor-erro-rs`' `app/browser.rs` cfg-mut
-//! pattern: the wasm arm forwards to `pipeline::begin_import`, the native arm
-//! pins the signals to the "needs browser" state. Keeps `app.rs` free of
-//! duplicated `#[cfg(target_arch = "wasm32")]` import blocks.
+//! Upload dispatch and generation tracking preventing concurrent import races.
+
 use dioxus::html::FileData;
 use dioxus::prelude::*;
+use smellfish_core::model::{EndpointStatus, MoleculeRow, MotifSummary};
 
-use crate::model::{EndpointStatus, MoleculeRow, MotifSummary};
 #[cfg(target_arch = "wasm32")]
 use crate::pipeline::{ImportSource, begin_import};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ImportSignals {
+    pub(crate) generation: Signal<u64>,
     pub(crate) file_name: Signal<String>,
     pub(crate) status: Signal<String>,
     pub(crate) busy: Signal<bool>,
@@ -24,9 +23,7 @@ pub(crate) struct ImportSignals {
     pub(crate) warnings: Signal<Vec<String>>,
 }
 
-/// Shared dispatch for `onchange`/`ondrop` file events: selects the first file
-/// from `files` and (wasm) kicks off `pipeline::begin_import`, (native) reports that the
-/// app needs a browser.
+/// Dispatches a file-drop or browse event into the import pipeline (wasm) or sets browser hint (host).
 pub(super) fn attempt_import(files: &[FileData], mut signals: ImportSignals) {
     match upload::extract_blob_from_file_data(files) {
         Ok(Some(file)) => {
@@ -46,8 +43,7 @@ pub(super) fn attempt_import(files: &[FileData], mut signals: ImportSignals) {
     }
 }
 
-/// Shared dispatch for the "paste SMILES" path — (wasm) `pipeline::begin_import`,
-/// (native) reports that the app needs a browser.
+/// Dispatches pasted SMILES lines into the import pipeline (wasm) or sets browser hint (host).
 pub(super) fn attempt_import_from_text(text: &str, mut signals: ImportSignals) {
     if text.is_empty() {
         signals
