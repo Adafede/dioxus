@@ -15,6 +15,7 @@ members = [
   "apps/smellfish-rs",
   "crates/ui",
   "crates/upload",
+  "crates/workspace-gates",
 ]
 
 # `smarts-evoliposuction` is a laptop CLI, not an app, and it is listed here

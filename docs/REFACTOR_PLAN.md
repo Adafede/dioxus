@@ -12,7 +12,7 @@ every gate green on each commit.
   - *Verify*: `./mk check && ./mk test && ./mk refquiem && ./mk commits`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 1 — Extract `crates/workspace-gates` & gate `gloo-timers` to `wasm32`**:
+- [x] **Step 1 — Extract `crates/workspace-gates` & gate `gloo-timers` to `wasm32`**:
   Move repo-wide gate tests out of `crates/upload/tests/` into a dedicated
   test-only crate and move `gloo-timers` into target-specific `wasm32`
   dependencies in `cxsmiles-yoga` and `lipid-selecto-rs`.

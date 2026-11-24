@@ -84,8 +84,8 @@ SESSION_LOG.md
 # tracked stays tracked however many rules are added here. The
 # `check-added-large-files` pre-commit hook (`--maxkb=2048`) is the backstop for
 # the two large ones; the small ones are caught by
-# `crates/upload/tests/gate_consistency/`, which fails if a rule below is
-# deleted, so this list cannot quietly stop working.
+# `crates/workspace-gates/tests/gate_consistency/`, which fails if a rule
+# below is deleted, so this list cannot quietly stop working.
 #
 # The tool's own README.md and src/ *are* tracked — only its data is not.
 /apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/LMSD.sdf.zip

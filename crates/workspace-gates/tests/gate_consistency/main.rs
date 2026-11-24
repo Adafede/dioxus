@@ -25,19 +25,16 @@
 //! key in `Makefile.toml`, and reports that as an empty list rather than an
 //! error.
 //!
-//! ## Why this test lives in `crates/upload/tests/`
+//! ## Why this lives in `crates/workspace-gates/tests/`
 //!
 //! The workspace has no root package, so there is no `tests/` directory that a
-//! `--workspace` build is obliged to compile. `upload` is the one crate every
-//! app depends on, so its `tests/` directory is compiled by `./mk test`,
-//! by `./mk lint --all-targets` and by the CI test job alike, on the host
-//! and on `wasm32`. Put the test anywhere else and one of those three stops
-//! running it.
+//! `--workspace` build is obliged to compile. Hosting these repository-wide
+//! checks in a dedicated private crate keeps `upload` focused on streaming and
+//! browser helpers while still compiling and running under `./mk test` and
+//! `./mk lint --all-targets`.
 //!
 //! The tests return `Result` rather than panicking, because the workspace denies
 //! `clippy::unwrap_used` and `clippy::expect_used` and that reaches test targets.
-
-#![allow(unused_crate_dependencies)] // reads files; links nothing it needs to name
 
 use std::collections::BTreeSet;
 use std::error::Error;

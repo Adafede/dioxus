@@ -147,7 +147,7 @@ cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction
    `.github/workflows/deploy.yml`.
 5. Ensure the app defines `DocumentHead`, `skip_link`, `id: "main-content"`,
    `crates/ui` components, and EDAM annotations, which are checked by
-   `crates/upload/tests/gate_consistency/`.
+   `crates/workspace-gates/tests/gate_consistency/`.
 6. Run `./mk web-dev APP=<new-app>` and `./mk ci`.
 
 ## Continuous integration

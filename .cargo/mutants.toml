@@ -7,8 +7,8 @@
 # original file had both in one and it only worked because the section header
 # above happened to be one Cargo ignored.
 #
-# `crates/upload/tests/gate_consistency.rs` asserts that this path exists and
-# that no root `mutants.toml` shadows it.
+# `crates/workspace-gates/tests/gate_consistency/` asserts that this path
+# exists and that no root `mutants.toml` shadows it.
 #
 # The default is to mutate every file of every package named on the command
 # line. This file records the exclusions that are not derivable from

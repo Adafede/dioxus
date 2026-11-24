@@ -41,7 +41,7 @@ pub(crate) const ANALYTICS_PIXEL_CSS: &str = ".analytics-pixel { position: absol
 ///
 /// The target is fixed, and every app in this workspace gives its `<main>`
 /// element `id="main-content"` to match. `every_app_pairs_its_skip_link_with_a_
-/// main_landmark` in `crates/upload/tests/gate_consistency.rs` is what keeps
+/// main_landmark` in `crates/workspace-gates/tests/gate_consistency/` is what keeps
 /// that true; it is not checkable from here, because the `main` element is in
 /// a different crate.
 ///

@@ -64,7 +64,7 @@ Run `./mk --list` for the available standard gates and `local:*` tasks, or
   | `commits`, `ratchet`                                                                   | Conventional Commits subjects and non-decreasing coverage/debt ratchets (`mk.local`, `Cargo.toml`)                                                                              |
   | `fmt`, `tombi`, `typos`                                                                | `rustfmt`, TOML formatting & schema (`tombi`), and spelling (`.typos.toml`)                                                                                                     |
   | `lint`, `lints-inherit`, `wasm`, `local:lint-wasm`                                     | host `--all-targets --all-features` clippy (`-D warnings`), `[lints] workspace = true`, and per-app `wasm32-unknown-unknown` check & clippy                                     |
-  | `test`                                                                                 | `cargo nextest run --workspace --locked` (host unit & integration tests, including `crates/upload/tests/gate_consistency/`) followed by `cargo test --workspace --doc --locked` |
+  | `test`                                                                                 | `cargo nextest run --workspace --locked` (host unit & integration tests, including `crates/workspace-gates/tests/gate_consistency/`) followed by `cargo test --workspace --doc --locked` |
   | `doc`                                                                                  | rustdoc across all workspace crates with `-D warnings`                                                                                                                          |
   | `deny`, `audit`, `machete`, `msrv`, `echoes`, `refquiem`, `semver`                     | licenses/bans (`deny.toml`), advisories, unused deps, declared MSRV check, duplicate code/doctest detection, removed-name check, and semver check                               |
   | `mutants-diff`                                                                         | mutation testing (`cargo-mutants`) on `.rs` diffs against the base branch                                                                                                       |
@@ -75,7 +75,7 @@ Run `./mk --list` for the available standard gates and `local:*` tasks, or
 glue exclusions and `mk.local` sets `MUTANTS_PACKAGES` (`json-count-rs`,
 `cxsmiles-yoga`).
 
-`crates/upload/tests/gate_consistency/` checks structural invariants across the
+`crates/workspace-gates/tests/gate_consistency/` checks structural invariants across the
 repository (`apps`, `.gitignore` data exclusions, `mk`, `mutants` scope,
 `make/*.toml`, workflows, documentation surface separation, resolved relative
 links, and `docs/DEBT.md` ratchets).

@@ -26,7 +26,6 @@
 use std::sync::Arc;
 
 use dioxus::prelude::*;
-use gloo_timers::future::TimeoutFuture;
 use ui::prelude::*;
 
 use crate::cxsmiles::{Construct, CxResult, generate_with_options};
@@ -53,24 +52,32 @@ const fn copy_to_clipboard(_text: &str) -> bool {
     false
 }
 
+#[cfg(target_arch = "wasm32")]
+fn trigger_copy(text: &str, mut copied: Signal<bool>) {
+    let ok = copy_to_clipboard(text);
+    copied.set(ok);
+    if ok {
+        spawn(async move {
+            gloo_timers::future::TimeoutFuture::new(1200).await;
+            copied.set(false);
+        });
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn trigger_copy(text: &str, mut copied: Signal<bool>) {
+    copied.set(copy_to_clipboard(text));
+}
+
 /// A small "Copy" button that flashes "Copied!".
 #[component]
 fn CopyCell(props: CopyCellProps) -> Element {
-    let mut copied = use_signal(|| false);
+    let copied = use_signal(|| false);
     let text = props.text;
     rsx! {
         button {
             r#type: "button",
-            onclick: move |_| {
-                let ok = copy_to_clipboard(&text);
-                copied.set(ok);
-                if ok {
-                    spawn(async move {
-                        TimeoutFuture::new(1200).await;
-                        copied.set(false);
-                    });
-                }
-            },
+            onclick: move |_| trigger_copy(&text, copied),
             style: StyleBuilder::new()
                 .background_color("#f1f5f9")
                 .color("#334155")

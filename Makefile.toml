@@ -4,8 +4,9 @@
 # nothing else, so a check that is green locally and red in a pipeline, or the
 # reverse, cannot happen by drift: there is one command.
 #
-# `crates/upload/tests/gate_consistency/` holds the local gate, the git hooks
-# and CI to the same set of checks, and fails the build if they disagree.
+# `crates/workspace-gates/tests/gate_consistency/` holds the local gate, the
+# git hooks and CI to the same set of checks, and fails the build if they
+# disagree.
 #
 # The tasks are split across `make/*.toml` by concern. This file holds the shared
 # configuration and the gate itself.
