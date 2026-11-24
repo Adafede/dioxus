@@ -42,8 +42,8 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> Result<CxResult, CxError> {
     };
     let cx_smiles = format_repeat_cx(&scaffold_smiles, &repeat_unit.atoms);
     let enumerated = enumerate_repeating(&scaffold, &repeat_unit)?;
-    let (construct, confidence) = evaluate_construct(&enumerated, group, ConstructKind::Repeating);
-    if confidence.coverage.covered < 2 {
+    let (construct, coverage) = evaluate_construct(&enumerated, group, ConstructKind::Repeating);
+    if coverage.covered < 2 {
         return Err(CxError::NoHomologueReproduced);
     }
     Ok(CxResult {
@@ -52,7 +52,7 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> Result<CxResult, CxError> {
         scaffold_smiles,
         floating: Vec::new(),
         repeat_unit: Some(repeat_unit),
-        confidence,
+        coverage,
         enumerated,
     })
 }

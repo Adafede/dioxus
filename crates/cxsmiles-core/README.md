@@ -24,7 +24,7 @@ let inputs = vec![
 ];
 let res = generate(&inputs).expect("valid biphenyl series");
 assert_eq!(res.construct, ConstructKind::Positional);
-assert!(res.confidence.clean);
+assert!(res.coverage.is_clean());
 assert!(res.cx_smiles.contains("m:"));
 ```
 

@@ -1,79 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Explicit MGF parser options and spectrum data types.
-
-/// Controls how header key names (e.g., `SMILES=`, `PEPMASS=`) are matched.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HeaderCase {
-    /// Match MGF metadata keys ASCII case-insensitively.
-    CaseInsensitive,
-    /// Match MGF metadata keys only in canonical uppercase (`SMILES`, `PEPMASS`, etc.).
-    CaseSensitive,
-}
-
-/// Controls what happens to an unclosed `BEGIN IONS` block at end-of-stream.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UnterminatedBlockPolicy {
-    /// Discard an unclosed block at EOF.
-    Drop,
-    /// Emit an unclosed block at EOF.
-    Flush,
-}
-
-/// Controls how fragment peak lines inside a spectrum block are validated.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PeakParseMode {
-    /// Accept any whitespace-containing non-header line whose leading float is `> 0.0`.
-    RequirePositiveMz,
-    /// Require at least two whitespace-separated floats (`mz` and `intensity`).
-    RequireMzAndIntensity,
-}
-
-/// Configuration for [`crate::MgfLineParser`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MgfOptions {
-    /// Strip a UTF-8 BOM (`\u{feff}`) from the first fed line.
-    pub strip_bom: bool,
-    /// Header key matching rule.
-    pub header_case: HeaderCase,
-    /// Parse `KEY=VALUE` tokens occurring on the `BEGIN IONS` line itself.
-    pub inline_begin_headers: bool,
-    /// Policy for blocks left open at EOF.
-    pub unterminated_block: UnterminatedBlockPolicy,
-    /// Retain verbatim input lines per block for filtered export.
-    pub retain_raw_lines: bool,
-    /// Validation mode for MS2 fragment peak lines.
-    pub peak_mode: PeakParseMode,
-}
-
-impl MgfOptions {
-    /// Standard MGF parsing preset (strips BOM, case-insensitive keys, drops unclosed EOF blocks).
-    #[must_use]
-    pub const fn standard() -> Self {
-        Self {
-            strip_bom: true,
-            header_case: HeaderCase::CaseInsensitive,
-            inline_begin_headers: false,
-            unterminated_block: UnterminatedBlockPolicy::Drop,
-            retain_raw_lines: false,
-            peak_mode: PeakParseMode::RequirePositiveMz,
-        }
-    }
-
-    /// Lipid-selection preset (supports inline `BEGIN IONS KEY=VAL`, retains raw lines, flushes EOF).
-    #[must_use]
-    pub const fn lipid_selection() -> Self {
-        Self {
-            strip_bom: false,
-            header_case: HeaderCase::CaseSensitive,
-            inline_begin_headers: true,
-            unterminated_block: UnterminatedBlockPolicy::Flush,
-            retain_raw_lines: true,
-            peak_mode: PeakParseMode::RequireMzAndIntensity,
-        }
-    }
-}
+//! Spectrum data types produced by [`crate::MgfLineParser`].
 
 /// One fragment ion peak `(m/z, optional intensity)`.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -138,6 +66,4 @@ pub struct MgfBlock {
     pub header: MgfHeader,
     /// Parsed fragment peaks.
     pub peaks: Vec<MgfPeak>,
-    /// Verbatim lines (excluding trailing newlines) when `retain_raw_lines` is enabled.
-    pub raw_lines: Vec<String>,
 }

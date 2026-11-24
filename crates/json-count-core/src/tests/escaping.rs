@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the json-count-rs project
 
-use crate::unescape::unicode_code_unit;
-use crate::unescape_json_string;
+use crate::unescape::{unescape_json_string, unicode_code_unit};
 
 fn unescape(s: &str) -> String {
     unescape_json_string(s.as_bytes())

@@ -21,7 +21,7 @@
 //! ];
 //! let res = generate(&inputs).expect("valid biphenyl series");
 //! assert_eq!(res.construct, ConstructKind::Positional);
-//! assert!(res.confidence.clean);
+//! assert!(res.coverage.is_clean());
 //! assert!(res.cx_smiles.contains("m:"));
 //! ```
 
@@ -41,10 +41,7 @@ mod types;
 
 pub use error::CxError;
 pub use pipeline::{generate, generate_with_options};
-pub use types::{
-    AttachmentTarget, Confidence, ConstructKind, Coverage, CxOptions, CxResult, FloatingPart,
-    RepeatUnit,
-};
+pub use types::{ConstructKind, Coverage, CxOptions, CxResult, FloatingPart, RepeatUnit};
 
 #[cfg(test)]
 #[expect(clippy::unwrap_used)]

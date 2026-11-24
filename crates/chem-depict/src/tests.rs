@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+use crate::svg::empty_svg;
 use crate::{
-    ChemParseError, empty_compact_svg, empty_svg, parse_smiles_safe, render_molecule_svg_compact,
+    ChemParseError, empty_compact_svg, parse_smiles_safe, render_molecule_svg_compact,
     render_smiles_svg, render_smiles_svg_compact, render_smiles_svg_highlighted,
 };
 

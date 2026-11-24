@@ -32,9 +32,9 @@ fn empty_and_singleton_fast_paths() {
     assert_eq!(single.scaffold_smiles, "C(C)O");
     assert_eq!(single.floating, []);
     assert!(single.repeat_unit.is_none());
-    assert_eq!(single.confidence.coverage.covered, 1);
-    assert_eq!(single.confidence.coverage.total, 1);
-    assert!(single.confidence.clean);
+    assert_eq!(single.coverage.covered, 1);
+    assert_eq!(single.coverage.total, 1);
+    assert!(single.coverage.is_clean());
     assert_eq!(single.enumerated, vec!["C(C)O"]);
 }
 
@@ -45,7 +45,7 @@ fn positional_biphenyl_cl_and_omf_and_acetyl_double_m() {
     let cl = generate(&lines(cl_in)).unwrap();
     assert_eq!(cl.construct, ConstructKind::Positional);
     assert_roundtrip(&cl, &cl_mols);
-    assert!(cl.confidence.clean);
+    assert!(cl.coverage.is_clean());
     assert_eq!(cl.scaffold_smiles, "c1ccccc1-c2ccccc2");
     assert_eq!(cl.cx_smiles, "c1ccccc1-c2ccccc2.[*]Cl |m:12:0.2.3|");
     assert_eq!(cl.floating.len(), 1);
@@ -56,7 +56,7 @@ fn positional_biphenyl_cl_and_omf_and_acetyl_double_m() {
     let omf = generate(&lines(omf_in)).unwrap();
     assert_eq!(omf.construct, ConstructKind::Positional);
     assert_roundtrip(&omf, &omf_mols);
-    assert!(omf.confidence.clean);
+    assert!(omf.coverage.is_clean());
     assert_eq!(omf.floating.len(), 1);
     assert_eq!(omf.floating[0].equiv.len(), 3);
 
@@ -65,7 +65,7 @@ fn positional_biphenyl_cl_and_omf_and_acetyl_double_m() {
     let ac = generate(&lines(ac_in)).unwrap();
     assert_eq!(ac.construct, ConstructKind::Positional);
     assert_roundtrip(&ac, &ac_mols);
-    assert!(ac.confidence.clean);
+    assert!(ac.coverage.is_clean());
     assert_eq!(ac.floating.len(), 2);
     assert_eq!(ac.cx_smiles.matches("m:").count(), 2);
     let o_star = ac.floating.iter().find(|f| !f.split).expect("O* group");
@@ -83,7 +83,7 @@ Clc1ccc(-c2ccccc2F)cc1";
     let mols = parse_list(&lines(input)).unwrap();
     let res = generate(&lines(input)).unwrap();
     assert_eq!(res.construct, ConstructKind::Positional);
-    assert!(res.confidence.clean);
+    assert!(res.coverage.is_clean());
     assert_roundtrip(&res, &mols);
     assert_eq!(res.floating.len(), 2, "two independent moving groups");
     assert_eq!(res.cx_smiles.matches("m:").count(), 2);
@@ -96,7 +96,7 @@ fn repeating_pfas_and_alkyl_and_custom_gcd_series() {
     let pfas = generate(&lines(pfas_in)).unwrap();
     assert_eq!(pfas.construct, ConstructKind::Repeating);
     assert_roundtrip(&pfas, &pfas_mols);
-    assert!(pfas.confidence.clean);
+    assert!(pfas.coverage.is_clean());
     assert_eq!(pfas.scaffold_smiles, "OC(=O)C(F)(F)C(F)F");
     assert_eq!(pfas.cx_smiles, "OC(=O)C(F)(F)C(F)F |Sg:n:3,4,5:n:ht|");
     let unit = pfas.repeat_unit.expect("repeat unit is populated");
@@ -129,14 +129,14 @@ fn repeating_pfas_and_alkyl_and_custom_gcd_series() {
         assert_eq!(r.construct, ConstructKind::Repeating);
         assert_eq!(r.cx_smiles, expected_cx);
         assert_eq!(r.enumerated.len(), expected_enum);
-        assert!(r.confidence.clean);
+        assert!(r.coverage.is_clean());
         assert_roundtrip(&r, &mols);
     }
 
     let pfas_pair = parse_list(&lines("OC(=O)C(F)(F)C(F)F\nOC(=O)C(F)(F)C(F)(F)C(F)F")).unwrap();
     let pair_r = build_repeating(&pfas_pair).unwrap();
     assert_eq!(pair_r.enumerated.len(), 2);
-    assert!(pair_r.confidence.clean);
+    assert!(pair_r.coverage.is_clean());
 }
 
 #[test]
@@ -150,7 +150,7 @@ Clc1cc(-c2ccccc2)ccc1";
     let four_r = build_positional_with_options(&four_mols, false).unwrap();
     assert_eq!(four_r.construct, ConstructKind::Positional);
     assert_eq!(four_r.floating[0].equiv.len(), 4);
-    assert!(four_r.confidence.clean);
+    assert!(four_r.coverage.is_clean());
     assert_roundtrip(&four_r, &four_mols);
 
     let biphenyl_in = "Clc1ccccc1-c2ccccc2\nClc1cccc(-c2ccccc2)c1\nClc1ccc(-c2ccccc2)cc1";
@@ -164,7 +164,7 @@ Clc1cc(-c2ccccc2)ccc1";
     .unwrap();
     assert_eq!(bip_arom.construct, ConstructKind::Positional);
     assert_roundtrip(&bip_arom, &bip_mols);
-    assert!(bip_arom.confidence.clean);
+    assert!(bip_arom.coverage.is_clean());
     assert_eq!(bip_arom.floating[0].equiv, vec![0, 1, 2, 3, 4]);
     assert_eq!(
         bip_arom.cx_smiles,
@@ -174,7 +174,7 @@ Clc1cc(-c2ccccc2)ccc1";
     let const_in = "CC(C)(C)O\nCC(C)CO\nCC(O)CC\nOCCCC\nCCOCC\nCOCCC";
     let const_r = generate(&lines(const_in)).unwrap();
     assert_eq!(const_r.construct, ConstructKind::BestEffort);
-    assert!(const_r.confidence.coverage.fraction() < 1.0);
+    assert!(const_r.coverage.fraction() < 1.0);
 }
 
 #[test]
@@ -190,14 +190,8 @@ Clc1cccc(-c2ccccc2)c1
 Clc1ccc(-c2ccccc2)cc1
 O=C=O";
     let r_pos = generate(&lines(pos_outlier)).unwrap();
-    assert_eq!(
-        (
-            r_pos.confidence.coverage.covered,
-            r_pos.confidence.coverage.total
-        ),
-        (3, 4)
-    );
-    assert!(!r_pos.confidence.clean);
+    assert_eq!((r_pos.coverage.covered, r_pos.coverage.total), (3, 4));
+    assert!(!r_pos.coverage.is_clean());
     assert_eq!(r_pos.construct, ConstructKind::BestEffort);
 
     let rep_outlier = "\
@@ -206,14 +200,8 @@ OC(=O)C(F)(F)C(F)(F)C(F)F
 OC(=O)C(F)(F)C(F)(F)C(F)(F)C(F)F
 O=C=O";
     let r_rep = generate(&lines(rep_outlier)).unwrap();
-    assert_eq!(
-        (
-            r_rep.confidence.coverage.covered,
-            r_rep.confidence.coverage.total
-        ),
-        (3, 4)
-    );
-    assert!(!r_rep.confidence.clean);
+    assert_eq!((r_rep.coverage.covered, r_rep.coverage.total), (3, 4));
+    assert!(!r_rep.coverage.is_clean());
     assert_eq!(r_rep.construct, ConstructKind::BestEffort);
 
     let identical = generate(&lines("CC\nCC")).unwrap();

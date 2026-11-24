@@ -97,7 +97,7 @@ mod tests {
             let lines: Vec<String> = set.smiles.lines().map(str::to_owned).collect();
             let res = generate(&lines)?;
             assert_eq!(res.construct, exp_kind, "example {}", set.id);
-            assert_eq!(res.confidence.clean, exp_clean, "example {}", set.id);
+            assert_eq!(res.coverage.is_clean(), exp_clean, "example {}", set.id);
         }
         assert_eq!(example_smiles("missing"), None);
         Ok(())

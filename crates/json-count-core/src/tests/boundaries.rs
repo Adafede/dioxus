@@ -8,8 +8,9 @@ use futures_executor::block_on;
 use stream_io::{BlobCursor, SliceSource};
 
 use super::{columns, cursor};
+use crate::scanner::scan_columns;
 use crate::strings::{read_json_key, skip_string_nonempty};
-use crate::{JsonCountError, progress_message, scan_columns, scan_source_with_progress};
+use crate::{JsonCountError, progress_message, scan_source_with_progress};
 
 #[test]
 fn the_result_does_not_depend_on_where_the_chunks_fall() {

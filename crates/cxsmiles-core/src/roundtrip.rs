@@ -10,7 +10,7 @@ use crate::error::CxError;
 use crate::fragment::{FloatingDef, add_atoms_and_bonds};
 use crate::graph::atom_usize;
 use crate::splice::splice_repeat;
-use crate::types::{AttachmentTarget, Confidence, ConstructKind, Coverage, RepeatUnit};
+use crate::types::{AttachmentTarget, ConstructKind, Coverage, RepeatUnit};
 
 pub(crate) const MAX_ARRANGEMENTS: usize = 10_000;
 pub(crate) const MAX_MOLECULE_ATOMS: usize = 512;
@@ -201,15 +201,14 @@ pub(crate) fn evaluate_construct(
     enumerated_sorted: &[String],
     mols: &[Molecule],
     clean_kind: ConstructKind,
-) -> (ConstructKind, Confidence) {
+) -> (ConstructKind, Coverage) {
     let coverage = roundtrip_coverage(enumerated_sorted, mols);
-    let confidence = Confidence::from_coverage(coverage);
-    let kind = if confidence.clean {
+    let kind = if coverage.is_clean() {
         clean_kind
     } else {
         ConstructKind::BestEffort
     };
-    (kind, confidence)
+    (kind, coverage)
 }
 
 /// Sort and deduplicate a list of SMILES strings.

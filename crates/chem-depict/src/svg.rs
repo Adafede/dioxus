@@ -13,7 +13,7 @@ use crate::parse::parse_smiles_safe;
 
 /// Standard fallback SVG rendered when depiction fails (`220x60`).
 #[must_use]
-pub fn empty_svg() -> String {
+pub(crate) fn empty_svg() -> String {
     r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60"><text x="50%" y="34" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="ui-system,system-ui,sans-serif">could not render</text></svg>"##.to_string()
 }
 
@@ -41,7 +41,7 @@ pub fn render_molecule_svg_compact(molecule: &Molecule) -> String {
     validate_svg_or(rendered, empty_compact_svg)
 }
 
-/// Parses `smiles` and renders it to an inline SVG, falling back to [`empty_svg`].
+/// Parses `smiles` and renders it to an inline SVG, falling back to `empty_svg`.
 #[must_use]
 pub fn render_smiles_svg(smiles: &str) -> String {
     render_smiles_svg_highlighted(smiles, &[])
@@ -57,7 +57,7 @@ pub fn render_smiles_svg_compact(smiles: &str) -> String {
 }
 
 /// Parses `smiles` and renders an inline SVG with `highlight_atoms` (and bonds
-/// connecting two highlighted atoms) emphasized, falling back to [`empty_svg`].
+/// connecting two highlighted atoms) emphasized, falling back to `empty_svg`.
 #[must_use]
 pub fn render_smiles_svg_highlighted(smiles: &str, highlight_atoms: &[usize]) -> String {
     let Ok(mol) = parse_smiles_safe(smiles) else {

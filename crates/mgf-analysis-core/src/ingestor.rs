@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::hash::BuildHasher;
 
-use mgf::{MgfBlock, MgfLineParser, MgfOptions, is_ions_marker};
+use mgf::{MgfBlock, MgfLineParser, is_ions_marker};
 
 use crate::adduct::{
     AdductFamily, expected_precursor_mz, is_supported_adduct, normalize_adduct_label,
@@ -55,7 +55,7 @@ pub struct LineIngestor {
 impl Default for LineIngestor {
     fn default() -> Self {
         Self {
-            parser: MgfLineParser::new(MgfOptions::standard()),
+            parser: MgfLineParser::new(),
             metrics: PrecursorStats::default(),
             smiles_cache: HashMap::new(),
             formula_cache: HashMap::new(),

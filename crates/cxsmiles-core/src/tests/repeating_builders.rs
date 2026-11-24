@@ -116,9 +116,9 @@ fn incomplete_repeating_roundtrip_is_best_effort() {
         mol("CCCCCCCCCC"),
     ];
     let r = build_repeating(&group).expect("returns a best-effort repeating result");
-    assert!(!r.confidence.clean, "branched isomer is not reproduced");
-    assert_eq!(r.confidence.coverage.covered, 3);
-    assert_eq!(r.confidence.coverage.total, 4);
+    assert!(!r.coverage.is_clean(), "branched isomer is not reproduced");
+    assert_eq!(r.coverage.covered, 3);
+    assert_eq!(r.coverage.total, 4);
     assert_eq!(
         r.construct,
         ConstructKind::BestEffort,
@@ -145,5 +145,5 @@ fn non_single_external_bonds_are_not_internal_and_ring_repeats_are_rejected() {
     let two_ok = build_repeating(&[mol("CCC"), mol("CCCC")])
         .expect("a two-member alkane homologue pair with covered == 2 must succeed");
     assert_eq!(two_ok.construct, ConstructKind::Repeating);
-    assert_eq!(two_ok.confidence.coverage.covered, 2);
+    assert_eq!(two_ok.coverage.covered, 2);
 }

@@ -85,8 +85,9 @@ pub(crate) fn unescape_json_string_into(raw: &[u8], out: &mut String) {
 }
 
 /// Unescapes a raw JSON string body, including `\uXXXX` and UTF-16 surrogate pairs.
+#[cfg(test)]
 #[must_use]
-pub fn unescape_json_string(raw: &[u8]) -> String {
+pub(crate) fn unescape_json_string(raw: &[u8]) -> String {
     let mut out = String::new();
     unescape_json_string_into(raw, &mut out);
     out

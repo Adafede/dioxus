@@ -54,7 +54,7 @@ pub(crate) fn build_positional_with_options(
         build_base_smiles(&sc.smiles, &defs, sc.mol.atom_count());
     let ext = format_m_extension(&targets, &star_indices, &attach_idx);
     let enumerated = enumerate(&sc.mol, &defs, &targets)?;
-    let (construct, confidence) = evaluate_construct(&enumerated, group, ConstructKind::Positional);
+    let (construct, coverage) = evaluate_construct(&enumerated, group, ConstructKind::Positional);
     Ok(CxResult {
         cx_smiles: if ext.is_empty() {
             base_smiles
@@ -65,7 +65,7 @@ pub(crate) fn build_positional_with_options(
         scaffold_smiles: sc.smiles,
         floating: build_floating_parts(&defs, &targets),
         repeat_unit: None,
-        confidence,
+        coverage,
         enumerated,
     })
 }

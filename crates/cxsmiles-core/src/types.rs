@@ -44,29 +44,9 @@ impl Coverage {
     }
 }
 
-/// Round-trip confidence summary surfaced to callers and UI components.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Confidence {
-    /// Exact numerator/denominator coverage counts.
-    pub coverage: Coverage,
-    /// `true` when 100% of evaluated inputs round-tripped cleanly.
-    pub clean: bool,
-}
-
-impl Confidence {
-    /// Builds a [`Confidence`] value directly from [`Coverage`].
-    #[must_use]
-    pub const fn from_coverage(coverage: Coverage) -> Self {
-        Self {
-            clean: coverage.is_clean(),
-            coverage,
-        }
-    }
-}
-
 /// Attachment target of a floating pendant group during enumeration.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AttachmentTarget {
+pub(crate) enum AttachmentTarget {
     /// Attaches to any of the listed equivalent scaffold atom indices.
     Variable(Vec<usize>),
     /// Attaches to another floating group's attachment atom (index into `defs`).
@@ -115,8 +95,8 @@ pub struct CxResult {
     pub floating: Vec<FloatingPart>,
     /// Detected repeating sub-unit when `construct` uses `Sg:n:`.
     pub repeat_unit: Option<RepeatUnit>,
-    /// Round-trip confidence metrics against the input list.
-    pub confidence: Confidence,
+    /// Round-trip coverage metrics against the input list.
+    pub coverage: Coverage,
     /// Distinct canonical SMILES enumerated from the generated CX-SMILES.
     pub enumerated: Vec<String>,
 }

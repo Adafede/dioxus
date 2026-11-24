@@ -11,8 +11,5 @@ keywords = ["mass-spectrometry", "mgf", "parser", "spectrum", "streaming"]
 categories = ["parsing", "science"]
 publish = false
 
-[dependencies]
-thiserror = { workspace = true }
-
 [lints]
 workspace = true

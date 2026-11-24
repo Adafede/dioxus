@@ -121,8 +121,8 @@ pub(super) fn ResultsPanel(result: Signal<Option<CxResult>>) -> Element {
         return rsx! {};
     };
     let light = ColorScheme::LIGHT;
-    let frac = res.confidence.coverage.fraction() * 100.0;
-    let tone = if res.confidence.clean {
+    let frac = res.coverage.fraction() * 100.0;
+    let tone = if res.coverage.is_clean() {
         NoticeTone::Success
     } else {
         NoticeTone::Warning
@@ -165,7 +165,7 @@ pub(super) fn ResultsPanel(result: Signal<Option<CxResult>>) -> Element {
                     span { style: StyleBuilder::new().font_size(Typography::UI).color(light.text3).build(), "{construct_label}" }
                 }
                 NoticeBar {
-                    label: format!("Round-trip recall: {frac:.0}% ({}/{})", res.confidence.coverage.covered, res.confidence.coverage.total),
+                    label: format!("Round-trip recall: {frac:.0}% ({}/{})", res.coverage.covered, res.coverage.total),
                     tone,
                 }
                 div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "1fr 1fr").gap("0.75rem").build(),

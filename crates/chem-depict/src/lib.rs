@@ -26,8 +26,8 @@ mod svg;
 pub use error::ChemParseError;
 pub use parse::parse_smiles_safe;
 pub use svg::{
-    empty_compact_svg, empty_svg, render_molecule_svg_compact, render_smiles_svg,
-    render_smiles_svg_compact, render_smiles_svg_highlighted,
+    empty_compact_svg, render_molecule_svg_compact, render_smiles_svg, render_smiles_svg_compact,
+    render_smiles_svg_highlighted,
 };
 
 #[cfg(test)]

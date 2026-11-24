@@ -15,17 +15,14 @@ use crate::error::CxError;
 /// A single embedding of a query into a molecule: query-atom index -> molecule atom.
 pub(crate) type Match = FxHashMap<usize, AtomIdx>;
 
-#[inline]
 pub(crate) fn atom_idx(index: usize) -> AtomIdx {
     AtomIdx(u32::try_from(index).unwrap_or(u32::MAX))
 }
 
-#[inline]
 pub(crate) fn atom_usize(idx: AtomIdx) -> usize {
     usize::try_from(idx.0).unwrap_or(usize::MAX)
 }
 
-#[inline]
 pub(crate) fn usize_to_f64(value: usize) -> f64 {
     f64::from(u32::try_from(value).unwrap_or(u32::MAX))
 }

@@ -11,7 +11,7 @@ use crate::parse::{cluster, parse_list};
 use crate::positional::build_positional_with_options;
 use crate::repeating::build_repeating;
 use crate::roundtrip::evaluate_construct;
-use crate::types::{Confidence, ConstructKind, Coverage, CxOptions, CxResult};
+use crate::types::{ConstructKind, Coverage, CxOptions, CxResult};
 
 const CLUSTER_TANIMOTO: f64 = 0.3;
 
@@ -49,9 +49,9 @@ pub fn generate_with_options(smiles: &[String], options: CxOptions) -> Result<Cx
     let mut res = build_repeating(&group)
         .or_else(|_| build_positional_with_options(&group, options.expand_aromatic))?;
 
-    let (construct, confidence) = evaluate_construct(&res.enumerated, &mols, res.construct);
+    let (construct, coverage) = evaluate_construct(&res.enumerated, &mols, res.construct);
     res.construct = construct;
-    res.confidence = confidence;
+    res.coverage = coverage;
     Ok(res)
 }
 
@@ -63,10 +63,10 @@ fn singleton_result(mol: &Molecule) -> CxResult {
         scaffold_smiles: smi.clone(),
         floating: Vec::new(),
         repeat_unit: None,
-        confidence: Confidence::from_coverage(Coverage {
+        coverage: Coverage {
             covered: 1,
             total: 1,
-        }),
+        },
         enumerated: vec![smi],
     }
 }

@@ -157,7 +157,7 @@ async fn scan_row_array<F: FnMut(u64, u64), S: ChunkSource>(
 /// # Errors
 ///
 /// Returns [`JsonCountError`] when the input is malformed or reading fails.
-pub async fn scan_columns<F: FnMut(u64, u64), S: ChunkSource>(
+pub(crate) async fn scan_columns<F: FnMut(u64, u64), S: ChunkSource>(
     cur: &mut BlobCursor<F, S>,
 ) -> Result<Vec<ColumnResult>, JsonCountError> {
     cur.skip_ws().await?;
@@ -182,7 +182,7 @@ pub async fn scan_columns<F: FnMut(u64, u64), S: ChunkSource>(
     Ok(fields)
 }
 
-/// Runs [`scan_columns`] over any [`ChunkSource`] while reporting byte progress.
+/// Runs `scan_columns` over any [`ChunkSource`] while reporting byte progress.
 ///
 /// # Errors
 ///

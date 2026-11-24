@@ -44,8 +44,7 @@ pub use model::{
     ColumnResult, SortColumn, SortDirection, SortSpec, aria_sort_for, next_sort_state,
     progress_message, sorted_results,
 };
-pub use scanner::{scan_columns, scan_source_with_progress};
-pub use unescape::unescape_json_string;
+pub use scanner::scan_source_with_progress;
 
 #[cfg(test)]
 mod tests;
