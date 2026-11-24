@@ -12,7 +12,7 @@ use dioxus::prelude::*;
 use json_count_core::{
     ColumnResult, SortColumn, SortSpec, aria_sort_for, next_sort_state, sorted_results,
 };
-use ui::prelude::*;
+use ui::{ColorScheme, Spacing, StyleBuilder, Typography};
 
 #[cfg(target_arch = "wasm32")]
 use crate::wasm_entry::begin_scan_from_blob;

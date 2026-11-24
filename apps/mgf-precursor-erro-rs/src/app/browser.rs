@@ -15,7 +15,9 @@ use mgf_analysis_core::{
     LineIngestor, MAX_RAW_RETENTION_BYTES, PrecursorStats, append_retained_line,
 };
 #[cfg(target_arch = "wasm32")]
-use upload::{BlobLines, BlobSource, ChunkSource, UploadError};
+use stream_io::{BlobLines, ChunkSource};
+#[cfg(target_arch = "wasm32")]
+use upload::{BlobSource, UploadError};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]

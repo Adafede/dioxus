@@ -21,7 +21,10 @@ use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 use lipid_core::{Analysis, ClassMatchSet, LipidFormat, lmsd_classes};
-use ui::prelude::*;
+use ui::{
+    ColorScheme, DocumentHead, EdamAnnotations, EdamTerm, SimpleAnalyticsBadge, StyleBuilder,
+    Typography, UploadZone, WebMcpConfig, skip_link,
+};
 
 use self::classes_card::LipidClassesCard;
 use self::gallery_panel::GalleryPanel;

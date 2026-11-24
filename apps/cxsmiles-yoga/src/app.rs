@@ -16,7 +16,11 @@ mod results;
 
 use cxsmiles_core::{CxOptions, CxResult, generate_with_options};
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::{
+    Button, ButtonVariant, ColorScheme, DocumentHead, EdamAnnotations, EdamTerm, Footer, Header,
+    NoticeBar, NoticeTone, SegmentedControl, SimpleAnalyticsBadge, StyleBuilder, Typography,
+    WebMcpConfig, skip_link,
+};
 
 use self::controls::{InputCard, example_items};
 use self::results::ResultsPanel;

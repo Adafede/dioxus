@@ -12,33 +12,11 @@ use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Theme, Typography
 use dioxus::events::{DragData, FormData};
 use dioxus::prelude::*;
 
-/// Semantic tone of the status line below [`UploadZone`].
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum UploadStatusTone {
-    /// Normal informational progress text.
-    #[default]
-    Normal,
-    /// Error / failure message styled in the theme's red token.
-    Error,
-}
-
-impl UploadStatusTone {
-    /// Infers the tone from a human-readable status message.
-    #[must_use]
-    pub fn from_message(message: &str) -> Self {
-        if message.contains("Error") || message.contains("error") || message.contains("Unexpected")
-        {
-            Self::Error
-        } else {
-            Self::Normal
-        }
-    }
-
-    const fn color(self, colors: ColorScheme) -> &'static str {
-        match self {
-            Self::Normal => colors.text,
-            Self::Error => colors.red,
-        }
+fn status_color(message: &str, colors: ColorScheme) -> &'static str {
+    if message.contains("Error") || message.contains("error") || message.contains("Unexpected") {
+        colors.red
+    } else {
+        colors.text
     }
 }
 
@@ -68,9 +46,6 @@ pub struct UploadZoneProps {
     /// Unique DOM ID prefix preventing collisions when multiple zones appear on one page.
     #[props(default = "upload")]
     pub id_prefix: &'static str,
-    /// Optional explicit status tone override; defaults to inferring from `status`.
-    #[props(default)]
-    pub status_tone: Option<UploadStatusTone>,
     /// Light/dark color theme.
     #[props(default)]
     pub theme: Theme,
@@ -82,7 +57,6 @@ impl core::fmt::Debug for UploadZoneProps {
             .field("accept", &self.accept)
             .field("label", &self.label)
             .field("id_prefix", &self.id_prefix)
-            .field("status_tone", &self.status_tone)
             .field("theme", &self.theme)
             .finish_non_exhaustive()
     }
@@ -95,9 +69,7 @@ pub fn UploadZone(props: UploadZoneProps) -> Element {
     let mut drag_active = props.drag_active;
     let is_drag_active = *drag_active.read();
     let status_text = props.status.read();
-    let tone = props
-        .status_tone
-        .unwrap_or_else(|| UploadStatusTone::from_message(&status_text));
+    let tone_color = status_color(&status_text, colors);
     let input_id = format!("{}-input", props.id_prefix);
     let status_id = format!("{}-status", props.id_prefix);
 
@@ -152,7 +124,7 @@ pub fn UploadZone(props: UploadZoneProps) -> Element {
             role: "status",
             aria_live: "polite",
             aria_atomic: "true",
-            style: StyleBuilder::with_capacity(96).margin(&format!("{} 0 0", Spacing::MD)).font_weight("600").color(tone.color(colors)).build(),
+            style: StyleBuilder::with_capacity(96).margin(&format!("{} 0 0", Spacing::MD)).font_weight("600").color(tone_color).build(),
             "{status_text}"
         }
     }

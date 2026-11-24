@@ -5,7 +5,7 @@
 
 use dioxus::prelude::*;
 use mgf_analysis_core::{HighErrorSmilesDetail, PrecursorStats, WarningDetail};
-use ui::theme::StyleBuilder;
+use ui::StyleBuilder;
 
 use super::plots::format_value;
 

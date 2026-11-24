@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Browser `BlobSource` adapter and re-exported `stream-io` byte-source types.
-
-pub use stream_io::{ChunkSource, SliceSource};
+//! Browser `BlobSource` adapter implementing `stream_io::ChunkSource`.
 
 #[cfg(target_arch = "wasm32")]
-use stream_io::StreamError;
+use stream_io::{ChunkSource, StreamError};
 
 /// A [`ChunkSource`] backed by a browser `Blob`.
 #[cfg(target_arch = "wasm32")]

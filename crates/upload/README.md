@@ -13,14 +13,12 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 
 Browser-facing adapter over [`stream_io`] providing:
 
-- `BlobSource` (`wasm32`) --- [`ChunkSource`] backed by a browser `Blob` with a
-  monotonic `performance.now()` clock.
+- `BlobSource` (`wasm32`) --- [`stream_io::ChunkSource`] backed by a browser
+  `Blob` with a monotonic `performance.now()` clock.
 - [`extract_blob_from_file_data`] --- unified file-input / drag-drop extraction
   over `&[FileData]`.
-- [`download_text`] / [`download_svg`] / [`download_with_mime`] --- browser
-  download helpers returning [`UploadError`].
-- Re-exports of [`BlobCursor`], [`BlobLines`], [`ChunkSource`], [`SliceSource`],
-  and [`StreamError`] from [`stream_io`].
+- [`download_text`] / [`download_svg`] --- browser download helpers returning
+  [`UploadError`].
 
 ## License
 

@@ -26,7 +26,10 @@ use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 use json_count_core::{ColumnResult, SortSpec};
-use ui::prelude::*;
+use ui::{
+    ColorScheme, DocumentHead, EdamAnnotations, EdamTerm, Radius, Shadow, SimpleAnalyticsBadge,
+    Spacing, StyleBuilder, Typography, UploadZone, WebMcpConfig, skip_link,
+};
 
 use app_state::{JsonCountCtx, ResultsTable, handle_uploaded_files};
 

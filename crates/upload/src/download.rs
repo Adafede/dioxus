@@ -29,12 +29,12 @@ fn blob_url_from_str(content: &str, mime: &str) -> Result<String, UploadError> {
         .map_err(|e| UploadError::DownloadFailed(format!("failed to create object URL: {e:?}")))
 }
 
-/// Triggers a browser download of `content` with an explicit MIME type.
-///
-/// # Errors
-/// Returns [`UploadError`] if running outside a browser or if DOM download APIs fail.
 #[cfg(target_arch = "wasm32")]
-pub fn download_with_mime(content: &str, filename: &str, mime: &str) -> Result<(), UploadError> {
+pub(crate) fn download_with_mime(
+    content: &str,
+    filename: &str,
+    mime: &str,
+) -> Result<(), UploadError> {
     let safe_name = sanitize_filename(filename);
     let url = blob_url_from_str(content, mime)?;
 
@@ -94,8 +94,10 @@ fn click_download_anchor(href: &str, filename: &str) -> Result<(), UploadError> 
     Ok(())
 }
 
+#[cfg(any(test, target_arch = "wasm32"))]
 const MAX_FILENAME_BYTES: usize = 255;
 
+#[cfg(any(test, target_arch = "wasm32"))]
 fn is_windows_reserved_stem(stem: &str) -> bool {
     if stem.eq_ignore_ascii_case("CON")
         || stem.eq_ignore_ascii_case("PRN")
@@ -111,6 +113,7 @@ fn is_windows_reserved_stem(stem: &str) -> bool {
         && matches!(suffix.as_bytes().first().copied(), Some(b'1'..=b'9'))
 }
 
+#[cfg(any(test, target_arch = "wasm32"))]
 fn truncate_utf8_filename(name: String, max_bytes: usize) -> String {
     if name.len() <= max_bytes {
         return name;
@@ -138,13 +141,9 @@ fn truncate_utf8_filename(name: String, max_bytes: usize) -> String {
     }
 }
 
-/// Sanitizes a filename for safe browser download.
-///
-/// Replaces path separators, quotes, and Windows-reserved characters with
-/// underscores, strips control characters, prefixes Windows reserved device
-/// stems, and enforces a 255-byte UTF-8 limit.
+#[cfg(any(test, target_arch = "wasm32"))]
 #[must_use]
-pub fn sanitize_filename(input: &str) -> String {
+pub(crate) fn sanitize_filename(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for c in input.trim().chars() {
         if c.is_control() {
@@ -168,13 +167,13 @@ pub fn sanitize_filename(input: &str) -> String {
     truncate_utf8_filename(guarded, MAX_FILENAME_BYTES)
 }
 
-/// Triggers a browser download with an explicit MIME type (native stub).
-///
-/// # Errors
-/// Always returns [`UploadError::BrowserOnly`] on non-WASM targets.
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::missing_const_for_fn)] // wasm32 implementation is non-const DOM calls
-pub fn download_with_mime(_content: &str, _filename: &str, _mime: &str) -> Result<(), UploadError> {
+pub(crate) fn download_with_mime(
+    _content: &str,
+    _filename: &str,
+    _mime: &str,
+) -> Result<(), UploadError> {
     Err(UploadError::BrowserOnly)
 }
 

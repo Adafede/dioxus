@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 use mgf_analysis_core::{
     CalibrationModel, ErrorBucket, RecalibrationStats, ShrinkageLambda, generate_recalibrated_mgf,
 };
-use ui::theme::StyleBuilder;
+use ui::StyleBuilder;
 
 use super::browser::download_recalibrated_mgf;
 use super::plots::{format_recalibrated_compliance, format_value, tolerance_card_style};

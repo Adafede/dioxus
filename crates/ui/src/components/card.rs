@@ -33,7 +33,7 @@ pub struct CardProps {
 ///
 /// ```rust
 /// use dioxus::prelude::*;
-/// use ui::prelude::{Card, Theme};
+/// use ui::{Card, Theme};
 ///
 /// fn app() -> Element {
 ///     rsx! {

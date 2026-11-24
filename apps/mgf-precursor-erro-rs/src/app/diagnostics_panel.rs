@@ -5,7 +5,7 @@
 
 use dioxus::prelude::*;
 use mgf_analysis_core::{ErrorUnit, RecalibrationStats};
-use ui::theme::StyleBuilder;
+use ui::StyleBuilder;
 
 use super::recalibration_panel::RecalibrationSummaryTable;
 use crate::plotting::{

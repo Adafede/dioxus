@@ -2342,6 +2342,7 @@ dependencies = [
  "mgf-analysis-core",
  "plotters",
  "prismatica",
+ "stream-io",
  "thiserror 2.0.21",
  "ui",
  "upload",

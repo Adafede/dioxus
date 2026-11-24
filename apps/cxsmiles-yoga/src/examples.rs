@@ -10,17 +10,17 @@
 
 /// An example input set: `(id, label, one-SMILES-per-line text)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ExampleSet {
+pub(crate) struct ExampleSet {
     /// Short stable identifier used as the segmented control value.
-    pub id: &'static str,
+    pub(crate) id: &'static str,
     /// Human-readable label shown in the example picker.
-    pub label: &'static str,
+    pub(crate) label: &'static str,
     /// Multiline SMILES list (one structure per line).
-    pub smiles: &'static str,
+    pub(crate) smiles: &'static str,
 }
 
 /// The six demo example sets.
-pub const EXAMPLE_SETS: [ExampleSet; 6] = [
+pub(crate) const EXAMPLE_SETS: [ExampleSet; 6] = [
     ExampleSet {
         id: "biphenyl_cl",
         label: "Cl on a biphenyl (m: block)",
@@ -70,7 +70,7 @@ COCCC",
 
 /// Look up an example set by `id`.
 #[must_use]
-pub fn example_smiles(id: &str) -> Option<&'static str> {
+pub(crate) fn example_smiles(id: &str) -> Option<&'static str> {
     EXAMPLE_SETS.iter().find(|e| e.id == id).map(|e| e.smiles)
 }
 

@@ -13,8 +13,8 @@ constants, and styling utilities---all defined in pure Rust.
 
 - **Pure-Rust theme tokens**: Colors, spacing, and typography defined in Rust
   via `StyleBuilder`, `Theme`, `ColorScheme`, `Spacing`, and `Typography`
-- **Document head helper**: [`DocumentHead`](prelude::DocumentHead) manages page
-  metadata, theme setup, and JSON-LD directly from Rust
+- **Document head helper**: [`DocumentHead`] manages page metadata, theme setup,
+  and JSON-LD directly from Rust
 - **Accessible components**: Semantic HTML landmarks, keyboard navigation, and
   high-contrast light/dark palettes
 
@@ -22,7 +22,7 @@ constants, and styling utilities---all defined in pure Rust.
 
 ```rust
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::{Card, Footer, Header, Spacing, StyleBuilder};
 
 fn app() -> Element {
     rsx! {

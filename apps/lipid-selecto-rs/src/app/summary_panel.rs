@@ -8,7 +8,7 @@ use lipid_core::{
     Analysis, ChemicalClass, ClassMatchSet, FilterCriteria, LipidFamily, LipidFormat,
     collect_adduct_options, lmsd_classes_by_family,
 };
-use ui::prelude::*;
+use ui::{ColorScheme, StyleBuilder};
 
 use super::download::download_filtered;
 use super::filter_controls::filter_controls_row;

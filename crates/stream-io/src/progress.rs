@@ -5,7 +5,7 @@
 
 /// Throttles callbacks based on bytes processed and monotonic time elapsed.
 #[derive(Debug)]
-pub struct ProgressThrottler<F, T> {
+pub(crate) struct ProgressThrottler<F, T> {
     last_reported_bytes: u64,
     last_reported_time: f64,
     callback: F,
@@ -21,7 +21,12 @@ where
 {
     /// Creates a new throttler with the given callback and time source.
     #[must_use]
-    pub fn new(callback: F, time_fn: T, byte_threshold: u64, time_threshold_ms: f64) -> Self {
+    pub(crate) fn new(
+        callback: F,
+        time_fn: T,
+        byte_threshold: u64,
+        time_threshold_ms: f64,
+    ) -> Self {
         let now = time_fn();
         Self {
             last_reported_bytes: 0,
@@ -34,7 +39,7 @@ where
     }
 
     /// Invokes the callback if either byte or time threshold has elapsed.
-    pub fn maybe_report(&mut self, processed: u64, total: u64) -> bool {
+    pub(crate) fn maybe_report(&mut self, processed: u64, total: u64) -> bool {
         let now = (self.time_fn)();
         if now < self.last_reported_time {
             self.last_reported_time = now;
@@ -55,10 +60,10 @@ where
 }
 
 /// Default byte interval for progress reporting (`4 MiB`).
-pub const PROGRESS_BYTE_INTERVAL: u64 = 4 * 1024 * 1024;
+pub(crate) const PROGRESS_BYTE_INTERVAL: u64 = 4 * 1024 * 1024;
 
 /// Default time interval for progress reporting (`120 ms`).
-pub const PROGRESS_TIME_INTERVAL_MS: f64 = 120.0;
+pub(crate) const PROGRESS_TIME_INTERVAL_MS: f64 = 120.0;
 
 #[cfg(test)]
 mod tests;

@@ -82,7 +82,7 @@ fn download_helpers_fail_on_native() {
             Err(crate::UploadError::BrowserOnly)
         );
         assert_eq!(
-            crate::download_with_mime("{}", "out.json", "application/json"),
+            super::download_with_mime("{}", "out.json", "application/json"),
             Err(crate::UploadError::BrowserOnly)
         );
     }

@@ -25,7 +25,7 @@ pub struct FooterProps {
 ///
 /// ```rust
 /// use dioxus::prelude::*;
-/// use ui::prelude::{Footer, Theme};
+/// use ui::{Footer, Theme};
 ///
 /// fn app() -> Element {
 ///     rsx! {

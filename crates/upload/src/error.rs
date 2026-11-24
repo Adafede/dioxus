@@ -27,14 +27,6 @@ pub enum UploadError {
     FileExtraction(String),
 }
 
-impl UploadError {
-    /// Convenience wrapper for a custom streaming validation failure.
-    #[must_use]
-    pub fn other(msg: impl Into<String>) -> Self {
-        Self::Stream(StreamError::other(msg))
-    }
-}
-
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn format_js_value(value: &wasm_bindgen::JsValue) -> String {
     use wasm_bindgen::JsCast;
@@ -77,6 +69,5 @@ mod tests {
             UploadError::from(StreamError::LineTooLong { max_bytes: 128 }).to_string(),
             "line exceeds maximum length of 128 bytes"
         );
-        assert_eq!(UploadError::other("bad magic").to_string(), "bad magic");
     }
 }

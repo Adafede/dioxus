@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the index project
 
-//! UI components for the landing page.
+//! Application card backed by the shared [`ui::Card`] component.
 
-mod app_card;
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus component macro generates a Props helper empty enum"
+)]
 
-pub(crate) use app_card::AppCard;
+use dioxus::prelude::*;
+use ui::Card;
 
 /// Metadata for an application card.
 ///
@@ -20,4 +24,16 @@ pub(crate) struct AppInfo {
     pub(crate) path: &'static str,
     /// Short, clear description of functionality.
     pub(crate) description: &'static str,
+}
+
+/// Card for a single application: `<article>` wrapping an `<h2>` link and a description.
+#[component]
+pub(crate) fn AppCard(app: AppInfo) -> Element {
+    rsx! {
+        Card {
+            title: app.title.to_string(),
+            href: Some(app.path.to_string()),
+            "{app.description}"
+        }
+    }
 }

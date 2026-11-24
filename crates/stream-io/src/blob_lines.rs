@@ -10,7 +10,7 @@ use crate::error::StreamError;
 use crate::progress::{PROGRESS_BYTE_INTERVAL, PROGRESS_TIME_INTERVAL_MS, ProgressThrottler};
 
 /// Default cap on a single buffered line (`64 MiB`).
-pub const DEFAULT_MAX_LINE_BYTES: usize = 64 * 1024 * 1024;
+pub(crate) const DEFAULT_MAX_LINE_BYTES: usize = 64 * 1024 * 1024;
 
 /// A line-oriented, chunked reader yielding lines without trailing `\n` or `\r\n`.
 #[derive(Debug)]
@@ -55,8 +55,9 @@ where
     }
 
     /// Overrides the maximum allowed line length in bytes, clamped to at least 1 byte.
+    #[cfg_attr(not(test), expect(dead_code, reason = "configured in unit tests"))]
     #[must_use]
-    pub const fn with_max_line_bytes(mut self, bytes: usize) -> Self {
+    pub(crate) const fn with_max_line_bytes(mut self, bytes: usize) -> Self {
         self.max_line_bytes = if bytes == 0 { 1 } else { bytes };
         self
     }

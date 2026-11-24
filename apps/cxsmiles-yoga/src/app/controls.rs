@@ -4,7 +4,7 @@
 //! Input controls and example picker items for `cxsmiles-yoga`.
 
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::{ColorScheme, Radius, SegmentedControlItem, Shadow, Spacing, StyleBuilder, Typography};
 
 use crate::examples::{EXAMPLE_SETS, ExampleSet};
 

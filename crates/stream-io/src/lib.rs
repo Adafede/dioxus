@@ -32,18 +32,17 @@
 #![allow(clippy::future_not_send)]
 #![warn(missing_docs)]
 
-pub mod blob_cursor;
-pub mod blob_lines;
+mod blob_cursor;
+mod blob_lines;
 mod buffer;
-pub mod bytes;
+mod bytes;
 mod error;
 mod progress;
 
 pub use blob_cursor::BlobCursor;
-pub use blob_lines::{BlobLines, DEFAULT_MAX_LINE_BYTES};
+pub use blob_lines::BlobLines;
 pub use bytes::{ChunkSource, SliceSource};
 pub use error::StreamError;
-pub use progress::{PROGRESS_BYTE_INTERVAL, PROGRESS_TIME_INTERVAL_MS, ProgressThrottler};
 
 /// Default chunk size per read (`16 MiB`).
-pub const DEFAULT_CHUNK_SIZE: usize = 16 * 1024 * 1024;
+pub(crate) const DEFAULT_CHUNK_SIZE: usize = 16 * 1024 * 1024;

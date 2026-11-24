@@ -50,7 +50,7 @@ pub struct ButtonProps {
 ///
 /// ```rust
 /// use dioxus::prelude::*;
-/// use ui::prelude::{Button, ButtonVariant};
+/// use ui::{Button, ButtonVariant};
 ///
 /// fn app() -> Element {
 ///     rsx! {

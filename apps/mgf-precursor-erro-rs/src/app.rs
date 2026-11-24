@@ -12,7 +12,10 @@ use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 use mgf_analysis_core::{CalibrationModel, ErrorUnit, PrecursorStats, ShrinkageLambda};
-use ui::prelude::*;
+use ui::{
+    DocumentHead, EdamAnnotations, EdamTerm, SimpleAnalyticsBadge, StyleBuilder, UploadZone,
+    WebMcpConfig, skip_link,
+};
 
 mod browser;
 mod diagnostics_panel;

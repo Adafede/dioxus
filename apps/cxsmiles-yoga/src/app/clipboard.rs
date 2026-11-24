@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::{ColorScheme, Radius, StyleBuilder, Typography};
 
 #[cfg(target_arch = "wasm32")]
 fn copy_to_clipboard(text: &str) -> bool {

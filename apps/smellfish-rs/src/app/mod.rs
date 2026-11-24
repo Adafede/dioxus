@@ -5,7 +5,7 @@
 
 use crate::document_head::SmellfishDocumentHead;
 use dioxus::prelude::*;
-use ui::prelude::{SimpleAnalyticsBadge, skip_link};
+use ui::{SimpleAnalyticsBadge, skip_link};
 
 pub(crate) mod browser;
 mod footer;

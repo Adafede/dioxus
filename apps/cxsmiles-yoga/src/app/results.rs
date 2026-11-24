@@ -8,7 +8,7 @@ use std::sync::Arc;
 use chem_depict::{render_smiles_svg, render_smiles_svg_highlighted};
 use cxsmiles_core::{ConstructKind, CxResult};
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::{Card, ColorScheme, NoticeBar, NoticeTone, Radius, StyleBuilder, Typography};
 
 use super::clipboard::CopyCell;
 

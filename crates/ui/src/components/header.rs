@@ -29,7 +29,7 @@ pub struct HeaderProps {
 ///
 /// ```rust
 /// use dioxus::prelude::*;
-/// use ui::prelude::Header;
+/// use ui::Header;
 ///
 /// fn app() -> Element {
 ///     rsx! {

@@ -4,7 +4,7 @@
 //! Mass/precursor bound inputs and adduct selector row for the summary panel.
 
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::StyleBuilder;
 
 use super::types::SummaryFilters;
 

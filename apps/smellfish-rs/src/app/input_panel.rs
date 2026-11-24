@@ -11,7 +11,7 @@
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
-use ui::prelude::{Button, ButtonVariant};
+use ui::{Button, ButtonVariant};
 
 use super::browser::{ImportSignals, attempt_import, attempt_import_from_text};
 

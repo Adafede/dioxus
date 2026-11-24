@@ -5,7 +5,7 @@
 
 use dioxus::prelude::*;
 use lipid_core::{Analysis, FilterCriteria, GalleryItem, passes_item_filters};
-use ui::prelude::*;
+use ui::{ColorScheme, StyleBuilder};
 
 use super::types::SummaryFilters;
 

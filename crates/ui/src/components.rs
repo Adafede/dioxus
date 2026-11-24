@@ -5,23 +5,14 @@
 //!
 //! All components use pure Rust styling via [`crate::theme`], no external CSS files.
 
-mod button;
-mod card;
-mod footer;
-mod header;
-mod notice;
-mod segmented_control;
+pub(crate) mod button;
+pub(crate) mod card;
+pub(crate) mod footer;
+pub(crate) mod header;
+pub(crate) mod notice;
+pub(crate) mod segmented_control;
 pub(crate) mod simple_analytics_badge;
-mod upload_zone;
-
-pub use button::{Button, ButtonVariant};
-pub use card::Card;
-pub use footer::Footer;
-pub use header::Header;
-pub use notice::{NoticeBar, NoticeTone};
-pub use segmented_control::{SegmentedControl, SegmentedControlItem};
-pub use simple_analytics_badge::SimpleAnalyticsBadge;
-pub use upload_zone::{UploadStatusTone, UploadZone, UploadZoneProps};
+pub(crate) mod upload_zone;
 
 #[cfg(test)]
 pub(super) fn render_debug(app: fn() -> dioxus::prelude::Element) -> String {

@@ -16,11 +16,14 @@
 //! ```
 
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::{
+    ColorScheme, DocumentHead, EdamAnnotations, EdamTerm, Footer, Header, Radius,
+    SimpleAnalyticsBadge, Spacing, StyleBuilder, Typography, WebMcpConfig, skip_link,
+};
 
-mod components;
+mod app_card;
 
-use components::{AppCard, AppInfo};
+use app_card::{AppCard, AppInfo};
 
 /// Root application component: theme-aware landing page.
 #[component]

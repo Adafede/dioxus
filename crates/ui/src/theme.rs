@@ -27,7 +27,7 @@ impl Theme {
 
     /// Returns the card shadow token appropriate for this theme.
     #[must_use]
-    pub const fn card_shadow(self) -> &'static str {
+    pub(crate) const fn card_shadow(self) -> &'static str {
         match self {
             Self::Light => Shadow::SM,
             Self::Dark => Shadow::SM_DARK,
@@ -38,20 +38,35 @@ impl Theme {
 /// Color palette for light and dark themes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ColorScheme {
+    /// Primary page background.
     pub bg: &'static str,
+    /// Secondary background.
     pub bg2: &'static str,
+    /// Primary card/surface background.
     pub surface: &'static str,
+    /// Elevated/nested surface background.
     pub surface2: &'static str,
+    /// Hairline border color.
     pub border: &'static str,
+    /// Primary body text color.
     pub text: &'static str,
+    /// Secondary text color.
     pub text2: &'static str,
+    /// Muted/helper text color.
     pub text3: &'static str,
+    /// Primary brand/action accent color.
     pub accent: &'static str,
+    /// Hover/active accent color.
     pub accent2: &'static str,
+    /// Positive status color.
     pub green: &'static str,
+    /// Error/danger status color.
     pub red: &'static str,
+    /// Informational status color.
     pub blue: &'static str,
+    /// Warning status color.
     pub yellow: &'static str,
+    /// Secondary category highlight color.
     pub(crate) purple: &'static str,
 }
 
@@ -100,9 +115,13 @@ impl ColorScheme {
 pub struct Spacing;
 
 impl Spacing {
+    /// Small spacing (`10px`).
     pub const SM: &'static str = "10px";
+    /// Medium spacing (`14px`).
     pub const MD: &'static str = "14px";
+    /// Large spacing (`20px`).
     pub const LG: &'static str = "20px";
+    /// Extra-large spacing (`28px`).
     pub const XL: &'static str = "28px";
 }
 
@@ -111,8 +130,11 @@ impl Spacing {
 pub struct Radius;
 
 impl Radius {
+    /// Small border radius (`4px`).
     pub const SM: &'static str = "4px";
+    /// Medium border radius (`10px`).
     pub const MD: &'static str = "10px";
+    /// Large border radius (`16px`).
     pub const LG: &'static str = "16px";
 }
 
@@ -121,8 +143,11 @@ impl Radius {
 pub struct Shadow;
 
 impl Shadow {
+    /// Subtle hairline shadow.
     pub const XS: &'static str = "0 1px 2px rgba(15, 23, 42, 0.06)";
+    /// Standard light-mode card shadow.
     pub const SM: &'static str = "0 4px 14px rgba(15, 23, 42, 0.06)";
+    /// Elevated panel shadow.
     pub const MD: &'static str = "0 10px 30px rgba(15, 23, 42, 0.09)";
     pub(crate) const SM_DARK: &'static str = "0 4px 14px rgba(0, 0, 0, 0.35)";
 }
@@ -132,21 +157,28 @@ impl Shadow {
 pub struct Typography;
 
 impl Typography {
+    /// Small label font size.
     pub const LABEL: &'static str = "clamp(0.6875rem, 0.66rem + 0.14vw, 0.75rem)";
+    /// Compact UI control font size.
     pub const UI: &'static str = "clamp(0.8125rem, 0.785rem + 0.16vw, 0.875rem)";
+    /// Body copy font size.
     pub const BODY: &'static str = "clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem)";
+    /// Section heading (`h2`) font size.
     pub const H2: &'static str = "clamp(1.125rem, 1.02rem + 0.6vw, 1.5rem)";
+    /// Page title (`h1`) font size.
     pub const H1: &'static str = "clamp(1.375rem, 1.1rem + 0.85vw, 1.85rem)";
+    /// Standard body line height.
     pub const LINE_HEIGHT: &'static str = "1.5";
+    /// Sans-serif font stack.
     pub const SANS: &'static str = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif";
 }
 
 /// Motion settings shared by components.
 #[derive(Clone, Copy, Debug)]
-pub struct Interaction;
+pub(crate) struct Interaction;
 
 impl Interaction {
-    pub const TRANSITION_DEFAULT: &'static str = "200ms ease-in-out";
+    pub(crate) const TRANSITION_DEFAULT: &'static str = "200ms ease-in-out";
 }
 
 /// Style string builder for inline CSS attributes.
@@ -159,6 +191,7 @@ pub struct StyleBuilder {
 macro_rules! style_props {
     ($( $method:ident => $css:literal ),* $(,)?) => {
         $(
+            #[doc = concat!("Appends CSS property `", $css, "`.")]
             pub fn $method(self, value: &str) -> Self {
                 self.property($css, value)
             }
@@ -179,6 +212,7 @@ impl StyleBuilder {
         }
     }
 
+    /// Appends an arbitrary CSS `name: value` declaration.
     pub fn property(mut self, name: &str, value: &str) -> Self {
         if !self.css.is_empty() {
             self.css.push_str("; ");
@@ -220,6 +254,7 @@ impl StyleBuilder {
         border_left => "border-left",
     }
 
+    /// Consumes the builder and returns the assembled CSS string.
     #[must_use]
     pub fn build(self) -> String {
         self.css

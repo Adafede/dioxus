@@ -8,7 +8,7 @@ use mgf_analysis_core::{
     CalibrationModel, ErrorBucket, ErrorUnit, PrecursorStats, ShrinkageLambda,
     compute_recalibration_diagnostics,
 };
-use ui::prelude::*;
+use ui::StyleBuilder;
 
 use super::diagnostics_panel::DiagnosticsPanel;
 use super::plots::{

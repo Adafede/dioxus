@@ -27,8 +27,8 @@
 //! cargo nextest run -p cxsmiles-core -p cxsmiles-yoga
 //! ```
 
-pub mod app;
-pub mod examples;
+mod app;
+mod examples;
 
 /// Root application component. The only externally consumed item.
 pub use app::app;

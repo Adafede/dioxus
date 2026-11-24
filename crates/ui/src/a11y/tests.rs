@@ -8,7 +8,7 @@ use dioxus::prelude::*;
 fn the_focus_rule_overrides_the_offset_the_inline_style_parks_it_with() {
     assert!(
         SKIP_LINK_STYLE.contains("top:-100%"),
-        "SKIP_LINK_STYLE no longer parks the link off-screen"
+        "SKIP_LINK_STYLE must park the link off-screen"
     );
     assert!(
         SKIP_LINK_FOCUS_CSS.contains("top: 0 !important"),

@@ -10,7 +10,7 @@
 //!
 //! - **Pure-Rust theme tokens**: Colors, spacing, and typography defined in
 //!   Rust via `StyleBuilder`, `Theme`, `ColorScheme`, `Spacing`, and `Typography`
-//! - **Document head helper**: [`DocumentHead`](prelude::DocumentHead) manages
+//! - **Document head helper**: [`DocumentHead`] manages
 //!   page metadata, theme setup, and JSON-LD directly from Rust
 //! - **Accessible components**: Semantic HTML landmarks, keyboard navigation,
 //!   and high-contrast light/dark palettes
@@ -19,7 +19,7 @@
 //!
 //! ```rust
 //! use dioxus::prelude::*;
-//! use ui::prelude::*;
+//! use ui::{Card, Footer, Header, Spacing, StyleBuilder};
 //!
 //! fn app() -> Element {
 //!     rsx! {
@@ -40,27 +40,25 @@
 //! dom.rebuild_in_place();
 //! ```
 
+#![warn(missing_docs)]
+
 mod a11y;
 mod components;
 mod document;
 mod signals;
-/// Theme design tokens, [`Theme`](theme::Theme), and [`StyleBuilder`](theme::StyleBuilder).
-pub mod theme;
+mod theme;
 mod url;
 mod webmcp;
 
-/// Convenience re-exports of the most commonly used UI primitives.
-pub mod prelude {
-    pub use crate::a11y::{SKIP_LINK_STYLE, skip_link};
-    pub use crate::components::{
-        Button, ButtonVariant, Card, Footer, Header, NoticeBar, NoticeTone, SegmentedControl,
-        SegmentedControlItem, SimpleAnalyticsBadge, UploadStatusTone, UploadZone, UploadZoneProps,
-    };
-    pub use crate::document::DocumentHead;
-    pub use crate::theme::{
-        ColorScheme, Interaction, Radius, Shadow, Spacing, StyleBuilder, Theme, Typography,
-    };
-    /// `capabilities_script` stays crate-private: apps opt in by passing
-    /// `webmcp: Some(..)` to [`DocumentHead`], which builds the script itself.
-    pub use crate::webmcp::{EdamAnnotations, EdamTerm, WebMcpConfig};
-}
+pub use a11y::skip_link;
+pub use components::button::{Button, ButtonVariant};
+pub use components::card::Card;
+pub use components::footer::Footer;
+pub use components::header::Header;
+pub use components::notice::{NoticeBar, NoticeTone};
+pub use components::segmented_control::{SegmentedControl, SegmentedControlItem};
+pub use components::simple_analytics_badge::SimpleAnalyticsBadge;
+pub use components::upload_zone::UploadZone;
+pub use document::DocumentHead;
+pub use theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Theme, Typography};
+pub use webmcp::{EdamAnnotations, EdamTerm, WebMcpConfig};

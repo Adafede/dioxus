@@ -5,7 +5,7 @@
 
 use dioxus::prelude::*;
 use lipid_core::{ChemicalClass, LipidFamily, lmsd_classes, lmsd_classes_by_family};
-use ui::prelude::*;
+use ui::{ColorScheme, StyleBuilder};
 
 /// Displays all 86 compiled LMSD main classes organized into expandable families.
 #[component]

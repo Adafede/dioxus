@@ -5,7 +5,7 @@
 
 use dioxus::prelude::*;
 use mgf_analysis_core::{ErrorBucket, ErrorUnit, PrecursorStats, RecalibrationStats};
-use ui::theme::StyleBuilder;
+use ui::StyleBuilder;
 
 use crate::plotting::{
     make_svg_responsive, render_absolute_mass_bias_svg, render_ecdf_svg, tolerance_step_color,

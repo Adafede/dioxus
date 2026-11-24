@@ -26,10 +26,6 @@ pub enum StreamError {
         /// Configured line length limit in bytes.
         max_bytes: usize,
     },
-
-    /// A caller-supplied streaming validation failure.
-    #[error("{0}")]
-    Other(String),
 }
 
 impl StreamError {
@@ -37,12 +33,6 @@ impl StreamError {
     #[must_use]
     pub fn io(msg: impl Into<String>) -> Self {
         Self::Io(msg.into())
-    }
-
-    /// Creates a custom streaming error message.
-    #[must_use]
-    pub fn other(msg: impl Into<String>) -> Self {
-        Self::Other(msg.into())
     }
 }
 
@@ -64,6 +54,5 @@ mod tests {
             StreamError::LineTooLong { max_bytes: 128 }.to_string(),
             "line exceeds maximum length of 128 bytes"
         );
-        assert_eq!(StreamError::other("bad magic").to_string(), "bad magic");
     }
 }

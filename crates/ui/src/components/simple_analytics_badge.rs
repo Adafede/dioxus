@@ -18,7 +18,13 @@ pub(crate) const ANALYTICS_PIXEL_CSS: &str = ".analytics-pixel { position: absol
 /// Renders the `SimpleAnalytics` badge for `domain` and the JavaScript-free
 /// `noscript.gif` pixel as a centered footer.
 #[component]
-pub fn SimpleAnalyticsBadge(domain: String, #[props(default)] path: Option<String>) -> Element {
+pub fn SimpleAnalyticsBadge(
+    /// Public domain reported to Simple Analytics.
+    domain: String,
+    /// Optional URL path appended to the no-JS pixel URL.
+    #[props(default)]
+    path: Option<String>,
+) -> Element {
     let footer_style = StyleBuilder::with_capacity(48)
         .padding("0.5rem")
         .text_align("center")

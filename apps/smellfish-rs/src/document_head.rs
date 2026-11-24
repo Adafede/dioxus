@@ -11,7 +11,7 @@
 use crate::rdkit_bridge::RDKIT_BRIDGE_JS;
 use crate::styles::CSS;
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::{DocumentHead, EdamAnnotations, EdamTerm, WebMcpConfig};
 
 /// Renders the document `<head>` for smellfish-rs.
 #[component]
