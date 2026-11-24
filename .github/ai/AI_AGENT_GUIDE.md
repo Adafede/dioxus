@@ -14,12 +14,14 @@
   Apps must use `StyleBuilder` or local style helpers instead of raw
   `style: "..."` strings. `ui::shared_signal!` / `ui::shared_signals!` collapse
   host vs. `wasm32` `use_signal` mutability pairs.
-- `crates/upload` --- Streaming file I/O and downloads for WASM apps:
-  `BlobCursor`, `BlobLines`, `BlobSource` (`wasm32`), `ChunkSource`,
-  `SliceSource`, `UploadError`, `extract_blob_from_file_data`, `Blob`,
-  `ExtractedFile`, and `download_text` / `download_svg` / `download_with_mime`.
-  `crates/upload/tests/gate_consistency/` holds the repository-wide structural,
-  documentation, and ratchet integration tests.
+- `crates/stream-io` --- Portable async chunked byte and line streaming
+  (`BlobCursor`, `BlobLines`, `ChunkSource`, `SliceSource`, `StreamError`).
+- `crates/upload` --- Browser `BlobSource` (`wasm32`), Dioxus `FileData`
+  extraction (`extract_blob_from_file_data`, `Blob`, `ExtractedFile`),
+  `UploadError`, and `download_text` / `download_svg` / `download_with_mime`
+  (re-exporting `stream-io` streaming types).
+- `crates/workspace-gates` --- `tests/gate_consistency/` holding repository-wide
+  structural, documentation, and ratchet integration tests.
 
 ### Applications (`apps/`)
 
