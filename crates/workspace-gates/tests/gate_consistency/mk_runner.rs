@@ -38,15 +38,20 @@ fn mk_holds_the_no_workspace_flag() -> Result<()> {
     }
 
     let mk = read("mk")?;
+    let tier = read(".mk/tier.sh")?;
     assert!(
-        mk.contains("--no-workspace"),
-        "`./mk` does not pass `--no-workspace`. Without it every task runs once \
+        mk.contains(".mk/tier.sh"),
+        "`./mk` does not source `.mk/tier.sh` where `cargo_make()` lives"
+    );
+    assert!(
+        tier.contains("--no-workspace"),
+        "`.mk/tier.sh` does not pass `--no-workspace`. Without it every task runs once \
          per workspace member; see the header comment in the file."
     );
     assert!(
-        !mk.contains("exec cargo make"),
-        "`cargo_make()` in `./mk` must not `exec`, otherwise `LOCAL_CI_GATES` exits \
-         after the first `local:*` task instead of running the full loop"
+        !mk.contains("exec cargo make") && !tier.contains("exec cargo make"),
+        "`cargo_make()` in `./mk` / `.mk/tier.sh` must not `exec`, otherwise `LOCAL_CI_GATES` \
+         exits after the first `local:*` task instead of running the full loop"
     );
     Ok(())
 }

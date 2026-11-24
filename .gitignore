@@ -130,3 +130,7 @@ opencode.json
 .obsidian/
 *.agent-scratch*
 mutants.out*/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
