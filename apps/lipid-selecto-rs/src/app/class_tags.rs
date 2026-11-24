@@ -137,15 +137,10 @@ pub(super) fn insert_class_comment(block_raw: &str, class_tags: &[(String, Strin
     let split_pos = block_raw
         .find(|c: char| !c.is_whitespace())
         .filter(|&begin_pos| {
-            let prefix = "BEGIN IONS";
-            block_raw.get(begin_pos..).is_some_and(|rest| {
-                rest.get(..prefix.len())
-                    .is_some_and(|head| head.eq_ignore_ascii_case(prefix))
-                    && rest
-                        .get(prefix.len()..)
-                        .and_then(|tail| tail.chars().next())
-                        .is_none_or(char::is_whitespace)
-            })
+            block_raw
+                .get(begin_pos..)
+                .and_then(|rest| rest.lines().next())
+                .is_some_and(|line| mgf::is_ions_marker(line, "BEGIN IONS"))
         })
         .and_then(|begin_pos| {
             block_raw

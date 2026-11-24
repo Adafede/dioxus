@@ -296,6 +296,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "chem-depict"
+version = "0.1.0"
+dependencies = [
+ "chematic",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "chematic"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -738,6 +746,7 @@ dependencies = [
 name = "cxsmiles-yoga"
 version = "0.1.0"
 dependencies = [
+ "chem-depict",
  "chematic",
  "dioxus",
  "gloo-timers 0.4.1",
@@ -2104,10 +2113,12 @@ checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 name = "lipid-selecto-rs"
 version = "0.1.0"
 dependencies = [
+ "chem-depict",
  "chematic",
  "dioxus",
  "gloo-timers 0.4.1",
  "js-sys",
+ "mgf",
  "ui",
  "upload",
  "wasm-bindgen",
@@ -2287,12 +2298,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mgf"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "mgf-precursor-erro-rs"
 version = "0.1.0"
 dependencies = [
  "chematic",
  "dioxus",
  "js-sys",
+ "mgf",
  "molecular-formulas",
  "plotters",
  "prismatica",

@@ -1,0 +1,18 @@
+[package]
+name = "mgf"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Streaming MGF spectrum block parser and header/peak model"
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["mass-spectrometry", "mgf", "parser", "spectrum", "streaming"]
+categories = ["parsing", "science"]
+publish = false
+
+[dependencies]
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

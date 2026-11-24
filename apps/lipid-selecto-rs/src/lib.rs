@@ -60,7 +60,6 @@
 
 pub(crate) mod app;
 pub(crate) mod chemical_class;
-pub(crate) mod depict_simple;
 pub(crate) mod examples;
 pub(crate) mod format;
 pub(crate) mod lipids;

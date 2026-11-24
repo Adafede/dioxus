@@ -1,0 +1,19 @@
+[package]
+name = "chem-depict"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Panic-guarded chematic SMILES parsing and 2D SVG depiction"
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["chematic", "cheminformatics", "depiction", "smiles", "svg"]
+categories = ["science", "visualization"]
+publish = false
+
+[dependencies]
+chematic = { workspace = true, features = ["chem", "depict", "smiles"] }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

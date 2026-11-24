@@ -46,7 +46,7 @@
 
 pub mod app;
 pub mod cxsmiles;
-pub mod depict;
+pub use chem_depict as depict;
 pub mod examples;
 
 /// Root application component. The only externally consumed item.

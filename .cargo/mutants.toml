@@ -48,8 +48,6 @@ exclude_globs = [
   "**/main.rs",
   "**/app.rs",
   "**/app/**",
-  "**/depict.rs",
-  "**/depict_simple.rs",
   "**/examples.rs",
   "**/plotting/**",
   # The browser entry points of `json-count-rs`, in a file of their own for this

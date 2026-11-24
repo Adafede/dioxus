@@ -15,7 +15,8 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-chematic = { workspace = true, features = ["chem", "depict", "fp", "smarts", "smiles"] }
+chem-depict = { path = "../../crates/chem-depict", version = "0.1" }
+chematic = { workspace = true, features = ["chem", "fp", "smarts", "smiles"] }
 dioxus = { workspace = true }
 rustc-hash = { workspace = true }
 ui = { path = "../../crates/ui", version = "0.1" }

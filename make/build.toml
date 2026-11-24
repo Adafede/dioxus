@@ -16,11 +16,13 @@ script = "cargo check --workspace --all-targets --locked"
 cwd = "${REPO_ROOT}"
 description = "Type-check each wasm app for wasm32-unknown-unknown."
 dependencies = [
+  "check-wasm-chem-depict",
   "check-wasm-cxsmiles-yoga",
   "check-wasm-index",
   "check-wasm-json-count-rs",
   "check-wasm-lipid-selecto-rs",
   "check-wasm-mgf",
+  "check-wasm-mgf-crate",
   "check-wasm-smellfish-rs",
   "check-wasm-stream-io",
 ]
@@ -59,6 +61,16 @@ script = "cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked"
 cwd = "${REPO_ROOT}"
 description = "Type-check stream-io for wasm32-unknown-unknown."
 script = "cargo check -p stream-io --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-chem-depict"]
+cwd = "${REPO_ROOT}"
+description = "Type-check chem-depict for wasm32-unknown-unknown."
+script = "cargo check -p chem-depict --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-mgf-crate"]
+cwd = "${REPO_ROOT}"
+description = "Type-check mgf for wasm32-unknown-unknown."
+script = "cargo check -p mgf --target wasm32-unknown-unknown --locked"
 
 # Every feature combination in the workspace.
 #

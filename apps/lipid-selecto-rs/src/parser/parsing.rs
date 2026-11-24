@@ -21,7 +21,7 @@ use crate::lipids::{classify_acyclic_molecule, classify_formula, is_acyclic};
 #[cfg(any(test, target_arch = "wasm32"))]
 use chematic::chem;
 #[cfg(any(test, target_arch = "wasm32"))]
-use chematic::smiles;
+use mgf::{is_ions_marker, parse_leading_float};
 use std::collections::HashMap;
 
 /// One `BEGIN IONS ... END IONS` record from the source MGF, together with the
@@ -95,7 +95,7 @@ impl SpectrumBlock {
             "CHARGE" => self.charge = Some(value.to_string()),
             "ADDUCT" => self.adduct = Some(value.to_string()),
             "IONMODE" => self.ion_mode = Some(value.to_ascii_lowercase()),
-            "PEPMASS" => self.precursor_mz = parse_first_float(value),
+            "PEPMASS" => self.precursor_mz = parse_leading_float(value),
             "PRECURSOR_MZ" => self.precursor_mz = value.parse().ok(),
             "TITLE" => self.title = Some(value.to_string()),
             "NAME" | "SCANS" if self.title.is_none() => self.title = Some(value.to_string()),
@@ -138,8 +138,7 @@ impl SpectrumBlock {
 
         if let Some(smiles_str) = self.psm_smiles.as_deref().map(str::trim)
             && !smiles_str.is_empty()
-            && let Ok(Ok(molecule)) =
-                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| smiles::parse(smiles_str)))
+            && let Ok(molecule) = chem_depict::parse_smiles_safe(smiles_str)
         {
             self.exact_mass = chem::exact_mass(&molecule);
             if is_acyclic(&molecule) {
@@ -183,25 +182,6 @@ impl SpectrumBlock {
         });
         self.gallery_item_matches = Some(matches);
     }
-}
-
-#[cfg(any(test, target_arch = "wasm32"))]
-fn parse_first_float(text: &str) -> Option<f64> {
-    text.split_whitespace()
-        .next()
-        .and_then(|value| value.parse::<f64>().ok())
-}
-
-/// Detect an MGF section marker (`BEGIN IONS` / `END IONS`, case-insensitive).
-#[cfg(any(test, target_arch = "wasm32"))]
-fn is_ions_marker(line: &str, marker: &str) -> bool {
-    let trimmed = line.trim();
-    trimmed
-        .get(..marker.len())
-        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(marker))
-        && trimmed
-            .get(marker.len()..)
-            .is_some_and(|rest| rest.is_empty() || rest.starts_with(char::is_whitespace))
 }
 
 /// Incremental streaming builder that splits MGF or SMILES lines into
@@ -383,11 +363,8 @@ fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
         return None;
     }
 
-    let is_valid_smiles = |s: &str| {
-        !s.contains(char::is_whitespace)
-            && std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| smiles::parse(s).is_ok()))
-                .unwrap_or(false)
-    };
+    let is_valid_smiles =
+        |s: &str| !s.contains(char::is_whitespace) && chem_depict::parse_smiles_safe(s).is_ok();
     let looks_like_id = |s: &str| {
         s.chars()
             .all(|c| c.is_alphanumeric() || c == '_' || c == '-')

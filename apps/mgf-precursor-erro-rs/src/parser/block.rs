@@ -21,6 +21,7 @@ use crate::metrics::{AdductFamily, ErrorMeasurement, PrecursorStats, WarningDeta
 
 use super::adduct::{expected_precursor_mz, is_supported_adduct, normalize_adduct_label};
 use super::mass::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached};
+use mgf::parse_leading_float;
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct BlockParseState {
@@ -34,19 +35,6 @@ pub(crate) struct BlockParseState {
     smiles: Option<String>,
     formula: Option<String>,
     fragment_peaks: Vec<f64>,
-}
-
-/// Parses the first whitespace-separated float in an MGF value field.
-///
-/// `PEPMASS` carries an optional second field — the precursor intensity — per
-/// the format, so `PEPMASS=400.0 1234.5` is valid input. Parsing the whole
-/// remainder as one float fails, and a spectrum whose `observed_precursor`
-/// never gets set is dropped from the statistics entirely, without being
-/// counted as skipped and without a warning. Taking the leading token keeps
-/// the intensity visible in `observed_precursor_raw` and still scores the
-/// spectrum.
-fn parse_leading_float(value: &str) -> Option<f64> {
-    value.split_whitespace().next()?.parse::<f64>().ok()
 }
 
 impl BlockParseState {

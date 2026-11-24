@@ -246,3 +246,52 @@ CCCCCCCCCCCCCCCC(=O)O\tPalmitic acid standard
     assert!(blocks[1].is_lipid());
     assert_eq!(summary.lipid_items, 2);
 }
+
+#[test]
+fn valid_smiles_renders_local_inline_svg() {
+    let svg = chem_depict::render_smiles_svg_compact("CCCCCCCCCCCCCCCC(=O)O");
+    assert!(
+        svg.trim_start().starts_with("<svg"),
+        "expected inline SVG: {svg}"
+    );
+    assert!(svg.contains("</svg>"), "expected closed SVG element: {svg}");
+    assert!(
+        !svg.contains("simolecule.com"),
+        "must not emit remote image URL"
+    );
+    assert!(
+        !svg.contains("<img"),
+        "must render inline SVG instead of <img>"
+    );
+    assert!(
+        !svg.contains("no structure"),
+        "valid SMILES should depict a structure"
+    );
+}
+
+#[test]
+fn empty_or_invalid_smiles_returns_fallback_svg() {
+    for bad in ["", "   ", "not-a-valid-smiles-%%%"] {
+        let svg = chem_depict::render_smiles_svg_compact(bad);
+        assert!(
+            svg.contains("no structure"),
+            "expected fallback for {bad:?}: {svg}"
+        );
+        assert!(svg.starts_with("<svg"), "fallback must be <svg>: {svg}");
+    }
+}
+
+#[test]
+fn all_example_lipids_depict_without_fallback_or_panic() {
+    let text = crate::examples::example_smiles().join("\n");
+    let blocks = extract_blocks(&text);
+    assert!(!blocks.is_empty(), "expected non-empty example blocks");
+    for block in blocks {
+        let smi = block.psm_smiles.as_deref().unwrap_or("");
+        let svg = chem_depict::render_smiles_svg_compact(smi);
+        assert!(
+            svg.trim_start().starts_with("<svg") && !svg.contains("no structure"),
+            "failed to depict example SMILES {smi}: {svg}"
+        );
+    }
+}

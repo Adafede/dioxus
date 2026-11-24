@@ -90,8 +90,8 @@ pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> 
     });
 
     let svg = block.psm_smiles.as_deref().map_or_else(
-        crate::depict_simple::empty_svg,
-        crate::depict_simple::render_svg,
+        chem_depict::empty_compact_svg,
+        chem_depict::render_smiles_svg_compact,
     );
 
     GalleryItem {

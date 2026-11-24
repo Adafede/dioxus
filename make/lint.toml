@@ -22,11 +22,13 @@
 cwd = "${REPO_ROOT}"
 description = "Clippy each wasm crate for wasm32-unknown-unknown, warnings denied."
 dependencies = [
+  "lint-wasm-chem-depict",
   "lint-wasm-cxsmiles-yoga",
   "lint-wasm-index",
   "lint-wasm-json-count-rs",
   "lint-wasm-lipid-selecto-rs",
   "lint-wasm-mgf",
+  "lint-wasm-mgf-crate",
   "lint-wasm-smellfish-rs",
   "lint-wasm-stream-io",
   "lint-wasm-upload",
@@ -93,6 +95,22 @@ cwd = "${REPO_ROOT}"
 description = "Clippy stream-io for wasm32, tests included."
 script = """
 cargo clippy -p stream-io --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-chem-depict"]
+cwd = "${REPO_ROOT}"
+description = "Clippy chem-depict for wasm32, tests included."
+script = """
+cargo clippy -p chem-depict --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-mgf-crate"]
+cwd = "${REPO_ROOT}"
+description = "Clippy mgf for wasm32, tests included."
+script = """
+cargo clippy -p mgf --target wasm32-unknown-unknown --all-targets \\
   --locked -- -D warnings
 """
 

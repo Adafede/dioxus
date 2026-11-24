@@ -5,12 +5,7 @@
 
 #[must_use]
 pub fn extract_pepmass_from_line(line: &str) -> Option<f64> {
-    let (key, value) = line.trim().split_once('=')?;
-    if key.eq_ignore_ascii_case("PRECURSOR_MZ") || key.eq_ignore_ascii_case("PEPMASS") {
-        value.split_whitespace().next()?.parse().ok()
-    } else {
-        None
-    }
+    mgf::extract_pepmass_from_line(line)
 }
 
 pub(super) fn parse_fragment_prefix(line: &str) -> Option<(f64, f64)> {

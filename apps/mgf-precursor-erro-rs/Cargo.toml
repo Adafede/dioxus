@@ -18,6 +18,7 @@ path = "src/main.rs"
 [dependencies]
 chematic = { workspace = true, features = ["chem", "smiles"] }
 dioxus = { workspace = true }
+mgf = { path = "../../crates/mgf", version = "0.1" }
 molecular-formulas = { version = "0.3", default-features = false }
 plotters = { version = "0.3", default-features = false, features = ["line_series", "point_series", "svg_backend"] }
 prismatica = { version = "1.0", features = ["crameri"] }

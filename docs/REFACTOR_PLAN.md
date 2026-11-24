@@ -26,7 +26,7 @@ every gate green on each commit.
   - *Verify*: `./mk ci-fast` + `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 3 — Introduce shared `crates/mgf` and `crates/chem-depict`**:
+- [x] **Step 3 — Introduce shared `crates/mgf` and `crates/chem-depict`**:
   Consolidate MGF streaming parsing and panic-guarded `chematic` SMILES/SVG
   depiction into two reusable Layer 0 crates with characterization and property tests.
   - *Verify*: `./mk ci-fast` + `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked`
