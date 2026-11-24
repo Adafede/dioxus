@@ -76,7 +76,7 @@ cwd = "${REPO_ROOT}"
 description = "Coverage report for the logic crates, via nextest."
 script = """
 cargo llvm-cov nextest run --locked \\
-  -p json-count-rs -p cxsmiles-yoga -p upload \\
+  -p json-count-rs -p cxsmiles-yoga -p stream-io -p upload \\
   --profile ci --no-fail-fast
 """
 

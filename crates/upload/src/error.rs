@@ -1,99 +1,82 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Unified error type for all upload/read/download operations.
-//!
-//! The WASM-specific `JsValue` is converted to a human-readable string at the
-//! boundary so the error type itself is platform-agnostic.
+//! Unified error type for upload, file extraction, and browser download operations.
 
+use stream_io::StreamError;
 use thiserror::Error;
 
-/// Error returned by `upload::BlobCursor` and `upload::BlobLines` operations.
-#[derive(Debug, Error)]
+/// Error returned by `upload` streaming, extraction, and download operations.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum UploadError {
-    /// A browser/JS API call failed.  The inner string is the JS representation.
-    #[error("blob read error: {0}")]
-    Blob(String),
+    /// Underlying byte or line streaming error.
+    #[error(transparent)]
+    Stream(#[from] StreamError),
 
-    /// The stream ended before the parser expected it to (truncated input).
-    #[error("unexpected EOF while reading stream")]
-    UnexpectedEof,
-
-    /// A structural invariant of the input was violated.
-    #[error("expected {expected}")]
-    Expected {
-        /// Human-readable description of what was expected.
-        expected: &'static str,
-    },
-
-    /// The operation is only available inside the browser.
+    /// The operation is only available inside a browser environment.
     #[error("download is only available in the browser")]
     BrowserOnly,
 
-    /// A line exceeded the configured maximum byte length.
-    #[error("line exceeds maximum length of {max_bytes} bytes")]
-    LineTooLong {
-        /// Configured line length limit in bytes.
-        max_bytes: usize,
-    },
+    /// Triggering a browser download failed.
+    #[error("download failed: {0}")]
+    DownloadFailed(String),
 
-    /// A generic, formatted error for app-level validation.
+    /// Extracting a `Blob` from a Dioxus `FileData` event failed.
     #[error("{0}")]
-    Other(String),
+    FileExtraction(String),
 }
 
 impl UploadError {
-    /// Convenience for "expected X but got end of stream".
-    #[must_use]
-    pub const fn expected(expected: &'static str) -> Self {
-        Self::Expected { expected }
-    }
-
-    /// Convenience for wrapping a message.
+    /// Convenience wrapper for a custom streaming validation failure.
     #[must_use]
     pub fn other(msg: impl Into<String>) -> Self {
-        Self::Other(msg.into())
+        Self::Stream(StreamError::other(msg))
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn format_js_value(value: &wasm_bindgen::JsValue) -> String {
+    use wasm_bindgen::JsCast;
+    if let Some(s) = value.as_string() {
+        return s;
+    }
+    if let Some(err) = value.dyn_ref::<js_sys::Error>() {
+        return String::from(err.message());
+    }
+    format!("{value:?}")
 }
 
 #[cfg(target_arch = "wasm32")]
 impl From<wasm_bindgen::JsValue> for UploadError {
     fn from(value: wasm_bindgen::JsValue) -> Self {
-        use wasm_bindgen::JsCast;
-        if let Some(s) = value.as_string() {
-            return Self::Blob(s);
-        }
-        if let Some(err) = value.dyn_ref::<js_sys::Error>() {
-            return Self::Blob(String::from(err.message()));
-        }
-        Self::Blob(format!("{value:?}"))
+        Self::Stream(StreamError::io(format_js_value(&value)))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::UploadError;
+    use stream_io::StreamError;
 
     #[test]
     fn error_messages_are_clear() {
         assert_eq!(
-            UploadError::UnexpectedEof.to_string(),
-            "unexpected EOF while reading stream",
+            UploadError::BrowserOnly.to_string(),
+            "download is only available in the browser"
         );
         assert_eq!(
-            UploadError::expected("opening quote").to_string(),
-            "expected opening quote",
+            UploadError::DownloadFailed("no body".to_string()).to_string(),
+            "download failed: no body"
         );
         assert_eq!(
-            UploadError::LineTooLong { max_bytes: 128 }.to_string(),
-            "line exceeds maximum length of 128 bytes",
+            UploadError::FileExtraction("bad file".to_string()).to_string(),
+            "bad file"
         );
-        assert_eq!(UploadError::other("bad magic").to_string(), "bad magic",);
-    }
-
-    #[test]
-    fn other_accepts_into_string() {
-        let err = UploadError::other("oops");
-        assert_eq!(err.to_string(), "oops");
+        assert_eq!(
+            UploadError::from(StreamError::LineTooLong { max_bytes: 128 }).to_string(),
+            "line exceeds maximum length of 128 bytes"
+        );
+        assert_eq!(UploadError::other("bad magic").to_string(), "bad magic");
     }
 }

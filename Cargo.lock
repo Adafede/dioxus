@@ -3351,6 +3351,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
+name = "stream-io"
+version = "0.1.0"
+dependencies = [
+ "futures-executor",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "strict-num"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3839,9 +3847,9 @@ name = "upload"
 version = "0.1.0"
 dependencies = [
  "dioxus",
- "futures-executor",
  "gloo-timers 0.4.1",
  "js-sys",
+ "stream-io",
  "thiserror 2.0.21",
  "wasm-bindgen",
  "wasm-bindgen-futures",

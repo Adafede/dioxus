@@ -73,9 +73,18 @@ fn sanitize_unicode_passthrough() {
 fn download_helpers_fail_on_native() {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        assert!(crate::download_text("test", "test.txt").is_err());
-        assert!(crate::download_svg("<svg/>", "plot.svg").is_err());
-        assert!(crate::download_with_mime("{}", "out.json", "application/json").is_err());
+        assert_eq!(
+            crate::download_text("test", "test.txt"),
+            Err(crate::UploadError::BrowserOnly)
+        );
+        assert_eq!(
+            crate::download_svg("<svg/>", "plot.svg"),
+            Err(crate::UploadError::BrowserOnly)
+        );
+        assert_eq!(
+            crate::download_with_mime("{}", "out.json", "application/json"),
+            Err(crate::UploadError::BrowserOnly)
+        );
     }
 }
 

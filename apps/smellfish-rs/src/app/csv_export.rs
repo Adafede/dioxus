@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 //! CSV export: build a downloadable CSV string from molecule rows and
-//! trigger a browser download via [`upload::download_text`].
+//! trigger a browser download via [`upload::download_text`] (returning
+//! `Result<(), upload::UploadError>`).
 //!
 //! This is the output-side counterpart to the crate-level `csv` module
 //! (which parses CSV *input*).  Kept separate so the parsing and

@@ -86,7 +86,7 @@ Baseline snapshot of the workspace prior to structural refactoring.
     - `mgf-precursor-erro-rs/src/metrics/stats.rs:118-122,245-246`: fields named `within_*_da` actually bucket mDa values (`abs_error_da * 1000.0`); `plotting/data.rs` passes `"mDa"`/`"mda"`/`"ppm"` strings; `calibration.rs:9` ignores `CalibrationModel.lambda` and fails to clamp `lambda`.
     - `cxsmiles-yoga/src/cxsmiles/types.rs:42-83`: `CxError(String)`, redundant `Confidence.clean`, flat `CxResult` + `FloatingPart.split` bool.
     - `lipid-selecto-rs`: `HashMap<String, bool>` for fixed 86 LMSD classes, `exact_mass: f64` `0.0` sentinel, 4 copies of LIPID MAPS family tables, 7–10 param filter/download functions.
-    - `crates/upload`: `download_*` and `extract_blob_from_file_data` return `Result<_, String>` despite `UploadError::BrowserOnly` existing; `UploadError::UnexpectedEof` and `Expected` are unused.
+    - `crates/upload`: download helpers and `extract_blob_from_file_data` return `Result<_, String>` despite `UploadError::BrowserOnly` existing; two `UploadError` variants were unused dead code.
 
 ### Medium Impact / Low–Medium Effort
 

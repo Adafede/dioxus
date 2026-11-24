@@ -12,7 +12,7 @@ use crate::examples::example_smiles;
 use crate::format::LipidFormat;
 use crate::parser::{BlockExtractor, build_analysis_from_classified, classify_blocks};
 use gloo_timers::future::TimeoutFuture;
-use upload::{BlobLines, BlobSource, UploadError};
+use upload::{BlobLines, BlobSource};
 use web_sys::Blob;
 
 /// Cap the number of structure diagrams rendered (each costs a chem parse +
@@ -55,7 +55,7 @@ pub(super) fn start_analysis(
                     line_count += 1;
                     extractor.push_line(&line);
                 }
-                Ok(None) | Err(UploadError::UnexpectedEof) => break,
+                Ok(None) => break,
                 Err(e) => {
                     ctx.status.set(format!("Error reading file: {e}"));
                     ctx.busy.set(false);

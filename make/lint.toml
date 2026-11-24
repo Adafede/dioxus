@@ -28,6 +28,7 @@ dependencies = [
   "lint-wasm-lipid-selecto-rs",
   "lint-wasm-mgf",
   "lint-wasm-smellfish-rs",
+  "lint-wasm-stream-io",
   "lint-wasm-upload",
 ]
 
@@ -84,6 +85,14 @@ cwd = "${REPO_ROOT}"
 description = "Clippy the wasm-only upload crate for wasm32, tests included."
 script = """
 cargo clippy -p upload --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-stream-io"]
+cwd = "${REPO_ROOT}"
+description = "Clippy stream-io for wasm32, tests included."
+script = """
+cargo clippy -p stream-io --target wasm32-unknown-unknown --all-targets \\
   --locked -- -D warnings
 """
 

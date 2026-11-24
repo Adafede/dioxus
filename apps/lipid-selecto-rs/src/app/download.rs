@@ -3,8 +3,9 @@
 
 //! Browser file downloads (filtered MGF and filtered SMILES).
 //!
-//! WASM-only: uses the `upload` crate's `download_text` helper to trigger
-//! a browser download with the given filename.
+//! WASM-only: uses the `upload` crate's `download_text` helper (returning
+//! `Result<(), UploadError>`) to trigger a browser download with the given
+//! filename.
 
 use super::class_tags::insert_class_comment;
 use super::gallery::{block_class_tags, build_smiles_from_blocks, passes_item_filters};

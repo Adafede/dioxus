@@ -13,6 +13,7 @@ members = [
   "apps/lipid-selecto-rs",
   "apps/mgf-precursor-erro-rs",
   "apps/smellfish-rs",
+  "crates/stream-io",
   "crates/ui",
   "crates/upload",
   "crates/workspace-gates",

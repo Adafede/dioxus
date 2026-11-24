@@ -22,6 +22,7 @@ dependencies = [
   "check-wasm-lipid-selecto-rs",
   "check-wasm-mgf",
   "check-wasm-smellfish-rs",
+  "check-wasm-stream-io",
 ]
 
 [tasks."check-wasm-cxsmiles-yoga"]
@@ -53,6 +54,11 @@ script = "cargo check -p mgf-precursor-erro-rs --target wasm32-unknown-unknown -
 cwd = "${REPO_ROOT}"
 description = "Type-check smellfish-rs for wasm32-unknown-unknown."
 script = "cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-stream-io"]
+cwd = "${REPO_ROOT}"
+description = "Type-check stream-io for wasm32-unknown-unknown."
+script = "cargo check -p stream-io --target wasm32-unknown-unknown --locked"
 
 # Every feature combination in the workspace.
 #

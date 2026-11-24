@@ -16,8 +16,9 @@
 //! `EventHandler` props are wired here with bare `move |e| … .call(e)` closures
 //! (`ListenerCallback`), never a stored `Callback` on an rsx prop.
 //!
-//! The blob extraction (`upload::extract_blob_from_file_data`) is intentionally
-//! kept in the apps — so `crates/ui` stays free of the `crates/upload` dep.
+//! The blob extraction (`upload::extract_blob_from_file_data`, returning
+//! `Result<Option<ExtractedFile>, UploadError>`) is intentionally kept in the
+//! apps so `crates/ui` stays free of the `crates/upload` dep.
 
 #![expect(
     clippy::empty_enums,

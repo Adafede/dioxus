@@ -156,7 +156,7 @@ struct JsonCountCtx {
 /// apart from the event type they receive.
 fn handle_uploaded_files(
     mut ctx: JsonCountCtx,
-    result: Result<Option<upload::ExtractedFile>, String>,
+    result: Result<Option<upload::ExtractedFile>, upload::UploadError>,
 ) {
     match result {
         Ok(Some(file)) => {
@@ -179,7 +179,7 @@ fn handle_uploaded_files(
             }
         }
         Ok(None) => ctx.status.set("No file selected.".to_string()),
-        Err(msg) => ctx.status.set(msg),
+        Err(err) => ctx.status.set(err.to_string()),
     }
 }
 

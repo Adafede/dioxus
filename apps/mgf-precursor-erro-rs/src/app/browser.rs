@@ -10,8 +10,6 @@ use crate::metrics::PrecursorStats;
 #[cfg(target_arch = "wasm32")]
 use crate::parser::scan_blob_with_progress;
 #[cfg(target_arch = "wasm32")]
-use upload::UploadError;
-#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
@@ -101,7 +99,7 @@ pub(crate) fn recalibrated_mgf_filename(filename: &str) -> String {
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn download_recalibrated_mgf(filename: &str, content: &str) -> Result<String, String> {
     let download_name = recalibrated_mgf_filename(filename);
-    upload::download_text(content, &download_name)?;
+    upload::download_text(content, &download_name).map_err(|err| err.to_string())?;
     Ok(download_name)
 }
 
@@ -145,10 +143,6 @@ fn start_analysis(
                 status.set(format!("Processed {} spectra.", result.total_spectra));
                 original_mgf_content.set(raw_content);
                 metrics.set(Some(result));
-            }
-            Err(UploadError::UnexpectedEof) => {
-                status.set("Unexpected end of file while reading.".to_string());
-                metrics.set(Some(PrecursorStats::default()));
             }
             Err(error) => {
                 status.set(format!("Error scanning MGF: {error}"));
@@ -220,7 +214,7 @@ pub(super) fn attempt_analysis_from_files(
             }
         }
         Ok(None) => status.set("No file selected.".to_string()),
-        Err(msg) => status.set(msg),
+        Err(err) => status.set(err.to_string()),
     }
 }
 

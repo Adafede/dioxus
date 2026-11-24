@@ -19,7 +19,7 @@ every gate green on each commit.
   - *Verify*: `./mk ci-fast` + `cargo machete`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 2 — Extract Dioxus-free `crates/stream-io` & unify `UploadError`**:
+- [x] **Step 2 — Extract Dioxus-free `crates/stream-io` & unify `UploadError`**:
   Move pure byte/line streaming and progress throttling into `crates/stream-io`,
   deduplicate chunk buffer refills, switch `BlobSource::clock` to `performance.now()`,
   and unify `crates/upload` downloads and event extraction onto `UploadError`.

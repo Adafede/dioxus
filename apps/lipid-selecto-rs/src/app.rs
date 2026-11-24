@@ -188,7 +188,7 @@ pub(super) struct UploadCtx {
 /// its fields still mutates the shared state the caller's snapshot points at.
 fn handle_uploaded_files(
     mut ctx: UploadCtx,
-    result: Result<Option<upload::ExtractedFile>, String>,
+    result: Result<Option<upload::ExtractedFile>, upload::UploadError>,
 ) {
     match result {
         Ok(Some(file)) => {
@@ -196,7 +196,7 @@ fn handle_uploaded_files(
             process_file_upload(ctx, file, detected_format);
         }
         Ok(None) => ctx.status.set("No file selected.".to_string()),
-        Err(msg) => ctx.status.set(msg),
+        Err(err) => ctx.status.set(err.to_string()),
     }
 }
 

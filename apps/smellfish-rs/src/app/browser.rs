@@ -42,7 +42,7 @@ pub(super) fn attempt_import(files: &[FileData], mut signals: ImportSignals) {
             }
         }
         Ok(None) => signals.status.set("No file selected.".to_string()),
-        Err(msg) => signals.status.set(msg),
+        Err(err) => signals.status.set(err.to_string()),
     }
 }
 
