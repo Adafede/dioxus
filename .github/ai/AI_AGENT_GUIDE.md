@@ -4,22 +4,22 @@
 
 ### Shared Crates (`crates/`)
 
-- `crates/ui` --- Pure-Rust Dioxus design system re-exported via `ui::prelude`:
+- `crates/ui` --- Pure-Rust Dioxus design system with flat crate-root exports:
   components (`Button`, `ButtonVariant`, `Card`, `Footer`, `Header`,
   `NoticeBar`, `NoticeTone`, `SegmentedControl`, `SegmentedControlItem`,
   `SimpleAnalyticsBadge`, `UploadZone`), `DocumentHead`, `skip_link`,
-  `SKIP_LINK_STYLE`, `WebMcpConfig`, `EdamAnnotations`, `EdamTerm`, and theme
-  tokens (`StyleBuilder`,
-  `theme::{ColorScheme, Interaction, Radius, Shadow, Spacing, Typography}`).
-  Apps must use `StyleBuilder` or local style helpers instead of raw
-  `style: "..."` strings. `ui::shared_signal!` / `ui::shared_signals!` collapse
-  host vs. `wasm32` `use_signal` mutability pairs.
+  `WebMcpConfig`, `EdamAnnotations`, `EdamTerm`, `StyleBuilder`, theme tokens
+  (`ColorScheme`, `Radius`, `Shadow`, `Spacing`, `Typography`), and macros
+  (`shared_signal!`, `shared_signals!`). Apps must use `StyleBuilder` or local
+  style helpers instead of raw `style: "..."` strings.
 - `crates/stream-io` --- Portable async chunked byte and line streaming
   (`BlobCursor`, `BlobLines`, `ChunkSource`, `SliceSource`, `StreamError`).
 - `crates/upload` --- Browser `BlobSource` (`wasm32`), Dioxus `FileData`
   extraction (`extract_blob_from_file_data`, `Blob`, `ExtractedFile`),
-  `UploadError`, and `download_text` / `download_svg` / `download_with_mime`
-  (re-exporting `stream-io` streaming types).
+  `UploadError`, and `download_text` / `download_svg`.
+- Layer 0 domain crates (`crates/{mgf,chem-depict,cxsmiles-core,json-count-core,lipid-core,mgf-analysis-core,smellfish-core}`)
+  --- Pure-Rust (`ZERO` `dioxus`/`web-sys`) parsers, chemistry, classification,
+  recalibration, and evidence models consumed by `apps/`.
 - `crates/workspace-gates` --- `tests/gate_consistency/` holding repository-wide
   structural, documentation, and ratchet integration tests.
 
@@ -116,8 +116,9 @@ cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction
 - **Standalone `--locked` builds**: Always pass `--locked` to Cargo for
   `apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction` so its pinned
   `Cargo.lock` keeps compatible transitive `smiles-rs` versions across
-  `smarts-rs` and `smarts-evolution`, and keep CLI I/O helpers in `src/results_io.rs`
-  so `src/main.rs` stays under 800 lines.
+  `smarts-rs` and `smarts-evolution`, keep CLI subcommands under `src/cli.rs` +
+  `src/cli/`, and keep CSV I/O helpers in `src/results_io.rs` so each source
+  file stays under 800 lines.
 - **Retain `.cargo/config.toml` `smiles-parser` patch**: Keep
   `[patch."https://github.com/earth-metabolome-initiative/smiles-parser"]` so
   `./mk refquiem` can resolve historical git specs after upstream's rename to
@@ -130,7 +131,7 @@ cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction
 - **`VirtualDom::rebuild_to_vec()` omits static templates**: `Mutations` debug
   output includes only dynamic attributes/slots; check `node.template` when
   asserting static template attributes in component tests.
-- **QLever / WDQS burst limits (`apps/smellfish-rs/src/sparql.rs`)**: Serialize
+- **QLever / WDQS burst limits (`crates/smellfish-core/src/sparql.rs`)**: Serialize
   chunked `VALUES` queries, cap transient retries to one attempt, respect HTTP
   429 responses, and never issue concurrent POST bursts against public SPARQL
   endpoints.

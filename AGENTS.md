@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Rust workspace of six Dioxus WebAssembly applications (`apps/`), two shared
-crates (`crates/ui`, `crates/upload`), and one excluded standalone CLI binary
-(`apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction`).
+Rust workspace of six Dioxus WebAssembly applications (`apps/`), eleven shared
+domain, UI, and governance crates (`crates/`), and one excluded standalone CLI
+binary (`apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction`).
 
 ## Commands
 
