@@ -1,53 +1,85 @@
 # Architecture
 
 This repository is a Cargo monorepo of six client-side Dioxus WebAssembly
-chemistry and mass-spectrometry web applications backed by two shared foundation
-crates (`ui` and `upload`).
+chemistry and mass-spectrometry web applications backed by shared domain and
+web-adapter crates under `crates/`, plus one excluded standalone CLI binary.
 
-## Workspace Structure
+## Layering Rule
+
+Dependencies strictly flow downward in one direction:
 
 ```text
-apps/
-  index                  Landing page linking the suite of chemistry web apps
-  cxsmiles-yoga          Canonical CX-SMILES generator and coordinate aligner
-  json-count-rs          Streaming non-null field counter for uploaded JSON datasets
-  lipid-selecto-rs       SMARTS-based lipid classification and filtering
-  mgf-precursor-erro-rs  MGF MS/MS precursor mass-error analysis and plotting
-  smellfish-rs           Natural-product likeness scoring with RDKit.js and QLever/LOTUS
-crates/
-  ui                     Type-safe Dioxus design system, style builders, and signal macros
-  upload                 Browser Blob streaming (`BlobCursor`, `BlobLines`) and download helpers
+Layer 2: Browser Applications (apps/*) & Standalone CLI
+            │  depends on Layer 1 + Layer 0
+            ▼
+Layer 1: Web Adapters, UI Design System & Workspace Gates
+            │  (crates/ui, crates/upload, crates/workspace-gates)
+            │  depends on Layer 0 + browser/Dioxus APIs
+            ▼
+Layer 0: Pure Domain & Streaming Core Crates
+            │  (stream-io, mgf, chem-depict, cxsmiles-core,
+            │   json-count-core, lipid-core, mgf-analysis-core, smellfish-core)
+            │  ZERO dioxus, ZERO web-sys, host + wasm32 portable
 ```
 
-## Shared Crates (`crates/`)
+Layer 0 crates contain pure data types, parsers, algorithms, and formatting.
+They compile and run natively under `cargo nextest`, `cargo test --doc`, and
+`cargo-mutants` without browser APIs or `#[cfg(target_arch = "wasm32")]` stubs,
+while remaining `wasm32-unknown-unknown` compatible.
 
-  | Crate           | Responsibility                                                                                                                                      | Key Exports                                                                                                                                                       |
-  | ---             | ---                                                                                                                                                 | ---                                                                                                                                                               |
-  | `crates/ui`     | Shared Dioxus component library, pure-Rust style builders, theme tokens, and cross-target signal declaration macros                                 | `Button`, `Card`, `Header`, `Footer`, `NoticeBar`, `SegmentedControl`, `UploadZone`, `DocumentHead`, `styles::*`, `theme::*`, `shared_signal!`, `shared_signals!` |
-  | `crates/upload` | Chunked streaming file reading (`BlobCursor`, `BlobLines`), portable `ChunkSource`/`SliceSource`, progress throttling, and browser download helpers | `BlobCursor`, `BlobLines`, `BlobSource`, `ChunkSource`, `SliceSource`, `download_text`, `download_svg`, `download_with_mime`                                      |
+## Crate Responsibilities
 
-## Applications (`apps/`)
+### Layer 0 — Pure Domain Crates (`crates/`)
 
-  | App                          | Domain & Pure Logic                                                                                                                           | Target                |
-  | ---                          | ---                                                                                                                                           | ---                   |
-  | `apps/index`                 | Accessible catalogue and navigation hub for the application suite                                                                             | `wasm32` + host tests |
-  | `apps/cxsmiles-yoga`         | Graph isomorphism, union-find fragment grouping, and CX-SMILES serialization                                                                  | `wasm32` + host tests |
-  | `apps/json-count-rs`         | Streaming JSON lexer/counter (`src/processing.rs`) decoupled from `Blob` entry points (`wasm_entry.rs`)                                       | `wasm32` + host tests |
-  | `apps/lipid-selecto-rs`      | LipidMaps hierarchy matching and SMARTS rule evaluation (offline CLI generator in `lipidmaps/smarts-evoliposuction`, excluded from workspace) | `wasm32` + host tests |
-  | `apps/mgf-precursor-erro-rs` | MGF spectrum parsing, precursor mass-error statistics, and SVG histogram plotting (`plotters`)                                                | `wasm32` + `rlib`     |
-  | `apps/smellfish-rs`          | NP-likeness scoring and taxonomic/structure lookup against LOTUS (`lotus-search`)                                                             | `wasm32` + host tests |
+  | Crate               | One-Line Responsibility                                                                      |
+  | ---                 | ---                                                                                          |
+  | `stream-io`         | Async chunked byte and line streaming over `ChunkSource` with throttled progress tracking    |
+  | `mgf`               | Streaming MGF spectrum block parser and header/peak model                                    |
+  | `chem-depict`       | Panic-guarded `chematic` SMILES parsing and 2D SVG depiction                                 |
+  | `cxsmiles-core`     | CX-SMILES positional (`m:`) and repeating (`Sg:n:`) generation and round-trip verification   |
+  | `json-count-core`   | Streaming RFC 8259 JSON non-null field counter, string unescaper, and result sorting         |
+  | `lipid-core`        | LIPID MAPS taxonomy, 86 LMSD SMARTS rules, filtering, tagging, and MGF/SMILES export         |
+  | `mgf-analysis-core` | Adduct mass grammar, precursor mass-error statistics, MS2 recalibration, and diagnostics     |
+  | `smellfish-core`    | Natural-product evidence assessment, typed verdicts, CSV I/O, and generic-HTTP SPARQL client |
 
-## Design Invariants
+### Layer 1 — Web Adapters, UI & Governance (`crates/`)
 
-- **Host-testable core logic**: Parsing, numerical analysis, and state
-  transitions are kept free of `web_sys` where possible so `cargo nextest` and
-  `cargo-mutants` execute natively without a headless browser.
-- **Dual-target linting**: Because host `cargo clippy` skips
-  `#[cfg(target_arch = "wasm32")]` blocks, `./mk local:lint-wasm` and
-  `./mk wasm` (`check-wasm`) compile and lint each application for
-  `wasm32-unknown-unknown`.
+  | Crate             | One-Line Responsibility                                                                           |
+  | ---               | ---                                                                                               |
+  | `upload`          | Browser `BlobSource`, Dioxus `FileData` extraction, and DOM downloads re-exporting `stream-io`    |
+  | `ui`              | Pure-Rust Dioxus design system, `Theme`, `StyleBuilder`, accessible components, and WebMCP head   |
+  | `workspace-gates` | Repository-wide structural, documentation, workflow, and ratchet integration tests                |
+
+### Layer 2 — Applications (`apps/`) & Standalone CLI
+
+  | Crate                                                   | One-Line Responsibility                                                           | Target                |
+  | ---                                                     | ---                                                                               | ---                   |
+  | `apps/index`                                            | Accessible catalogue and navigation hub for the application suite                 | `wasm32` + host tests |
+  | `apps/cxsmiles-yoga`                                    | Dioxus UI, memoized SVG depiction, and clipboard adapter for `cxsmiles-core`      | `wasm32` + host tests |
+  | `apps/json-count-rs`                                    | Dioxus UI and `BlobSource` adapter for `json-count-core`                          | `wasm32` + host tests |
+  | `apps/lipid-selecto-rs`                                 | Dioxus UI, filter controls, and streaming adapter for `lipid-core`                | `wasm32` + host tests |
+  | `apps/mgf-precursor-erro-rs`                            | Dioxus UI, `plotters` SVG adapter, and streaming adapter for `mgf-analysis-core`  | `wasm32` + host tests |
+  | `apps/smellfish-rs`                                     | Dioxus UI, RDKit.js interop, and `ReqwestClient` adapter for `smellfish-core`     | `wasm32` + host tests |
+  | `apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction` | Excluded standalone CLI for offline LIPID MAPS SMARTS evolution (`--locked`)      | host native CLI       |
+
+## Cross-Cutting Standards
+
+- **Minimal public surface**: Every crate exports only its intentional API and
+  keeps internal modules and helpers `pub(crate)` or private.
+- **Type-driven invariants**: Domain crates model states with explicit enums,
+  validated newtypes, and `FromStr`/`TryFrom` conversions rather than boolean
+  flags, sentinel floats, or stringly-typed dispatch.
+- **Error strategy**: Every library crate defines a `#[non_exhaustive]`
+  `thiserror` error enum carrying structured context; binary/UI edges format
+  errors cleanly for users.
+- **Concurrency & browser responsiveness**: Pure async logic stays generic over
+  `ChunkSource` or `lotus_search::Http` with no blocking I/O; browser adapters
+  yield across chunk boundaries, prevent concurrent import races, and memoize
+  expensive SVG/sort derivations.
+- **Dual-target verification**: `./mk wasm` and `./mk local:lint-wasm` verify
+  `wasm32-unknown-unknown` builds across all Layer 0 crates, `upload`, and all
+  six apps, while `./mk test` runs native unit, integration, and doc tests.
 - **Unwind-safe WASM release profile**: `[profile.wasm-release]` keeps
-  `panic = "unwind"` and `strip = "debuginfo"` so apps that guard third-party
-  parsers with `catch_unwind` report recoverable errors instead of aborting the
-  browser tab, while preserving `__wasm_bindgen_unstable` custom sections on
-  LLVM 23+.
+  `panic = "unwind"` and `strip = "debuginfo"` so `chem-depict` recovers from
+  panics in third-party SMILES parsing without aborting the browser tab, while
+  preserving `__wasm_bindgen_unstable` custom sections on LLVM 23+.
