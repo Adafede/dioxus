@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
+//! Root Dioxus component and shared signal state for `mgf-precursor-erro-rs`.
+
 #![expect(
     clippy::empty_enums,
     reason = "Dioxus component macro generates a Props helper empty enum"
@@ -9,18 +11,17 @@
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
+use mgf_analysis_core::{CalibrationModel, ErrorUnit, PrecursorStats, ShrinkageLambda};
 use ui::prelude::*;
 
 mod browser;
-mod diagnostics;
+mod diagnostics_panel;
 mod plots;
+mod recalibration_panel;
 mod results;
+mod warnings_panel;
 
 use self::results::ResultsPanel;
-
-use crate::diagnostics::RecalibrationStats;
-use crate::metrics::PrecursorStats;
-use crate::recalibration::CalibrationModel;
 
 const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
     app_id: "mgf-precursor-erro-rs",
@@ -84,48 +85,40 @@ const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
     },
 };
 
+/// Grouped reactive handles shared across upload, status, and example-loading paths.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) struct UploadSignals {
+    pub(super) file_name: Signal<String>,
+    pub(super) status: Signal<String>,
+    pub(super) metrics: Signal<Option<PrecursorStats>>,
+    pub(super) busy: Signal<bool>,
+    pub(super) drag_active: Signal<bool>,
+    pub(super) original_mgf_content: Signal<String>,
+}
+
 /// Renders the MGF precursor-error analysis UI.
 ///
 /// # Errors
 ///
 /// Returns a rendering error only if the RSX tree cannot be constructed.
 pub fn app() -> Element {
-    ui::shared_signals! {
-        file_name: String::new,
-        metrics: || None::<PrecursorStats>,
-    }
-    ui::shared_signal!(status, || "Drop an MGF file to begin.".to_string());
-    ui::shared_signal!(busy, || false);
-    let drag_active = use_signal(|| false);
-    let original_mgf_content = use_signal(String::new);
-
-    // Recalibration control signals
+    let signals = UploadSignals {
+        file_name: use_signal(String::new),
+        status: use_signal(|| "Drop an MGF file to begin.".to_string()),
+        metrics: use_signal(|| None::<PrecursorStats>),
+        busy: use_signal(|| false),
+        drag_active: use_signal(|| false),
+        original_mgf_content: use_signal(String::new),
+    };
     let calibration_model = use_signal(|| CalibrationModel::None);
-    let lambda_value = use_signal(|| 0.5);
-    let recalibration_diagnostics = use_signal(|| None::<RecalibrationStats>);
-    let cumulative_dist_tab = use_signal(|| "mda"); // "mda" or "ppm"
+    let preferred_lambda = use_signal(ShrinkageLambda::default);
+    let cumulative_dist_tab = use_signal(|| ErrorUnit::Mda);
 
     let on_file_change = move |evt: Event<FormData>| {
-        browser::attempt_analysis_from_files(
-            &evt.data().files(),
-            file_name,
-            status,
-            metrics,
-            busy,
-            drag_active,
-            original_mgf_content,
-        );
+        browser::attempt_analysis_from_files(&evt.data().files(), signals);
     };
     let on_drop = move |evt: Event<DragData>| {
-        browser::attempt_analysis_from_files(
-            &evt.data().files(),
-            file_name,
-            status,
-            metrics,
-            busy,
-            drag_active,
-            original_mgf_content,
-        );
+        browser::attempt_analysis_from_files(&evt.data().files(), signals);
     };
 
     rsx! {
@@ -151,10 +144,10 @@ pub fn app() -> Element {
                 div {
                     style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").property("backdrop-filter", "blur(12px)").build(),
                     UploadZone {
-                        file_name,
-                        status,
-                        busy,
-                        drag_active,
+                        file_name: signals.file_name,
+                        status: signals.status,
+                        busy: signals.busy,
+                        drag_active: signals.drag_active,
                         on_file_change,
                         on_drop,
                         accept: ".mgf",
@@ -167,23 +160,16 @@ pub fn app() -> Element {
                         "Plots cap at 5 mDa / 10 ppm for the signed-error views"
                     }
 
-                    example_load_button {
-                        file_name,
-                        status,
-                        metrics,
-                        busy,
-                        original_mgf_content,
-                    }
+                    example_load_button { signals }
 
                     ResultsPanel {
-                        metrics,
+                        metrics: signals.metrics,
                         calibration_model,
-                        lambda_value,
-                        recalibration_diagnostics,
+                        preferred_lambda,
                         cumulative_dist_tab,
-                        original_mgf_content,
-                        file_name,
-                        status,
+                        original_mgf_content: signals.original_mgf_content,
+                        file_name: signals.file_name,
+                        status: signals.status,
                     }
                 }
             }
@@ -195,29 +181,23 @@ pub fn app() -> Element {
     }
 }
 
-/// Renders the "Load example MGF" button, shown only when no file has been
-/// loaded yet. On wasm32 it fetches the example spectrum; on native (no
-/// browser) it sets a "needs a browser" status message.
 #[component]
-fn example_load_button(
-    file_name: Signal<String>,
-    status: Signal<String>,
-    metrics: Signal<Option<PrecursorStats>>,
-    busy: Signal<bool>,
-    original_mgf_content: Signal<String>,
-) -> Element {
+fn example_load_button(mut signals: UploadSignals) -> Element {
     rsx! {
-        if file_name.read().is_empty() && metrics.read().is_none() && !(*busy.read()) {
+        if signals.file_name.read().is_empty()
+            && signals.metrics.read().is_none()
+            && !(*signals.busy.read())
+        {
             button {
                 r#type: "button",
                 style: StyleBuilder::new().property("margin-top", "0.8rem").border("1px solid #2563eb").border_radius("999px").property("background", "#eff6ff").color("#1d4ed8").font_size("0.84rem").font_weight("700").padding("0.45rem 0.8rem").cursor("pointer").build(),
                 onclick: move |_| {
                     #[cfg(target_arch = "wasm32")]
-                    browser::load_example_mgf(status, metrics, busy, file_name, original_mgf_content);
+                    browser::load_example_mgf(signals);
                     #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        status.set("This app needs to run in a browser.".to_string());
-                    }
+                    signals
+                        .status
+                        .set("This app needs to run in a browser.".to_string());
                 },
                 "Load example MGF"
             }

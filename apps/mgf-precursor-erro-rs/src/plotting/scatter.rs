@@ -4,14 +4,15 @@
 //! Scatter/ECDF chart renderers. These compose data helpers (prep + legend +
 //! points) with colour helpers and `plotters` to emit SVG strings.
 
-use crate::errors::MgfError;
-use crate::metrics::{PlotPoint, ScatterPlotData};
+use mgf_analysis_core::PlotPoint;
 
 use super::color::{adduct_family_shape_style, tolerance_step_color, tolerance_step_rgb};
 use super::data::{
-    build_ecdf_points, display_error_value_for_point, embed_svg_legend, fallback_y_limit_for_unit,
+    ScatterPlotData, build_ecdf_points, display_error_value_for_point, fallback_y_limit_for_unit,
     format_threshold_value, prepare_scatter_plot_data,
 };
+use super::svg::embed_svg_legend;
+use crate::errors::PlotError;
 
 /// Renders an ECDF SVG for the observed error values.
 ///
@@ -23,7 +24,7 @@ pub fn render_ecdf_svg(
     values: &[f64],
     thresholds: &[f64],
     unit: &str,
-) -> Result<String, MgfError> {
+) -> Result<String, PlotError> {
     use plotters::prelude::*;
     use plotters::series::LineSeries;
 
@@ -132,7 +133,7 @@ fn render_scatter_svg(
     ticks: &[f64],
     alpha: f32,
     clamp_y: bool,
-) -> Result<String, MgfError> {
+) -> Result<String, PlotError> {
     use plotters::prelude::*;
     use plotters::series::{LineSeries, PointSeries};
 
@@ -222,7 +223,7 @@ fn render_scatter_svg(
 /// # Errors
 ///
 /// Returns an error if the SVG backend cannot fill or present the drawing area.
-pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String, MgfError> {
+pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String, PlotError> {
     let plot_data = prepare_scatter_plot_data(
         points,
         |point| point.ms2_precursor_peak.or(Some(point.pepmass_header)),
@@ -247,7 +248,7 @@ pub fn render_absolute_mass_bias_svg(
     points: &[PlotPoint],
     unit: &str,
     ticks: &[f64],
-) -> Result<String, MgfError> {
+) -> Result<String, PlotError> {
     let plot_data = prepare_scatter_plot_data(
         points,
         |point| {

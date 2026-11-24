@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-//! Recalibration diagnostic renderers: before/after error scatter, error
-//! histogram, and the m/z comparison plot — plus the summary text stat block.
+//! Recalibration diagnostic SVG renderers: downsampled error scatter, histogram, and `m/z` comparison.
 
-use super::data::{floor_to_usize, usize_to_f64};
-use crate::errors::MgfError;
+use mgf_analysis_core::usize_to_f64;
 
-fn combined_finite_bounds(a: &[f64], b: &[f64]) -> Option<(f64, f64)> {
+use super::data::sample_scatter_points;
+#[cfg(test)]
+use super::histogram::{fill_histogram, render_recalibration_diagnostic_histogram};
+use crate::errors::PlotError;
+
+const MAX_DIAGNOSTIC_POINTS: usize = 1_500;
+
+pub(super) fn combined_finite_bounds(a: &[f64], b: &[f64]) -> Option<(f64, f64)> {
     let mut min_val = f64::INFINITY;
     let mut max_val = f64::NEG_INFINITY;
     for value in a.iter().chain(b.iter()).copied().filter(|v| v.is_finite()) {
@@ -17,29 +22,47 @@ fn combined_finite_bounds(a: &[f64], b: &[f64]) -> Option<(f64, f64)> {
     min_val.is_finite().then_some((min_val, max_val))
 }
 
-/// Renders a diagnostic plot comparing precursor errors before and after recalibration.
-///
-/// Creates a scatter plot with two overlaid series showing precursor errors in ppm,
-/// allowing visual assessment of recalibration effectiveness.
+fn sampled_index_series(values: &[f64]) -> Vec<(f64, f64)> {
+    let pts: Vec<(f64, f64)> = values
+        .iter()
+        .enumerate()
+        .filter(|(_, error)| error.is_finite())
+        .map(|(i, &error)| (usize_to_f64(i), error))
+        .collect();
+    sample_scatter_points(pts, MAX_DIAGNOSTIC_POINTS)
+}
+
+fn sampled_pair_series(xs: &[f64], ys: &[f64]) -> Vec<(f64, f64)> {
+    let pts: Vec<(f64, f64)> = xs
+        .iter()
+        .zip(ys.iter())
+        .filter(|(x, y)| x.is_finite() && y.is_finite())
+        .map(|(&x, &y)| (x, y))
+        .collect();
+    sample_scatter_points(pts, MAX_DIAGNOSTIC_POINTS)
+}
+
+/// Renders a downsampled scatter plot comparing precursor errors (ppm) before and after recalibration.
 ///
 /// # Errors
 ///
-/// Returns an error if the SVG backend cannot fill, build, or present the drawing area.
+/// Returns [`PlotError`] if the SVG backend fails during drawing.
 pub fn render_recalibration_diagnostic_ppm(
     errors_before: &[f64],
     errors_after: &[f64],
-) -> Result<String, MgfError> {
+) -> Result<String, PlotError> {
     use plotters::prelude::*;
 
     let mut buffer = String::new();
-
     let Some((error_min, error_max)) = combined_finite_bounds(errors_before, errors_after) else {
         return Ok(buffer);
     };
-
     let error_span = (error_max - error_min).max(1.0);
     let error_min = error_min - error_span * 0.1;
     let error_max = error_max + error_span * 0.1;
+
+    let before_pts = sampled_index_series(errors_before);
+    let after_pts = sampled_index_series(errors_after);
 
     {
         let root = SVGBackend::with_string(&mut buffer, (1200, 400)).into_drawing_area();
@@ -64,201 +87,51 @@ pub fn render_recalibration_diagnostic_ppm(
             .y_desc("Error (ppm)")
             .draw()?;
 
-        // Plot errors before recalibration
         chart
-            .draw_series(
-                errors_before
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, error)| error.is_finite())
-                    .map(|(i, &error)| {
-                        Circle::new(
-                            (usize_to_f64(i), error),
-                            3,
-                            ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
-                        )
-                    }),
-            )?
+            .draw_series(before_pts.into_iter().map(|pt| {
+                Circle::new(
+                    pt,
+                    3,
+                    ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
+                )
+            }))?
             .label("Before");
-
-        // Plot errors after recalibration
         chart
-            .draw_series(
-                errors_after
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, error)| error.is_finite())
-                    .map(|(i, &error)| {
-                        Circle::new(
-                            (usize_to_f64(i), error),
-                            2,
-                            ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
-                        )
-                    }),
-            )?
+            .draw_series(after_pts.into_iter().map(|pt| {
+                Circle::new(
+                    pt,
+                    2,
+                    ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
+                )
+            }))?
             .label("After");
 
         chart
             .configure_series_labels()
             .background_style(WHITE.mix(0.8))
             .draw()?;
-
         root.present()?;
     }
     Ok(buffer)
 }
 
-/// Bins `values` into `bins`, normalising against `min`/`max`.
-///
-/// Extracted because the before/after passes were the same arithmetic twice,
-/// differing only in which vector they filled.
-fn fill_histogram(bins: &mut [usize], values: &[f64], min: f64, max: f64, bin_count: usize) {
-    if bin_count == 0 {
-        return;
-    }
-    let span = max - min;
-    for &error in values {
-        if !error.is_finite() {
-            continue;
-        }
-        let bin = if span <= 0.0 {
-            0
-        } else {
-            let normalized = ((error - min) / span).clamp(0.0, 1.0);
-            floor_to_usize((normalized * usize_to_f64(bin_count)).floor()).min(bin_count - 1)
-        };
-        if let Some(count) = bins.get_mut(bin) {
-            *count += 1;
-        }
-    }
-}
-
-/// Renders a histogram comparing error distributions before and after recalibration.
+/// Renders a downsampled scatter plot comparing observed vs reference precursor *m/z*.
 ///
 /// # Errors
 ///
-/// Returns an error if the SVG backend cannot fill, build, or present the drawing area.
-pub fn render_recalibration_diagnostic_histogram(
-    errors_before: &[f64],
-    errors_after: &[f64],
-    bin_count: usize,
-) -> Result<String, MgfError> {
-    use plotters::prelude::*;
-
-    let mut buffer = String::new();
-
-    // Compute ranges and histograms
-    if bin_count == 0 {
-        // `bin_count == 0` would make `usize_to_f64(bin_count)` zero at the
-        // `bin_width` division below, yielding `NaN` rectangle coordinates and a
-        // garbage SVG — bail out with an empty canvas instead.
-        return Ok(buffer);
-    }
-
-    let Some((raw_min, raw_max)) = combined_finite_bounds(errors_before, errors_after) else {
-        return Ok(buffer);
-    };
-    let (error_min, error_max) = if (raw_max - raw_min).abs() <= f64::EPSILON {
-        (raw_min - 0.5, raw_max + 0.5)
-    } else {
-        (raw_min, raw_max)
-    };
-
-    // Compute histograms
-    let mut hist_before = vec![0usize; bin_count];
-    let mut hist_after = vec![0usize; bin_count];
-
-    fill_histogram(
-        &mut hist_before,
-        errors_before,
-        error_min,
-        error_max,
-        bin_count,
-    );
-    fill_histogram(
-        &mut hist_after,
-        errors_after,
-        error_min,
-        error_max,
-        bin_count,
-    );
-
-    let max_count = hist_before
-        .iter()
-        .chain(hist_after.iter())
-        .copied()
-        .max()
-        .unwrap_or(1)
-        .max(1);
-
-    let bin_width = (error_max - error_min) / usize_to_f64(bin_count);
-
-    {
-        let root = SVGBackend::with_string(&mut buffer, (1200, 400)).into_drawing_area();
-        root.fill(&WHITE)?;
-
-        let mut chart = ChartBuilder::on(&root)
-            .caption(
-                "Error Distribution: Before vs After Recalibration",
-                ("sans-serif", 20),
-            )
-            .margin(15)
-            .x_label_area_size(40)
-            .y_label_area_size(50)
-            .build_cartesian_2d(error_min..error_max, 0usize..max_count)?;
-
-        chart
-            .configure_mesh()
-            .x_desc("Error (ppm)")
-            .y_desc("Count")
-            .draw()?;
-
-        let before_style = ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled();
-        chart.draw_series(hist_before.iter().enumerate().map(|(i, &count)| {
-            let x = usize_to_f64(i).mul_add(bin_width, error_min);
-            Rectangle::new([(x, 0), (bin_width.mul_add(0.9, x), count)], before_style)
-        }))?;
-
-        let after_style = ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled();
-        chart.draw_series(hist_after.iter().enumerate().map(|(i, &count)| {
-            let x = bin_width.mul_add(0.45, usize_to_f64(i).mul_add(bin_width, error_min));
-            Rectangle::new([(x, 0), (bin_width.mul_add(0.45, x), count)], after_style)
-        }))?;
-
-        root.present()?;
-    }
-    Ok(buffer)
-}
-
-/// Renders a plot showing actual precursor m/z values before/after recalibration.
-///
-/// This plot displays:
-/// - X-axis: Precursor m/z (reference/true value from MS1)
-/// - Y-axis: Observed precursor m/z (from MS2)
-/// - Blue dots: Observed m/z before recalibration
-/// - Green dots: Observed m/z after recalibration
-/// - Red diagonal line: Perfect calibration (y = x)
-///
-/// This is more informative than error plots because it shows the actual
-/// mass values and how recalibration shifts them toward the diagonal.
-///
-/// # Errors
-///
-/// Returns an error if the SVG backend cannot fill, build, or present the drawing area.
+/// Returns [`PlotError`] if the SVG backend fails during drawing.
 pub fn render_recalibration_diagnostic_mz_comparison(
     precursor_ms1_values: &[f64],
     precursor_ms2_before: &[f64],
     precursor_ms2_after: &[f64],
-) -> Result<String, MgfError> {
+) -> Result<String, PlotError> {
     use plotters::prelude::*;
 
     let mut buffer = String::new();
-
     if precursor_ms1_values.is_empty() || precursor_ms2_before.is_empty() {
         return Ok(buffer);
     }
 
-    // Compute range for both axes (should be equal for diagonal line)
     let mut min_mz = f64::INFINITY;
     let mut max_mz = f64::NEG_INFINITY;
     for value in precursor_ms1_values
@@ -271,7 +144,6 @@ pub fn render_recalibration_diagnostic_mz_comparison(
         min_mz = min_mz.min(value);
         max_mz = max_mz.max(value);
     }
-
     if !min_mz.is_finite() {
         return Ok(buffer);
     }
@@ -279,10 +151,12 @@ pub fn render_recalibration_diagnostic_mz_comparison(
     let min_mz = min_mz - span * 0.05;
     let max_mz = max_mz + span * 0.05;
 
+    let before_pts = sampled_pair_series(precursor_ms1_values, precursor_ms2_before);
+    let after_pts = sampled_pair_series(precursor_ms1_values, precursor_ms2_after);
+
     {
         let root = SVGBackend::with_string(&mut buffer, (1200, 600)).into_drawing_area();
         root.fill(&WHITE)?;
-
         let mut chart = ChartBuilder::on(&root)
             .caption(
                 "Precursor m/z: Before and After Recalibration",
@@ -299,125 +173,40 @@ pub fn render_recalibration_diagnostic_mz_comparison(
             .x_desc("Reference Precursor m/z (MS1, Da)")
             .y_desc("Observed Precursor m/z (MS2, Da)")
             .draw()?;
-
-        // Draw perfect calibration line (y = x)
         chart
             .draw_series(std::iter::once(PathElement::new(
                 [(min_mz, min_mz), (max_mz, max_mz)],
                 ShapeStyle::from(&RGBAColor(200, 50, 50, 0.5)),
             )))?
             .label("Perfect calibration");
-
-        // Plot before recalibration (blue)
         chart
-            .draw_series(
-                precursor_ms1_values
-                    .iter()
-                    .zip(precursor_ms2_before.iter())
-                    .filter(|(m1, m2)| m1.is_finite() && m2.is_finite())
-                    .map(|(m1, m2)| {
-                        Circle::new(
-                            (*m1, *m2),
-                            4,
-                            ShapeStyle::from(&RGBAColor(68, 119, 170, 0.5)).filled(),
-                        )
-                    }),
-            )?
+            .draw_series(before_pts.into_iter().map(|pt| {
+                Circle::new(
+                    pt,
+                    4,
+                    ShapeStyle::from(&RGBAColor(68, 119, 170, 0.5)).filled(),
+                )
+            }))?
             .label("Before recalibration");
-
-        // Plot after recalibration (green)
         chart
-            .draw_series(
-                precursor_ms1_values
-                    .iter()
-                    .zip(precursor_ms2_after.iter())
-                    .filter(|(m1, m2)| m1.is_finite() && m2.is_finite())
-                    .map(|(m1, m2)| {
-                        Circle::new(
-                            (*m1, *m2),
-                            3,
-                            ShapeStyle::from(&RGBAColor(34, 136, 51, 0.7)).filled(),
-                        )
-                    }),
-            )?
+            .draw_series(after_pts.into_iter().map(|pt| {
+                Circle::new(
+                    pt,
+                    3,
+                    ShapeStyle::from(&RGBAColor(34, 136, 51, 0.7)).filled(),
+                )
+            }))?
             .label("After recalibration");
-
         chart
             .configure_series_labels()
             .background_style(WHITE.mix(0.8))
             .border_style(BLACK)
             .draw()?;
-
         root.present()?;
     }
     Ok(buffer)
 }
 
-/// Renders a diagnostic summary text showing improvement statistics.
-///
-/// # Errors
-///
-/// This helper does not currently produce errors; `format!` always succeeds.
-/// The `Result` return type is retained for consistency with the other
-/// diagnostic SVG renderers, which can fail on the plotters drawing back-end.
-pub fn render_recalibration_summary_text(
-    mean_before: f64,
-    mean_after: f64,
-    rms_before: f64,
-    rms_after: f64,
-    max_before: f64,
-    max_after: f64,
-) -> Result<String, MgfError> {
-    let mean_improvement = mean_before.abs() - mean_after.abs();
-    let rms_improvement = rms_before - rms_after;
-    let max_improvement = max_before - max_after;
-    let improvement_color = |v: f64| if v > 0.0 { "green" } else { "red" };
-
-    Ok(format!(
-        r#"<div style="font-family: monospace; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
-            <h3>Recalibration Summary</h3>
-            <table style="border-collapse: collapse; width: 100%;">
-                <tr style="border-bottom: 1px solid #ccc;">
-                    <th style="text-align: left; padding: 8px;">Metric</th>
-                    <th style="text-align: center; padding: 8px;">Before</th>
-                    <th style="text-align: center; padding: 8px;">After</th>
-                    <th style="text-align: center; padding: 8px;">Improvement</th>
-                </tr>
-                <tr style="border-bottom: 1px solid #ddd;">
-                    <td style="padding: 8px;">Mean Error (ppm)</td>
-                    <td style="text-align: center; padding: 8px;">{:.4}</td>
-                    <td style="text-align: center; padding: 8px;">{:.4}</td>
-                    <td style="text-align: center; padding: 8px; color: {};">{:.4}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #ddd;">
-                    <td style="padding: 8px;">RMS Error (ppm)</td>
-                    <td style="text-align: center; padding: 8px;">{:.4}</td>
-                    <td style="text-align: center; padding: 8px;">{:.4}</td>
-                    <td style="text-align: center; padding: 8px; color: {};">{:.4}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px;">Max Error (ppm)</td>
-                    <td style="text-align: center; padding: 8px;">{:.4}</td>
-                    <td style="text-align: center; padding: 8px;">{:.4}</td>
-                    <td style="text-align: center; padding: 8px; color: {};">{:.4}</td>
-                </tr>
-            </table>
-        </div>"#,
-        mean_before,
-        mean_after,
-        improvement_color(mean_improvement),
-        mean_improvement,
-        rms_before,
-        rms_after,
-        improvement_color(rms_improvement),
-        rms_improvement,
-        max_before,
-        max_after,
-        improvement_color(max_improvement),
-        max_improvement,
-    ))
-}
-
 #[cfg(test)]
-#[expect(clippy::unwrap_used)] // tests unwrap the empty-error Result to assert the rendered SVG
+#[expect(clippy::unwrap_used)]
 mod tests;

@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-#![expect(
-    clippy::empty_enums,
-    reason = "Dioxus component macro generates Props helper empty enums"
-)]
+//! Reactive ECDF and scatter-plot Dioxus components plus numeric formatting helpers.
 
 use dioxus::prelude::*;
+use mgf_analysis_core::{ErrorBucket, ErrorUnit, PrecursorStats, RecalibrationStats};
 use ui::theme::StyleBuilder;
 
-use crate::diagnostics::RecalibrationStats;
-use crate::metrics::PrecursorStats;
 use crate::plotting::{
     make_svg_responsive, render_absolute_mass_bias_svg, render_ecdf_svg, tolerance_step_color,
 };
@@ -38,34 +34,11 @@ pub(super) fn format_count_with_percentage(count: usize, total: usize) -> String
 }
 
 pub(super) fn format_cumulative_bucket_count(
-    metrics: &crate::metrics::PrecursorStats,
-    bucket: &str,
+    metrics: &PrecursorStats,
+    bucket: ErrorBucket,
     total: usize,
 ) -> String {
-    let count = match bucket {
-        "0.1_da" => metrics.within_0_1_da,
-        "0.5_da" => metrics.within_0_1_da + metrics.within_0_5_da,
-        "1.0_da" => metrics.within_0_1_da + metrics.within_0_5_da + metrics.within_1_da,
-        "5.0_da" => {
-            metrics.within_0_1_da
-                + metrics.within_0_5_da
-                + metrics.within_1_da
-                + metrics.within_5_da
-        }
-        ">5.0_da" => metrics.above_5_da,
-        "0.5_ppm" => metrics.within_0_5_ppm,
-        "1.0_ppm" => metrics.within_0_5_ppm + metrics.within_1_ppm,
-        "5.0_ppm" => metrics.within_0_5_ppm + metrics.within_1_ppm + metrics.within_5_ppm,
-        "10.0_ppm" => {
-            metrics.within_0_5_ppm
-                + metrics.within_1_ppm
-                + metrics.within_5_ppm
-                + metrics.within_10_ppm
-        }
-        ">10.0_ppm" => metrics.above_10_ppm,
-        _ => 0,
-    };
-    format_count_with_percentage(count, total)
+    format_count_with_percentage(metrics.cumulative_bucket_count(bucket), total)
 }
 
 pub(super) fn tolerance_card_style(index: usize) -> String {
@@ -94,24 +67,34 @@ fn format_threshold_compliance(errors: &[f64], threshold: f64, above: bool) -> S
     format_count_with_percentage(count, errors.len())
 }
 
-pub(super) fn format_recalibrated_compliance_mda(
-    errors: &[f64],
-    threshold_mda: f64,
-    above: bool,
+pub(super) fn format_recalibrated_compliance(
+    diag: &RecalibrationStats,
+    bucket: ErrorBucket,
 ) -> String {
-    format_threshold_compliance(errors, threshold_mda / 1000.0, above)
+    match bucket {
+        ErrorBucket::Within0_1Mda => {
+            format_threshold_compliance(&diag.error_da_after, 0.1 / 1000.0, false)
+        }
+        ErrorBucket::Within0_5Mda => {
+            format_threshold_compliance(&diag.error_da_after, 0.5 / 1000.0, false)
+        }
+        ErrorBucket::Within1Mda => {
+            format_threshold_compliance(&diag.error_da_after, 1.0 / 1000.0, false)
+        }
+        ErrorBucket::Within5Mda => {
+            format_threshold_compliance(&diag.error_da_after, 5.0 / 1000.0, false)
+        }
+        ErrorBucket::Above5Mda => {
+            format_threshold_compliance(&diag.error_da_after, 5.0 / 1000.0, true)
+        }
+        ErrorBucket::Within0_5Ppm => format_threshold_compliance(&diag.error_ppm_after, 0.5, false),
+        ErrorBucket::Within1Ppm => format_threshold_compliance(&diag.error_ppm_after, 1.0, false),
+        ErrorBucket::Within5Ppm => format_threshold_compliance(&diag.error_ppm_after, 5.0, false),
+        ErrorBucket::Within10Ppm => format_threshold_compliance(&diag.error_ppm_after, 10.0, false),
+        ErrorBucket::Above10Ppm => format_threshold_compliance(&diag.error_ppm_after, 10.0, true),
+    }
 }
 
-pub(super) fn format_recalibrated_compliance_ppm(
-    errors: &[f64],
-    threshold_ppm: f64,
-    above: bool,
-) -> String {
-    format_threshold_compliance(errors, threshold_ppm, above)
-}
-
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-#[allow(clippy::needless_pass_by_value)] // rsx! macro captures by move, clippy cannot see through macro expansion
 fn plot_shell(title: &'static str, subtitle: &'static str, svg_markup: Memo<String>) -> Element {
     rsx! {
         div {
@@ -127,6 +110,8 @@ fn plot_shell(title: &'static str, subtitle: &'static str, svg_markup: Memo<Stri
                     onclick: move |_| {
                         #[cfg(target_arch = "wasm32")]
                         download_svg(&svg_markup.read(), title);
+                        #[cfg(not(target_arch = "wasm32"))]
+                        drop(svg_markup.read());
                     },
                     "Download"
                 }
@@ -139,70 +124,121 @@ fn plot_shell(title: &'static str, subtitle: &'static str, svg_markup: Memo<Stri
 }
 
 #[component]
-pub fn ecdf_plot(
+pub fn EcdfPlot(
     title: &'static str,
     subtitle: &'static str,
     metrics: Signal<Option<PrecursorStats>>,
-    recalibration_diagnostics: Signal<Option<RecalibrationStats>>,
-    thresholds: &'static [f64],
-    unit: &'static str,
+    diagnostics: Memo<Option<RecalibrationStats>>,
+    unit: ErrorUnit,
 ) -> Element {
+    let unit_str = unit.as_str();
+    let thresholds = unit.plot_thresholds();
     let svg_markup = use_memo(move || {
-        if let Some(diag) = recalibration_diagnostics.read().as_ref() {
-            let values: Vec<f64> = if unit == "mDa" {
-                diag.error_da_after
+        if let Some(diag) = diagnostics.read().as_ref() {
+            let values: Vec<f64> = match unit {
+                ErrorUnit::Mda => diag
+                    .error_da_after
                     .iter()
-                    .map(|value| value.abs() * 1000.0)
-                    .collect()
-            } else {
-                diag.error_ppm_after
-                    .iter()
-                    .map(|value| value.abs())
-                    .collect()
+                    .map(|v| v.abs() * 1000.0)
+                    .collect(),
+                ErrorUnit::Ppm => diag.error_ppm_after.iter().map(|v| v.abs()).collect(),
             };
             return make_svg_responsive(
-                render_ecdf_svg(title, &values, thresholds, unit).unwrap_or_default(),
+                render_ecdf_svg(title, &values, thresholds, unit_str).unwrap_or_default(),
             );
         }
         let metrics_guard = metrics.read();
         let Some(m) = metrics_guard.as_ref() else {
             return String::new();
         };
-        if unit == "mDa" {
-            let values: Vec<f64> = m
-                .absolute_error_da_values
-                .iter()
-                .map(|value| value * 1000.0)
-                .collect();
-            make_svg_responsive(
-                render_ecdf_svg(title, &values, thresholds, unit).unwrap_or_default(),
-            )
-        } else {
-            make_svg_responsive(
-                render_ecdf_svg(title, &m.absolute_error_ppm_values, thresholds, unit)
+        match unit {
+            ErrorUnit::Mda => {
+                let values: Vec<f64> = m
+                    .absolute_error_da_values
+                    .iter()
+                    .map(|v| v * 1000.0)
+                    .collect();
+                make_svg_responsive(
+                    render_ecdf_svg(title, &values, thresholds, unit_str).unwrap_or_default(),
+                )
+            }
+            ErrorUnit::Ppm => make_svg_responsive(
+                render_ecdf_svg(title, &m.absolute_error_ppm_values, thresholds, unit_str)
                     .unwrap_or_default(),
-            )
+            ),
         }
     });
     plot_shell(title, subtitle, svg_markup)
 }
 
 #[component]
-pub fn absolute_mass_bias_plot(
+pub fn AbsoluteMassBiasPlot(
     title: &'static str,
     subtitle: &'static str,
     metrics: Signal<Option<PrecursorStats>>,
-    unit: &'static str,
-    ticks: &'static [f64],
+    unit: ErrorUnit,
 ) -> Element {
+    let unit_str = unit.as_str();
+    let ticks = unit.plot_thresholds();
     let svg_markup = use_memo(move || {
         let metrics_guard = metrics.read();
         let Some(m) = metrics_guard.as_ref() else {
             return String::new();
         };
         make_svg_responsive(
-            render_absolute_mass_bias_svg(title, &m.plot_points, unit, ticks).unwrap_or_default(),
+            render_absolute_mass_bias_svg(title, &m.plot_points, unit_str, ticks)
+                .unwrap_or_default(),
         )
     });
     plot_shell(title, subtitle, svg_markup)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn formatting_and_compliance_helpers_match_expected_labels() {
+        assert_eq!(format_value(1.23456), "1.2346");
+        assert_eq!(format_value(f64::NAN), "n/a");
+        assert_eq!(format_count_with_percentage(0, 0), "0 (0.0%)");
+        assert_eq!(format_count_with_percentage(1, 4), "1 (25.0%)");
+
+        let mut stats = PrecursorStats::default();
+        stats.within_0_1_mda = 2;
+        stats.within_0_5_mda = 3;
+        stats.within_1_mda = 1;
+        stats.within_5_mda = 2;
+        stats.above_5_mda = 2;
+        stats.within_0_5_ppm = 1;
+        stats.within_1_ppm = 2;
+        stats.within_5_ppm = 3;
+        stats.within_10_ppm = 2;
+        stats.above_10_ppm = 2;
+        assert_eq!(
+            format_cumulative_bucket_count(&stats, ErrorBucket::Within0_5Mda, 10),
+            "5 (50.0%)"
+        );
+        assert_eq!(
+            format_cumulative_bucket_count(&stats, ErrorBucket::Within10Ppm, 10),
+            "8 (80.0%)"
+        );
+        assert_eq!(
+            format_cumulative_bucket_count(&stats, ErrorBucket::Above10Ppm, 10),
+            "2 (20.0%)"
+        );
+
+        let mut diag = RecalibrationStats::default();
+        diag.error_da_after = vec![0.0005, 0.002];
+        diag.error_ppm_after = vec![4.0, 12.0];
+        assert_eq!(
+            format_recalibrated_compliance(&diag, ErrorBucket::Within1Mda),
+            "1 (50.0%)"
+        );
+        assert_eq!(
+            format_recalibrated_compliance(&diag, ErrorBucket::Above10Ppm),
+            "1 (50.0%)"
+        );
+        assert!(tolerance_card_style(0).contains("border: 1px solid #"));
+    }
 }

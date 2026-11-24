@@ -18,6 +18,7 @@ members = [
   "crates/json-count-core",
   "crates/lipid-core",
   "crates/mgf",
+  "crates/mgf-analysis-core",
   "crates/stream-io",
   "crates/ui",
   "crates/upload",

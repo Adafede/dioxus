@@ -9,12 +9,10 @@
 // 3. Track diagnostic metrics
 // 4. Generate visualization plots
 
-use mgf_precursor_erro_rs::diagnostics::RecalibrationStats;
+use mgf_analysis_core::{CalibrationModel, Peak, RecalibrationStats, recalibrate_fragments};
 use mgf_precursor_erro_rs::plotting::{
     render_recalibration_diagnostic_histogram, render_recalibration_diagnostic_ppm,
-    render_recalibration_summary_text,
 };
-use mgf_precursor_erro_rs::recalibration::{CalibrationModel, Peak, recalibrate_fragments};
 
 fn print_fragments(title: &str, fragments: &[Peak], include_intensity: bool) {
     println!("{title}");
@@ -45,7 +43,7 @@ fn run_tof_examples(precursor_ms1: f64, precursor_ms2: f64) {
         &mut fragments,
         precursor_ms1,
         precursor_ms2,
-        CalibrationModel::TOFDa { lambda: 1.0 },
+        CalibrationModel::tof(1.0),
     );
     print_fragments("\nAfter recalibration (λ = 1.0):", &fragments, true);
 
@@ -59,7 +57,7 @@ fn run_tof_examples(precursor_ms1: f64, precursor_ms2: f64) {
         &mut fragments,
         precursor_ms1,
         precursor_ms2,
-        CalibrationModel::TOFDa { lambda: 0.5 },
+        CalibrationModel::tof(0.5),
     );
     print_fragments("After recalibration (λ = 0.5):", &fragments, true);
 }
@@ -78,7 +76,7 @@ fn run_orbitrap_example() {
         &mut fragments,
         precursor_ms1,
         precursor_ms2,
-        CalibrationModel::OrbitrapPPM { lambda: 1.0 },
+        CalibrationModel::orbitrap(1.0),
     );
 
     print_fragments("\nAfter recalibration (λ = 1.0):", &fragments, false);
@@ -152,17 +150,10 @@ fn run_visualization_example(diagnostics: &RecalibrationStats) {
     let histogram = render_recalibration_diagnostic_histogram(&errors_before, &errors_after, 10)
         .unwrap_or_default();
     println!("Generated histogram: {} bytes SVG", histogram.len());
-
-    let summary = render_recalibration_summary_text(
-        diagnostics.mean_error_ppm_before,
-        diagnostics.mean_error_ppm_after,
-        diagnostics.rms_error_ppm_before,
-        diagnostics.rms_error_ppm_after,
-        diagnostics.max_abs_error_ppm_before,
-        diagnostics.max_abs_error_ppm_after,
-    )
-    .unwrap_or_default();
-    println!("Generated summary: {} bytes HTML", summary.len());
+    println!(
+        "Mean improvement: {:.4} ppm",
+        diagnostics.mean_error_improvement_ppm()
+    );
 }
 
 /// The m/z of the single peak a demo fragment list holds.
@@ -184,7 +175,7 @@ fn run_no_correction_example(precursor_ms1: f64, precursor_ms2: f64) {
         &mut fragments,
         precursor_ms1,
         precursor_ms2,
-        CalibrationModel::TOFDa { lambda: 0.0 },
+        CalibrationModel::tof(0.0),
     );
 
     let after_mz = sole_mz(&fragments);

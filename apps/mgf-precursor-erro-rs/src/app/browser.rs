@@ -1,14 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
+//! Browser file ingestion, remote example fetch, and `.svg`/`.mgf` downloads.
+
 use dioxus::html::FileData;
+use dioxus::prelude::WritableExt;
 #[cfg(target_arch = "wasm32")]
 use dioxus::prelude::spawn;
-use dioxus::prelude::{Signal, WritableExt};
 
-use crate::metrics::PrecursorStats;
+use super::UploadSignals;
+
 #[cfg(target_arch = "wasm32")]
-use crate::parser::scan_blob_with_progress;
+use mgf_analysis_core::{
+    LineIngestor, MAX_RAW_RETENTION_BYTES, PrecursorStats, append_retained_line,
+};
+#[cfg(target_arch = "wasm32")]
+use upload::{BlobLines, BlobSource, ChunkSource, UploadError};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
@@ -21,7 +28,10 @@ const EXAMPLE_MGF_URL: &str =
     "https://raw.githubusercontent.com/zamboni-lab/MultiMS2/main/data/multims2_spectra.mgf";
 
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)] // async fn captures non-Send browser futures
+#[expect(
+    clippy::future_not_send,
+    reason = "wasm32 single-threaded executor captures JsFuture and Blob"
+)]
 async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
     let window = web_sys::window().ok_or_else(|| "Browser window unavailable.".to_string())?;
     let response_value = JsFuture::from(window.fetch_with_str(url))
@@ -70,16 +80,12 @@ pub(crate) fn svg_download_filename(title: &str) -> String {
     format!("{stem}.svg")
 }
 
-/// Downloads SVG markup with an `image/svg+xml` MIME type and `.svg` extension.
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn download_svg(svg: &str, title: &str) {
     let filename = svg_download_filename(title);
     drop(upload::download_svg(svg, &filename));
 }
 
-/// Builds the output filename for a recalibrated MGF export, stripping any
-/// trailing `.mgf` extension case-insensitively before appending
-/// `_recalibrated.mgf`.
 #[must_use]
 pub(crate) fn recalibrated_mgf_filename(filename: &str) -> String {
     let base = if filename.len() >= 4
@@ -94,8 +100,6 @@ pub(crate) fn recalibrated_mgf_filename(filename: &str) -> String {
     format!("{base}_recalibrated.mgf")
 }
 
-/// Downloads recalibrated MGF content as a `.mgf` file, returning the
-/// generated download filename on success.
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn download_recalibrated_mgf(filename: &str, content: &str) -> Result<String, String> {
     let download_name = recalibrated_mgf_filename(filename);
@@ -103,35 +107,53 @@ pub(crate) fn download_recalibrated_mgf(filename: &str, content: &str) -> Result
     Ok(download_name)
 }
 
-/// Downloads recalibrated MGF content (native stub — returns `Err`).
-///
-/// # Errors
-/// Always returns an error on native targets.
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn download_recalibrated_mgf(filename: &str, _content: &str) -> Result<String, String> {
     let _download_name = recalibrated_mgf_filename(filename);
     Err("Download is only available in the browser".to_string())
 }
 
-/// Uses [`upload::BlobLines`] to read the blob in streaming chunks and process
-/// one MGF block line at a time, retaining raw text up to 64 MiB for
-/// recalibrated MGF export while analyzing all spectra regardless of size.
 #[cfg(target_arch = "wasm32")]
-fn start_analysis(
-    blob: Blob,
-    mut status: Signal<String>,
-    mut metrics: Signal<Option<PrecursorStats>>,
-    mut busy: Signal<bool>,
-    mut original_mgf_content: Signal<String>,
-) {
+#[expect(
+    clippy::future_not_send,
+    reason = "wasm32 single-threaded executor captures BlobSource and StreamError futures"
+)]
+async fn scan_blob_with_progress(
+    blob: &Blob,
+    on_progress: impl FnMut(u64, u64),
+) -> Result<(PrecursorStats, String), UploadError> {
+    let mut reader = BlobLines::new(BlobSource::new(blob), on_progress);
+    let mut ingestor = LineIngestor::default();
+    let mut raw_content = String::new();
+    let mut raw_retention_capped = false;
+    let mut index = 0usize;
+
+    while let Some(line) = reader.next_line().await? {
+        ingestor.feed_line(index, &line);
+        append_retained_line(
+            &mut raw_content,
+            &mut raw_retention_capped,
+            &line,
+            MAX_RAW_RETENTION_BYTES,
+        );
+        index += 1;
+    }
+
+    let mut result = ingestor.finish();
+    result.raw_retention_capped = raw_retention_capped;
+    Ok((result, raw_content))
+}
+
+#[cfg(target_arch = "wasm32")]
+fn start_analysis(blob: Blob, mut signals: UploadSignals) {
     spawn(async move {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        // blob.slice_with_f64_and_f64 requires f64 args, cast from u64
-        let total_bytes = blob.size() as u64;
-        status.set(format!("Scanning {total_bytes} bytes..."));
+        let total_bytes = BlobSource::new(&blob).total_bytes();
+        signals
+            .status
+            .set(format!("Scanning {total_bytes} bytes..."));
 
         match scan_blob_with_progress(&blob, |processed, total| {
-            status.set(format!(
+            signals.status.set(format!(
                 "Scanning... {}/{} bytes",
                 processed.min(total),
                 total
@@ -140,105 +162,70 @@ fn start_analysis(
         .await
         {
             Ok((result, raw_content)) => {
-                status.set(format!("Processed {} spectra.", result.total_spectra));
-                original_mgf_content.set(raw_content);
-                metrics.set(Some(result));
+                signals
+                    .status
+                    .set(format!("Processed {} spectra.", result.total_spectra));
+                signals.original_mgf_content.set(raw_content);
+                signals.metrics.set(Some(result));
             }
             Err(error) => {
-                status.set(format!("Error scanning MGF: {error}"));
-                metrics.set(Some(PrecursorStats::default()));
+                signals.status.set(format!("Error scanning MGF: {error}"));
+                signals.metrics.set(Some(PrecursorStats::default()));
             }
         }
-        busy.set(false);
+        signals.busy.set(false);
     });
 }
 
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
-pub(crate) fn begin_analysis_from_blob(
-    blob: Blob,
-    file_name: String,
-    mut file_name_signal: Signal<String>,
-    mut status: Signal<String>,
-    mut metrics: Signal<Option<PrecursorStats>>,
-    mut busy: Signal<bool>,
-    mut drag_active: Signal<bool>,
-    original_mgf_content: Signal<String>,
-) {
-    file_name_signal.set(file_name);
-    busy.set(true);
-    drag_active.set(false);
-    status.set("Reading MGF...".to_string());
-    metrics.set(None);
-
-    start_analysis(blob, status, metrics, busy, original_mgf_content);
+fn begin_analysis_from_blob(blob: Blob, file_name: String, mut signals: UploadSignals) {
+    signals.file_name.set(file_name);
+    signals.busy.set(true);
+    signals.drag_active.set(false);
+    signals.status.set("Reading MGF...".to_string());
+    signals.metrics.set(None);
+    start_analysis(blob, signals);
 }
 
-/// Extracts a blob from the given file data and dispatches it to the analysis
-/// pipeline on wasm32, or reports that a browser is required on native.
-/// Consolidates the near-duplicate `on_file_change`/`on_drop` handlers.
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-#[allow(unused_mut)] // mut forwarded to begin_analysis_from_blob, unused here
-// The native arm calls `.set` on these bindings, while the wasm32 arm only
-// forwards the handles to `begin_analysis_from_blob`, so the `mut` qualifiers
-// (and `drag_active`/`original_mgf_content`) look unused on one target.
-pub(super) fn attempt_analysis_from_files(
-    files: &[FileData],
-    mut file_name: Signal<String>,
-    mut status: Signal<String>,
-    mut metrics: Signal<Option<PrecursorStats>>,
-    mut busy: Signal<bool>,
-    drag_active: Signal<bool>,
-    original_mgf_content: Signal<String>,
-) {
+/// Dispatches uploaded file data on `wasm32` or displays browser-only notice on host.
+pub(super) fn attempt_analysis_from_files(files: &[FileData], mut signals: UploadSignals) {
     match upload::extract_blob_from_file_data(files) {
         Ok(Some(file)) => {
             #[cfg(target_arch = "wasm32")]
-            begin_analysis_from_blob(
-                file.blob,
-                file.name,
-                file_name,
-                status,
-                metrics,
-                busy,
-                drag_active,
-                original_mgf_content,
-            );
+            begin_analysis_from_blob(file.blob, file.name, signals);
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                file_name.set(file.name);
-                metrics.set(None);
-                status.set("This app needs to run in a browser.".to_string());
-                busy.set(false);
+                signals.drag_active.set(false);
+                signals.original_mgf_content.set(String::new());
+                signals.file_name.set(file.name);
+                signals.metrics.set(None);
+                signals
+                    .status
+                    .set("This app needs to run in a browser.".to_string());
+                signals.busy.set(false);
             }
         }
-        Ok(None) => status.set("No file selected.".to_string()),
-        Err(err) => status.set(err.to_string()),
+        Ok(None) => signals.status.set("No file selected.".to_string()),
+        Err(err) => signals.status.set(err.to_string()),
     }
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn load_example_mgf(
-    mut status: Signal<String>,
-    mut metrics: Signal<Option<PrecursorStats>>,
-    mut busy: Signal<bool>,
-    mut file_name: Signal<String>,
-    original_mgf_content: Signal<String>,
-) {
+pub(crate) fn load_example_mgf(mut signals: UploadSignals) {
     spawn(async move {
-        status.set("Loading example MGF...".to_string());
-        busy.set(true);
-        metrics.set(None);
+        signals.status.set("Loading example MGF...".to_string());
+        signals.busy.set(true);
+        signals.metrics.set(None);
 
         match fetch_remote_blob(EXAMPLE_MGF_URL).await {
             Ok(blob) => {
-                file_name.set("multims2_spectra.mgf".to_string());
-                start_analysis(blob, status, metrics, busy, original_mgf_content);
+                signals.file_name.set("multims2_spectra.mgf".to_string());
+                start_analysis(blob, signals);
             }
             Err(error) => {
-                status.set(error);
-                busy.set(false);
+                signals.status.set(error);
+                signals.busy.set(false);
             }
         }
     });

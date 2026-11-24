@@ -7,8 +7,8 @@
 // code they cover. `super` is still the `scatter` module, so
 // `use super::*` below reaches exactly what it did before the move.
 use super::*;
-use crate::errors::MgfError;
-use crate::metrics::{AdductFamily, PlotPoint};
+use crate::errors::PlotError;
+use mgf_analysis_core::{AdductFamily, PlotPoint};
 
 fn sample_point(err_da: f64, err_ppm: f64) -> PlotPoint {
     PlotPoint {
@@ -64,7 +64,7 @@ fn render_mass_bias_svg_empty_points_returns_ok_or_err() {
             svg.contains("<svg"),
             "empty input should still produce SVG canvas"
         ),
-        Err(MgfError::Drawing(_)) => {
+        Err(PlotError::Drawing(_)) => {
             // A zero-width y-range (no finite data) can cause plotters to
             // return InvalidRange, which is correctly propagated as Err.
         }
@@ -91,7 +91,7 @@ fn render_mass_bias_svg_all_non_finite_y_does_not_panic() {
             svg.contains("<svg"),
             "degenerate range should still produce SVG canvas"
         ),
-        Err(MgfError::Drawing(_)) => {} // also acceptable: typed error, no panic
+        Err(PlotError::Drawing(_)) => {} // also acceptable: typed error, no panic
     }
 }
 
@@ -105,7 +105,7 @@ fn render_absolute_mass_bias_svg_empty_points_returns_ok_or_err() {
             svg.contains("<svg"),
             "empty input should still produce SVG canvas"
         ),
-        Err(MgfError::Drawing(_)) => {}
+        Err(PlotError::Drawing(_)) => {}
     }
 }
 
@@ -123,7 +123,7 @@ fn render_absolute_mass_bias_svg_all_non_finite_y_does_not_panic() {
             svg.contains("<svg"),
             "degenerate range should still produce SVG canvas"
         ),
-        Err(MgfError::Drawing(_)) => {}
+        Err(PlotError::Drawing(_)) => {}
     }
 }
 

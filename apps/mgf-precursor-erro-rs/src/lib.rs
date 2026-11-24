@@ -3,8 +3,9 @@
 
 //! `mgf-precursor-erro-rs` — MGF precursor mass-error analysis.
 //!
-//! Uploads an MGF file, recalibrates precursor *m/z* values, and visualises
-//! the resulting mass-error distribution as an interactive histogram.
+//! Thin Dioxus WebAssembly UI and SVG plotting adapter over [`mgf_analysis_core`],
+//! streaming MGF spectra, recalibrating precursor and fragment *m/z* values, and
+//! rendering interactive mass-error diagnostics.
 //!
 //! # Run locally
 //!
@@ -19,22 +20,10 @@
 //! ```
 
 pub(crate) mod app;
-/// Externally consumed by `examples/recalibration_demo.rs`.
-pub mod diagnostics;
 pub(crate) mod errors;
-pub mod metrics;
-// Deliberately NOT gated on `target_arch = "wasm32"`. The parser is pure
-// `&str` arithmetic with one browser entry point (`scan_blob_with_progress`),
-// which is the part that stays gated. Gating the whole module meant
-// `cargo test` on every non-wasm target compiled none of it: the streaming
-// scanner, the adduct grammar and the tolerance buckets all carried untested
-// defects that only a wasm build could have surfaced. Testability wins.
-pub(crate) mod parser;
-/// Externally consumed by `examples/recalibration_demo.rs`.
+/// SVG plotting renderers consumed by [`app`] and `examples/recalibration_demo.rs`.
 pub mod plotting;
-/// Externally consumed by `examples/recalibration_demo.rs`.
-pub mod recalibration;
 
 pub use app::app;
-/// Error type surfaced in public signatures (e.g. plotting renders).
-pub use errors::MgfError;
+/// Error type surfaced in plotting renders.
+pub use errors::PlotError;

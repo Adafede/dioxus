@@ -1,36 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-//! Typed error type for `mgf-precursor-erro-rs`.
-//!
-//! Failures from plotters' drawing back-end operations (`fill` / `present` /
-//! `draw`) propagate as [`MgfError`] through `?` rather than panicking,
-//! matching the convention in `crates/upload`.
-use std::fmt;
+//! Typed SVG plotting error definitions for `mgf-precursor-erro-rs`.
 
 use plotters::drawing::DrawingAreaErrorKind;
 
-/// Errors that can occur while rendering diagnostic SVGs for
-/// `mgf-precursor-erro-rs`.
-#[derive(Debug)]
-pub enum MgfError {
-    /// A plotters drawing back-end operation (`fill`/`present`/`draw`) failed.
+/// Errors raised while rendering diagnostic or scatter SVGs.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
+pub enum PlotError {
+    /// A plotters drawing back-end operation (`fill`, `draw`, or `present`) failed.
+    #[error("SVG rendering failed: {0}")]
     Drawing(String),
 }
 
-impl fmt::Display for MgfError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Drawing(msg) => write!(f, "SVG rendering failed: {msg}"),
-        }
-    }
-}
-
-impl std::error::Error for MgfError {}
-
-/// Convert any plotters drawing-area error into [`MgfError`] so the `render_*`
-/// helpers can propagate failures with `?` instead of panicking.
-impl<E> From<DrawingAreaErrorKind<E>> for MgfError
+impl<E> From<DrawingAreaErrorKind<E>> for PlotError
 where
     E: std::error::Error + Send + Sync,
 {
@@ -41,11 +25,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::PlotError;
 
     #[test]
     fn display_renders_message() {
-        let err = MgfError::Drawing("bad layout".to_string());
-        assert_eq!(format!("{err}"), "SVG rendering failed: bad layout");
+        let err = PlotError::Drawing("bad layout".to_string());
+        assert_eq!(err.to_string(), "SVG rendering failed: bad layout");
     }
 }

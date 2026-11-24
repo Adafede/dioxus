@@ -133,32 +133,20 @@ fn render_mz_comparison_valid_values_returns_ok_with_svg() {
     assert!(svg.contains("<circle"), "expected scatter point <circle>");
 }
 
-// ── render_recalibration_summary_text ────────────────────────────
-
 #[test]
-fn render_summary_text_with_nan_does_not_panic() {
-    // NaN values propagate through arithmetic but format! never panics.
-    let result = render_recalibration_summary_text(f64::NAN, 1.0, 2.0, 0.5, 10.0, 3.0);
+fn render_diagnostic_mz_comparison_downsamples_large_inputs() {
+    let n = 4000usize;
+    let ms1: Vec<f64> = (0..n)
+        .map(|i| 200.0 + f64::from(u32::try_from(i).unwrap()))
+        .collect();
+    let ms2_before: Vec<f64> = ms1.iter().map(|v| v + 0.02).collect();
+    let ms2_after: Vec<f64> = ms1.iter().map(|v| v + 0.001).collect();
+    let svg = render_recalibration_diagnostic_mz_comparison(&ms1, &ms2_before, &ms2_after).unwrap();
+    let circles = svg.matches("<circle").count();
     assert!(
-        result.is_ok(),
-        "summary text with NaN should return Ok, not panic, got {result:?}"
+        circles <= 3_100,
+        "expected downsampled scatter circles (<= ~3000), got {circles}"
     );
-    let html = result.unwrap();
-    assert!(html.contains("Recalibration Summary"));
-}
-
-#[test]
-fn render_summary_text_normal_values() {
-    let result = render_recalibration_summary_text(5.0, 2.0, 8.0, 1.0, 12.0, 3.0);
-    assert!(result.is_ok());
-    let html = result.unwrap();
-    assert!(html.contains("Recalibration Summary"));
-}
-
-#[test]
-fn render_summary_text_marks_mean_regression_as_negative_red() {
-    let html = render_recalibration_summary_text(2.0, 5.0, 8.0, 1.0, 12.0, 3.0).unwrap();
-    assert!(html.contains("color: red;\">-3.0000"));
 }
 
 #[test]

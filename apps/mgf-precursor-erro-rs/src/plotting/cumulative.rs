@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-//! Cumulative-distribution and four-stage error-analysis renderers. These
-//! produce the "complete recalibration story" SVGs (quartet + cumulative CDF
-//! curves) and share a small set of private drawing helpers.
+//! Cumulative-distribution and four-stage error-analysis renderers.
 
-use crate::errors::MgfError;
-use std::fmt::Write;
+use std::fmt::Write as _;
 
-use super::data::{mean_and_std_dev, usize_to_f64};
+use mgf_analysis_core::usize_to_f64;
+
+use super::data::mean_and_std_dev;
+use crate::errors::PlotError;
 
 fn cumulative_points(values: &[f64]) -> Vec<(f64, f64)> {
     let mut sorted: Vec<f64> = values
@@ -42,25 +42,23 @@ fn draw_quartet_stage<DB: plotters::prelude::DrawingBackend>(
     x: f64,
     values: &[f64],
     color: plotters::style::RGBColor,
-) where
-    DB::ErrorType: 'static,
+) -> Result<(), PlotError>
+where
+    DB::ErrorType: Send + Sync + 'static,
 {
     if let Some((mean, std_dev)) = mean_and_std_dev(values) {
         let style = plotters::style::ShapeStyle::from(&color);
-        drop(
-            chart.draw_series(std::iter::once(plotters::prelude::PathElement::new(
-                [(x, mean - std_dev), (x, mean + std_dev)],
-                style,
-            ))),
-        );
-        drop(
-            chart.draw_series(std::iter::once(plotters::prelude::Circle::new(
-                (x, mean),
-                6,
-                style.filled(),
-            ))),
-        );
+        chart.draw_series(std::iter::once(plotters::prelude::PathElement::new(
+            [(x, mean - std_dev), (x, mean + std_dev)],
+            style,
+        )))?;
+        chart.draw_series(std::iter::once(plotters::prelude::Circle::new(
+            (x, mean),
+            6,
+            style.filled(),
+        )))?;
     }
+    Ok(())
 }
 
 fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
@@ -75,19 +73,16 @@ fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
     points: Vec<(f64, f64)>,
     color: plotters::style::RGBColor,
     stroke_width: u32,
-) where
-    DB::ErrorType: 'static,
+) -> Result<(), PlotError>
+where
+    DB::ErrorType: Send + Sync + 'static,
 {
     if points.is_empty() {
-        return;
+        return Ok(());
     }
-
     let style = plotters::style::ShapeStyle::from(&color).stroke_width(stroke_width);
-    // `drop`, not `let _ =`. The discard is deliberate — a plotters drawing
-    // error is not worth failing an SVG render over — and `drop` says that,
-    // where `let _ =` is the same statement that
-    // `clippy::let_underscore_drop` reads as an accidental early drop.
-    drop(chart.draw_series(plotters::series::LineSeries::new(points, style)));
+    chart.draw_series(plotters::series::LineSeries::new(points, style))?;
+    Ok(())
 }
 
 fn append_cumulative_legend(mut svg: String) -> String {
@@ -103,7 +98,6 @@ fn append_cumulative_legend(mut svg: String) -> String {
     ];
 
     svg.push_str(r#"<g id="legend" font-size="12" font-family="sans-serif">"#);
-
     for (idx, (label, (r, g, b))) in legend_items.iter().enumerate() {
         let y = 30 + (idx * 20);
         let x = 990;
@@ -125,24 +119,18 @@ fn append_cumulative_legend(mut svg: String) -> String {
 
 /// Four-stage error analysis showing the complete recalibration story.
 ///
-/// Stage 1 (Blue): MS1 error vs theory
-/// Stage 2 (Orange): MS2 error before recalibration vs theory
-/// Stage 3 (Red): Calibration delta (MS2 - MS1) - the measurement discrepancy
-/// Stage 4 (Green): MS2 error after recalibration vs theory
-///
 /// # Errors
 ///
-/// Returns an error if the SVG backend cannot fill, build, or present the drawing area.
+/// Returns [`PlotError`] if the SVG backend fails during drawing.
 pub fn render_error_quartet(
     error_ms1: &[f64],
     delta_ms2_ms1: &[f64],
     error_ms2_before: &[f64],
     error_ms2_after: &[f64],
-) -> Result<String, MgfError> {
+) -> Result<String, PlotError> {
     use plotters::prelude::*;
 
     let mut buffer = String::new();
-
     let mut min_val = f64::INFINITY;
     let mut max_val = f64::NEG_INFINITY;
     for value in error_ms1
@@ -156,13 +144,11 @@ pub fn render_error_quartet(
         min_val = min_val.min(value);
         max_val = max_val.max(value);
     }
-
     if !min_val.is_finite() {
         return Ok(buffer);
     }
 
     let margin = (max_val - min_val).abs().max(0.5) * 0.15;
-
     {
         let root = SVGBackend::with_string(&mut buffer, (1200, 400)).into_drawing_area();
         root.fill(&WHITE)?;
@@ -185,14 +171,14 @@ pub fn render_error_quartet(
             .draw()?;
 
         let red_style = ShapeStyle::from(&RED).stroke_width(1);
-        drop(chart.draw_series(std::iter::once(PathElement::new(
+        chart.draw_series(std::iter::once(PathElement::new(
             [(-0.5, 0.0), (4.5, 0.0)],
             red_style,
-        ))));
-        draw_quartet_stage(&mut chart, 0.8, error_ms1, RGBColor(68, 119, 170));
-        draw_quartet_stage(&mut chart, 1.8, error_ms2_before, RGBColor(255, 119, 0));
-        draw_quartet_stage(&mut chart, 2.8, delta_ms2_ms1, RGBColor(204, 51, 51));
-        draw_quartet_stage(&mut chart, 3.8, error_ms2_after, RGBColor(51, 153, 51));
+        )))?;
+        draw_quartet_stage(&mut chart, 0.8, error_ms1, RGBColor(68, 119, 170))?;
+        draw_quartet_stage(&mut chart, 1.8, error_ms2_before, RGBColor(255, 119, 0))?;
+        draw_quartet_stage(&mut chart, 2.8, delta_ms2_ms1, RGBColor(204, 51, 51))?;
+        draw_quartet_stage(&mut chart, 3.8, error_ms2_after, RGBColor(51, 153, 51))?;
 
         root.present()?;
     }
@@ -204,7 +190,7 @@ fn render_cumulative_chart(
     title: &str,
     x_desc: &str,
     curves: &[(&[f64], plotters::prelude::RGBColor)],
-) -> Result<Option<String>, MgfError> {
+) -> Result<Option<String>, PlotError> {
     use plotters::prelude::*;
 
     let mut prepared = Vec::with_capacity(curves.len());
@@ -240,7 +226,7 @@ fn render_cumulative_chart(
             .draw()?;
 
         for (pts, color) in prepared {
-            draw_cumulative_curve(&mut chart, pts, color, 1);
+            draw_cumulative_curve(&mut chart, pts, color, 1)?;
         }
 
         root.present()?;
@@ -251,16 +237,13 @@ fn render_cumulative_chart(
 
 /// Cumulative error distribution curves comparing MS1 and recalibrated MS2 errors.
 ///
-/// Shows how many precursors have error magnitude ≤ x ppm, allowing comparison
-/// of MS1 baseline with recalibrated MS2 improvement.
-///
 /// # Errors
 ///
-/// Returns an error if the SVG backend cannot fill, build, or present the drawing area.
+/// Returns [`PlotError`] if the SVG backend fails during drawing.
 pub fn render_cumulative_error_curves(
     error_ppm_ms1: &[f64],
     error_ppm_after: &[f64],
-) -> Result<String, MgfError> {
+) -> Result<String, PlotError> {
     use plotters::style::RGBColor;
     Ok(render_cumulative_chart(
         "Cumulative Error Distribution: MS1 vs Recalibrated MS2",
@@ -273,18 +256,18 @@ pub fn render_cumulative_error_curves(
     .unwrap_or_default())
 }
 
-/// Render cumulative error distribution with three curves: ms1, `ms2_before`, `ms2_after`
+/// Render cumulative error distribution with three curves: ms1, `ms2_before`, `ms2_after`.
 ///
 /// # Errors
 ///
-/// Returns an error if the SVG backend cannot fill, build, or present the drawing area.
+/// Returns [`PlotError`] if the SVG backend fails during drawing.
 pub fn render_cumulative_error_three_curves(
     error_ms1: &[f64],
     error_before: &[f64],
     error_after: &[f64],
     unit: &str,
     _thresholds: &[f64],
-) -> Result<String, MgfError> {
+) -> Result<String, PlotError> {
     use plotters::style::RGBColor;
     Ok(render_cumulative_chart(
         &format!("Cumulative Error Distribution ({unit})"),
@@ -299,8 +282,5 @@ pub fn render_cumulative_error_three_curves(
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used)] // tests unwrap the empty-error Result to assert the empty SVG
-#[allow(clippy::indexing_slicing)]
-// Every assertion below indexes the vector the same test just built from a
-// literal fixture, so an out-of-range read is itself the failing assertion.
+#[expect(clippy::unwrap_used)]
 mod tests;

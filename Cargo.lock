@@ -2323,16 +2323,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "mgf-analysis-core"
+version = "0.1.0"
+dependencies = [
+ "chem-depict",
+ "chematic",
+ "mgf",
+ "molecular-formulas",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "mgf-precursor-erro-rs"
 version = "0.1.0"
 dependencies = [
- "chematic",
  "dioxus",
  "js-sys",
- "mgf",
- "molecular-formulas",
+ "mgf-analysis-core",
  "plotters",
  "prismatica",
+ "thiserror 2.0.21",
  "ui",
  "upload",
  "wasm-bindgen",

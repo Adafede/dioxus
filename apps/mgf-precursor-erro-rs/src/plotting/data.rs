@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-//! Data-preparation primitives shared by every chart: numeric conversions,
-//! scatter-plot point assembly, legend embedding, ECDF sampling and axis/value
-//! formatting. Colour helpers are imported from [`super::color`].
+//! Data-preparation primitives shared by charts: ECDF binning, scatter sampling,
+//! and value/axis formatting helpers.
 
-use std::{collections::HashMap, fmt::Write};
+use std::collections::HashMap;
 
-use crate::metrics::{AdductFamily, PlotPoint, ScatterPlotData};
+use mgf_analysis_core::{AdductFamily, PlotPoint, usize_to_f64};
 
-use super::color::{adduct_family_color_hex, adduct_family_rank};
+use super::color::adduct_family_color_hex;
 
-// `pub(crate)`, not `pub(super)`: `metrics::plot` reaches these too, and a
-// reader editing one has no way to know a second copy exists if the check
-// cannot see both.
-pub(crate) fn usize_to_f64(value: usize) -> f64 {
-    f64::from(u32::try_from(value).unwrap_or(u32::MAX))
-}
-
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-pub(crate) fn floor_to_usize(value: f64) -> usize {
-    if !value.is_finite() || value <= 0.0 {
-        return 0;
-    }
-    value.floor() as usize
+/// Prepared scatter-series data and viewport bounds.
+#[derive(Clone, Debug)]
+pub struct ScatterPlotData {
+    /// `(family_label, color_hex)` pairs for legend rendering.
+    pub legend_items: Vec<(&'static str, &'static str)>,
+    /// Padded minimum X bound.
+    pub x_min: f64,
+    /// Padded maximum X bound.
+    pub x_max: f64,
+    /// Symmetric positive/negative Y axis limit.
+    pub y_limit: f64,
+    /// Sampled `(x, y)` series grouped by adduct family.
+    pub series: Vec<(AdductFamily, Vec<(f64, f64)>)>,
 }
 
 pub(super) fn mean_and_std_dev(values: &[f64]) -> Option<(f64, f64)> {
@@ -36,7 +35,6 @@ pub(super) fn mean_and_std_dev(values: &[f64]) -> Option<(f64, f64)> {
     if count == 0 {
         return None;
     }
-
     let n = usize_to_f64(count);
     let mean = sum / n;
     let variance = values
@@ -49,6 +47,7 @@ pub(super) fn mean_and_std_dev(values: &[f64]) -> Option<(f64, f64)> {
     Some((mean, variance.sqrt()))
 }
 
+/// Groups raw scatter points by [`AdductFamily`] and downsamples large series.
 #[must_use]
 pub fn prepare_scatter_plot_data<F, G>(
     points: &[PlotPoint],
@@ -100,7 +99,7 @@ where
     };
 
     let mut families = family_points.keys().copied().collect::<Vec<_>>();
-    families.sort_by_key(|family| adduct_family_rank(*family));
+    families.sort_by_key(|family| family.rank());
     let family_count = families.len().max(1);
     let max_points_per_family = (900usize / family_count).max(120usize);
     let mut series = Vec::with_capacity(families.len());
@@ -126,82 +125,7 @@ where
     }
 }
 
-pub(super) fn embed_svg_legend<L: AsRef<str>, C: AsRef<str>>(
-    mut svg_markup: String,
-    legend_items: &[(L, C)],
-    title: &str,
-    width: f64,
-    height: f64,
-) -> String {
-    if legend_items.is_empty() {
-        return svg_markup;
-    }
-    let Some(position) = svg_markup.rfind("</svg>") else {
-        return svg_markup;
-    };
-
-    let item_height = 13.5;
-    let inset = 18.0;
-    let title_width = 44.0;
-    let marker_radius = 3.2;
-    let padding_x = 12.0;
-    let padding_y = 10.0;
-    let label_width = legend_items
-        .iter()
-        .map(|(label, _)| label.as_ref().len())
-        .max()
-        .unwrap_or(0);
-    let label_width = f64::from(u32::try_from(label_width).unwrap_or(u32::MAX));
-    let content_width = (label_width * 5.6).clamp(72.0, 140.0) + 24.0;
-    let entry_width = content_width + 20.0;
-
-    // Wrap legend into multiple rows to fit within plot width
-    let max_row_width = width.mul_add(0.9, -(title_width + 50.0));
-    let items_per_row = floor_to_usize((max_row_width / entry_width).floor().max(1.0));
-    let num_rows = legend_items.len().div_ceil(items_per_row);
-
-    let box_width =
-        usize_to_f64(items_per_row.min(legend_items.len())).mul_add(entry_width, padding_x * 2.0);
-    let box_height = usize_to_f64(num_rows).mul_add(item_height, padding_y * 2.0) + 12.0;
-    let legend_x = ((width - box_width) / 2.0)
-        .max(inset)
-        .min(width - box_width - inset);
-    let legend_y = (height - box_height - inset).max(inset);
-
-    let title_x = legend_x + 10.0;
-    let title_y = legend_y + 12.0;
-    let items_start_x = title_x + title_width + 10.0;
-    let rect_x = legend_x;
-    let rect_y = legend_y - 2.0;
-
-    let tail = svg_markup.split_off(position);
-    let _ = write!(
-        svg_markup,
-        "\n<g>\n            <rect x=\"{rect_x}\" y=\"{rect_y}\" width=\"{box_width}\" height=\"{box_height}\" rx=\"8\" ry=\"8\" fill=\"#f8fafc\" fill-opacity=\"0.97\" stroke=\"#cbd5e1\" stroke-width=\"0.8\" />\n            <text x=\"{title_x}\" y=\"{title_y}\" font-family=\"Inter, sans-serif\" font-size=\"10.5\" font-weight=\"600\" fill=\"#0f172a\">{title}</text>\n            "
-    );
-
-    for (index, (family, color)) in legend_items.iter().enumerate() {
-        let family = family.as_ref();
-        let color = color.as_ref();
-        let row = index / items_per_row;
-        let col = index % items_per_row;
-        let item_x = usize_to_f64(col).mul_add(entry_width, items_start_x);
-        let item_y = usize_to_f64(row).mul_add(item_height, legend_y + 15.0);
-        let marker_x = item_x + 8.0;
-        let text_x = item_x + 18.0;
-        let text_y = item_y + 2.0;
-        let marker_y = item_y - 2.0;
-        let _ = write!(
-            svg_markup,
-            "<g>\n                <circle cx=\"{marker_x}\" cy=\"{marker_y}\" r=\"{marker_radius}\" fill=\"{color}\" />\n                <text x=\"{text_x}\" y=\"{text_y}\" font-family=\"Inter, sans-serif\" font-size=\"10\" fill=\"#334155\">{family}</text>\n            </g>"
-        );
-    }
-
-    svg_markup.push_str("\n        </g>\n");
-    svg_markup.push_str(&tail);
-    svg_markup
-}
-
+/// Formats numeric tolerance threshold values without trailing zeros.
 #[must_use]
 pub fn format_threshold_value(value: f64) -> String {
     let formatted = format!("{value:.6}");
@@ -213,11 +137,13 @@ pub fn format_threshold_value(value: f64) -> String {
     }
 }
 
+/// Converts a scalar value in Da to the requested unit string (`"mDa"` scales by 1000).
 #[must_use]
 pub fn display_error_value(value: f64, unit: &str) -> f64 {
     if unit == "mDa" { value * 1000.0 } else { value }
 }
 
+/// Selects signed error in `unit` (`"ppm"` or `"mDa"`) from a [`PlotPoint`].
 #[must_use]
 pub fn display_error_value_for_point(point: &PlotPoint, unit: &str) -> f64 {
     match unit {
@@ -234,61 +160,7 @@ pub(super) fn fallback_y_limit_for_unit(unit: &str) -> f64 {
     }
 }
 
-fn extract_svg_attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
-    let needle = format!("{name}=\"");
-    let start = tag.find(&needle)? + needle.len();
-    let rest = tag.get(start..)?;
-    let end = rest.find('"')?;
-    rest.get(..end)
-}
-
-#[must_use]
-pub fn make_svg_responsive(mut svg_markup: String) -> String {
-    let Some(svg_start) = svg_markup.find("<svg") else {
-        return svg_markup;
-    };
-    let tag_end = svg_markup
-        .get(svg_start..)
-        .and_then(|rest| rest.find('>').map(|rel| svg_start + rel + 1))
-        .unwrap_or(svg_markup.len());
-    let Some(tag) = svg_markup.get(svg_start..tag_end) else {
-        return svg_markup;
-    };
-    let raw_width = extract_svg_attr(tag, "width").map(str::to_owned);
-    let raw_height = extract_svg_attr(tag, "height").map(str::to_owned);
-    let vw = raw_width
-        .as_deref()
-        .filter(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()))
-        .unwrap_or("900");
-    let vh = raw_height
-        .as_deref()
-        .filter(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()))
-        .unwrap_or("520");
-
-    let mut normalized = tag.to_string();
-    if let Some(w) = raw_width.as_deref() {
-        normalized = normalized.replace(&format!("width=\"{w}\""), "width=\"100%\"");
-    }
-    if let Some(h) = raw_height.as_deref() {
-        normalized = normalized.replace(&format!("height=\"{h}\""), "");
-    }
-    if !normalized.contains("viewBox=") {
-        normalized = normalized.replacen("<svg", &format!("<svg viewBox=\"0 0 {vw} {vh}\""), 1);
-    }
-    if !normalized.contains("preserveAspectRatio=") {
-        normalized = normalized.replacen("<svg", "<svg preserveAspectRatio=\"xMidYMid meet\"", 1);
-    }
-    if !normalized.contains("style=") {
-        normalized = normalized.replacen(
-            "<svg",
-            "<svg style=\"max-width:100%; display:block; overflow:visible;\"",
-            1,
-        );
-    }
-    svg_markup.replace_range(svg_start..tag_end, &normalized);
-    svg_markup
-}
-
+/// Builds step-function `(x, fraction)` points for an ECDF chart.
 #[must_use]
 pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f64)> {
     let mut sorted: Vec<f64> = values
@@ -330,42 +202,24 @@ pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f6
     points
 }
 
+/// Uniformly downsamples `points` to at most `max_points` (keeping first/last).
 #[must_use]
 pub fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<(f64, f64)> {
     if points.len() <= max_points.max(1) {
         return points;
     }
-
     let target = max_points.max(1);
     let mut sampled = Vec::with_capacity(target);
     for slot in 0..target {
-        // `slot < target` and `target >= 1`, so `slot * len / target` is below
-        // `len` for every slot: the sampled point always exists.
         let point_index = (slot * points.len()) / target;
         if let Some(point) = points.get(point_index) {
             sampled.push(*point);
         }
     }
-    // `points.len() > target >= 1` past the early return above, so there is
-    // always a last point to close the series with.
     if sampled.last() != points.last()
         && let Some(last) = points.last()
     {
         sampled.push(*last);
     }
     sampled
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn make_svg_responsive_preserves_1200px_dimensions_in_viewbox() {
-        let raw = r#"<svg width="1200" height="400" xmlns="http://www.w3.org/2000/svg"></svg>"#;
-        let out = make_svg_responsive(raw.to_string());
-        assert!(out.contains(r#"width="100%""#), "got: {out}");
-        assert!(out.contains(r#"viewBox="0 0 1200 400""#), "got: {out}");
-        assert!(!out.contains(r#"height="400""#), "got: {out}");
-    }
 }

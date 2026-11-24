@@ -53,7 +53,7 @@ every gate green on each commit.
   - *Verify*: `./mk ci-fast`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 7 — Extract `crates/mgf-analysis-core` & modularize `apps/mgf-precursor-erro-rs`**:
+- [x] **Step 7 — Extract `crates/mgf-analysis-core` & modularize `apps/mgf-precursor-erro-rs`**:
   Move adduct grammar, mass derivation, precursor stats, recalibration, and
   diagnostic computation into `mgf-analysis-core`; decouple HTML tables from
   `plotting`; downsample scatter SVGs; split and memoize `ResultsPanel`.

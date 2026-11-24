@@ -31,6 +31,7 @@ dependencies = [
   "lint-wasm-lipid-core",
   "lint-wasm-lipid-selecto-rs",
   "lint-wasm-mgf",
+  "lint-wasm-mgf-analysis-core",
   "lint-wasm-mgf-crate",
   "lint-wasm-smellfish-rs",
   "lint-wasm-stream-io",
@@ -138,6 +139,14 @@ cwd = "${REPO_ROOT}"
 description = "Clippy json-count-core for wasm32, tests included."
 script = """
 cargo clippy -p json-count-core --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-mgf-analysis-core"]
+cwd = "${REPO_ROOT}"
+description = "Clippy mgf-analysis-core for wasm32, tests included."
+script = """
+cargo clippy -p mgf-analysis-core --target wasm32-unknown-unknown --all-targets \\
   --locked -- -D warnings
 """
 
