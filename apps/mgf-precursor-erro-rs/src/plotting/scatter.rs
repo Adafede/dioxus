@@ -19,7 +19,7 @@ use crate::errors::PlotError;
 /// # Errors
 ///
 /// Returns an error if the SVG backend cannot fill or present the drawing area.
-pub fn render_ecdf_svg(
+pub(crate) fn render_ecdf_svg(
     title: &str,
     values: &[f64],
     thresholds: &[f64],
@@ -218,32 +218,12 @@ fn render_scatter_svg(
     ))
 }
 
-/// Renders a scatter plot of signed mass-bias errors by adduct family.
-///
-/// # Errors
-///
-/// Returns an error if the SVG backend cannot fill or present the drawing area.
-pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String, PlotError> {
-    let plot_data = prepare_scatter_plot_data(
-        points,
-        |point| point.ms2_precursor_peak.or(Some(point.pepmass_header)),
-        |point| {
-            point
-                .signed_error_da
-                .is_finite()
-                .then_some(point.signed_error_da)
-        },
-        fallback_y_limit_for_unit("mDa") / 1000.0,
-    );
-    render_scatter_svg(title, plot_data, "Signed error (Da)", &[], 0.4, false)
-}
-
 /// Renders a scatter plot of signed mass-bias errors using the requested display unit.
 ///
 /// # Errors
 ///
 /// Returns an error if the SVG backend cannot fill or present the drawing area.
-pub fn render_absolute_mass_bias_svg(
+pub(crate) fn render_absolute_mass_bias_svg(
     title: &str,
     points: &[PlotPoint],
     unit: &str,

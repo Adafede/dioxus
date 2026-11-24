@@ -6,17 +6,16 @@
 use super::{Polarity, parse_adduct_polarity};
 
 /// 2022 CODATA electron rest mass (Da).
-pub const ELECTRON_MASS: f64 = 0.000_548_579_909_044_1;
+pub(crate) const ELECTRON_MASS: f64 = 0.000_548_579_909_044_1;
 /// Monoisotopic hydrogen mass (CIAAW, Da).
-pub const HYDROGEN_MASS: f64 = 1.007_825_032_2;
-/// Monoisotopic nitrogen-14 mass (CIAAW, Da).
-pub const NITROGEN_MASS: f64 = 14.003_074_004;
+pub(crate) const HYDROGEN_MASS: f64 = 1.007_825_032_2;
+const NITROGEN_MASS: f64 = 14.003_074_004;
 /// Neutral NH4 radical mass (electron charge adjusted separately per z).
-pub const AMMONIUM_MASS: f64 = NITROGEN_MASS + (4.0 * HYDROGEN_MASS);
+pub(crate) const AMMONIUM_MASS: f64 = NITROGEN_MASS + (4.0 * HYDROGEN_MASS);
 /// Monoisotopic sodium-23 mass (CIAAW, Da).
-pub const SODIUM_MASS: f64 = 22.989_769_28;
+pub(crate) const SODIUM_MASS: f64 = 22.989_769_28;
 /// Monoisotopic potassium-39 mass (CIAAW, Da).
-pub const POTASSIUM_MASS: f64 = 38.963_706_49;
+pub(crate) const POTASSIUM_MASS: f64 = 38.963_706_49;
 
 const CARBON_MASS: f64 = 12.0;
 const OXYGEN_MASS: f64 = 15.994_914_619_57;
@@ -41,7 +40,7 @@ const CO2_MASS: f64 = CARBON_MASS + 2.0 * OXYGEN_MASS;
 
 /// Infers polarity for unbracketed adduct forms like `"M+H"` or `"M-H"`.
 #[must_use]
-pub fn parse_unbracketed_polarity(adduct: &str) -> Option<Polarity> {
+pub(crate) fn parse_unbracketed_polarity(adduct: &str) -> Option<Polarity> {
     let compact = adduct.replace(' ', "").to_ascii_uppercase();
     if compact.contains('[') || compact.contains(']') || compact.is_empty() {
         return None;
@@ -73,7 +72,10 @@ pub fn parse_unbracketed_polarity(adduct: &str) -> Option<Polarity> {
 
 /// Resolves ion [`Polarity`] from `CHARGE=` signs or fallback `IONMODE=`.
 #[must_use]
-pub fn parse_polarity_tokens(charge: Option<&str>, ion_mode: Option<&str>) -> Option<Polarity> {
+pub(crate) fn parse_polarity_tokens(
+    charge: Option<&str>,
+    ion_mode: Option<&str>,
+) -> Option<Polarity> {
     let charge_text = charge.unwrap_or("").trim();
     let first = charge_text.bytes().next();
     let last = charge_text.bytes().next_back();
@@ -95,7 +97,7 @@ pub fn parse_polarity_tokens(charge: Option<&str>, ion_mode: Option<&str>) -> Op
 
 /// Computes the exact neutral/ionic mass contribution of an adduct token (e.g. `"2H"`, `"ACN"`).
 #[must_use]
-pub fn parse_adduct_term_mass(token: &str) -> Option<f64> {
+pub(crate) fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     let trimmed = token.trim();
     if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("M") {
         return None;
@@ -143,7 +145,7 @@ pub fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     Some(term_mass * multiplier)
 }
 
-pub(super) fn parse_adduct_mass_components(adduct: &str) -> Option<(f64, f64)> {
+pub(crate) fn parse_adduct_mass_components(adduct: &str) -> Option<(f64, f64)> {
     let normalized = adduct.trim().replace(' ', "").to_ascii_uppercase();
     if normalized.is_empty() {
         return None;
@@ -261,7 +263,7 @@ fn parse_multiplicity_token(token: &str) -> Option<f64> {
         .flatten()
 }
 
-pub(super) fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {
+pub(crate) fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {
     charge.and_then(parse_charge_magnitude).or_else(|| {
         adduct?
             .trim()

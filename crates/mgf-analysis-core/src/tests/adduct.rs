@@ -6,10 +6,14 @@ use std::str::FromStr;
 use molecular_formulas::prelude::*;
 
 use super::assert_close;
-use crate::{
-    AMMONIUM_MASS, AdductSpec, ELECTRON_MASS, HYDROGEN_MASS, MgfAnalysisError, POTASSIUM_MASS,
-    Polarity, SODIUM_MASS, expected_precursor_mz, is_supported_adduct, normalize_adduct_label,
-    parse_adduct_term_mass,
+use crate::adduct::parse::{
+    AMMONIUM_MASS, ELECTRON_MASS, HYDROGEN_MASS, POTASSIUM_MASS, SODIUM_MASS,
+    parse_adduct_mass_components, parse_adduct_term_mass, parse_charge_value,
+    parse_polarity_tokens,
+};
+use crate::adduct::{
+    Polarity, expected_precursor_mz, is_supported_adduct, normalize_adduct_label,
+    parse_adduct_polarity,
 };
 
 #[test]
@@ -134,7 +138,7 @@ fn formate_acetate_and_acetonitrile_adducts_agree_across_notations() {
 }
 
 #[test]
-fn malformed_adducts_from_str_and_polarity_parse_as_expected() {
+fn malformed_adducts_and_polarity_parse_as_expected() {
     for bad in [
         "",
         "M+H]+",
@@ -145,23 +149,29 @@ fn malformed_adducts_from_str_and_polarity_parse_as_expected() {
         "[[M+H]]+",
     ] {
         assert!(!is_supported_adduct(bad), "should reject {bad:?}");
-        assert!(matches!(
-            AdductSpec::from_str(bad),
-            Err(MgfAnalysisError::InvalidAdduct { .. })
-        ));
+        assert_eq!(parse_adduct_mass_components(bad), None);
     }
     assert!(is_supported_adduct("[M+Mg]2+"));
     assert!(is_supported_adduct("[M+ACN+H]+"));
 
-    let parsed = AdductSpec::from_str("[2M+Na]+").unwrap();
-    assert_close(parsed.multiplier, 2.0, 1e-12, "multiplier");
-    assert_close(parsed.shift, SODIUM_MASS, 1e-12, "shift");
-    assert_eq!(parsed.polarity, Some(Polarity::Positive));
-    assert_eq!(parsed.charge, Some(1.0));
+    let (multiplier, shift) = parse_adduct_mass_components("[2M+Na]+").unwrap();
+    assert_close(multiplier, 2.0, 1e-12, "multiplier");
+    assert_close(shift, SODIUM_MASS, 1e-12, "shift");
+    assert_eq!(
+        parse_adduct_polarity(Some("[2M+Na]+")),
+        Some(Polarity::Positive)
+    );
+    assert_eq!(parse_charge_value(None, Some("[2M+Na]+")), Some(1.0));
 
-    assert_eq!(Polarity::from_str("+"), Ok(Polarity::Positive));
-    assert_eq!(Polarity::from_str("negative"), Ok(Polarity::Negative));
-    assert!(Polarity::from_str("neutral").is_err());
+    assert_eq!(
+        parse_polarity_tokens(Some("+"), None),
+        Some(Polarity::Positive)
+    );
+    assert_eq!(
+        parse_polarity_tokens(None, Some("negative")),
+        Some(Polarity::Negative)
+    );
+    assert_eq!(parse_polarity_tokens(None, Some("neutral")), None);
 }
 
 #[test]

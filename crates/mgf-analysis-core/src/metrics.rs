@@ -3,8 +3,8 @@
 
 //! Precursor error statistics, error buckets, running medians, and warning records.
 
-mod record;
-mod stats;
+pub(crate) mod record;
+pub(crate) mod stats;
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -12,12 +12,10 @@ use std::collections::BinaryHeap;
 use crate::adduct::AdductFamily;
 use crate::numeric::OrderedF64;
 
-pub use stats::PrecursorStats;
-
 /// Reservoir cap for raw plot point retention.
-pub const MAX_PLOT_POINTS: usize = 10_000;
+pub(crate) const MAX_PLOT_POINTS: usize = 10_000;
 /// Reservoir cap for empirical CDF values.
-pub const MAX_ECDF_POINTS: usize = 20_000;
+pub(crate) const MAX_ECDF_POINTS: usize = 20_000;
 
 /// Display unit for mass-error distributions and compliance thresholds.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -120,14 +118,14 @@ impl ErrorBucket {
 
 /// Dual-heap streaming exact median tracker.
 #[derive(Clone, Debug, Default)]
-pub struct MedianTracker {
+pub(crate) struct MedianTracker {
     lower: BinaryHeap<OrderedF64>,
     upper: BinaryHeap<Reverse<OrderedF64>>,
 }
 
 impl MedianTracker {
     /// Pushes one value into the tracker, ignoring non-finite inputs.
-    pub fn push(&mut self, value: f64) {
+    pub(crate) fn push(&mut self, value: f64) {
         if !value.is_finite() {
             return;
         }
@@ -150,7 +148,7 @@ impl MedianTracker {
 
     /// Returns the median of all pushed finite values, or `0.0` when empty.
     #[must_use]
-    pub fn median(&self) -> f64 {
+    pub(crate) fn median(&self) -> f64 {
         if self.lower.is_empty() && self.upper.is_empty() {
             0.0
         } else if self.lower.len() > self.upper.len() {
@@ -180,31 +178,31 @@ pub struct PlotPoint {
     pub expected_mass: Option<f64>,
 }
 
-/// Single observation recorded into [`PrecursorStats`].
+/// Single observation recorded into [`PrecursorStats`](stats::PrecursorStats).
 #[derive(Clone, Copy, Debug)]
-pub struct ErrorMeasurement<'a> {
+pub(crate) struct ErrorMeasurement<'a> {
     /// Absolute mass error (Da).
-    pub abs_error_da: f64,
+    pub(crate) abs_error_da: f64,
     /// Absolute mass error (ppm).
-    pub abs_ppm: f64,
+    pub(crate) abs_ppm: f64,
     /// Adduct family label.
-    pub adduct_family: AdductFamily,
+    pub(crate) adduct_family: AdductFamily,
     /// Signed error (ppm).
-    pub ppm_error: f64,
+    pub(crate) ppm_error: f64,
     /// Signed error (Da).
-    pub signed_error_da: f64,
+    pub(crate) signed_error_da: f64,
     /// Header precursor `m/z`.
-    pub pepmass_header: f64,
+    pub(crate) pepmass_header: f64,
     /// Detected MS2 precursor peak, if any.
-    pub ms2_precursor_peak: Option<f64>,
+    pub(crate) ms2_precursor_peak: Option<f64>,
     /// Optional SMILES annotation.
-    pub smiles: Option<&'a str>,
+    pub(crate) smiles: Option<&'a str>,
     /// Reference neutral exact mass (Da).
-    pub calculated_mass: Option<f64>,
+    pub(crate) calculated_mass: Option<f64>,
     /// Expected ionized precursor `m/z`.
-    pub expected_mass: Option<f64>,
+    pub(crate) expected_mass: Option<f64>,
     /// Optional molecular formula annotation.
-    pub formula: Option<&'a str>,
+    pub(crate) formula: Option<&'a str>,
 }
 
 /// Warning metadata aggregated per unparsable SMILES string.

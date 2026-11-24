@@ -30,8 +30,9 @@ impl ClassMatchSet {
     }
 
     /// Build a set from an iterator of class indices.
+    #[cfg(test)]
     #[must_use]
-    pub fn from_indices(indices: impl IntoIterator<Item = usize>) -> Self {
+    pub(crate) fn from_indices(indices: impl IntoIterator<Item = usize>) -> Self {
         let mut set = Self::empty();
         for idx in indices {
             set.insert(idx);

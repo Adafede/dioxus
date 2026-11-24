@@ -2327,7 +2327,6 @@ dependencies = [
  "chematic",
  "mgf",
  "molecular-formulas",
- "thiserror 2.0.21",
 ]
 
 [[package]]

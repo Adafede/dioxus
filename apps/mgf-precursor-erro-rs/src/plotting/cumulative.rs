@@ -7,7 +7,6 @@ use std::fmt::Write as _;
 
 use mgf_analysis_core::usize_to_f64;
 
-use super::data::mean_and_std_dev;
 use crate::errors::PlotError;
 
 fn cumulative_points(values: &[f64]) -> Vec<(f64, f64)> {
@@ -28,37 +27,6 @@ fn cumulative_points(values: &[f64]) -> Vec<(f64, f64)> {
         .enumerate()
         .map(|(index, &value)| (value, usize_to_f64(index.saturating_add(1)) / total * 100.0))
         .collect()
-}
-
-fn draw_quartet_stage<DB: plotters::prelude::DrawingBackend>(
-    chart: &mut plotters::prelude::ChartContext<
-        '_,
-        DB,
-        plotters::prelude::Cartesian2d<
-            plotters::coord::types::RangedCoordf64,
-            plotters::coord::types::RangedCoordf64,
-        >,
-    >,
-    x: f64,
-    values: &[f64],
-    color: plotters::style::RGBColor,
-) -> Result<(), PlotError>
-where
-    DB::ErrorType: Send + Sync + 'static,
-{
-    if let Some((mean, std_dev)) = mean_and_std_dev(values) {
-        let style = plotters::style::ShapeStyle::from(&color);
-        chart.draw_series(std::iter::once(plotters::prelude::PathElement::new(
-            [(x, mean - std_dev), (x, mean + std_dev)],
-            style,
-        )))?;
-        chart.draw_series(std::iter::once(plotters::prelude::Circle::new(
-            (x, mean),
-            6,
-            style.filled(),
-        )))?;
-    }
-    Ok(())
 }
 
 fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
@@ -117,75 +85,6 @@ fn append_cumulative_legend(mut svg: String) -> String {
     svg
 }
 
-/// Four-stage error analysis showing the complete recalibration story.
-///
-/// # Errors
-///
-/// Returns [`PlotError`] if the SVG backend fails during drawing.
-pub fn render_error_quartet(
-    error_ms1: &[f64],
-    delta_ms2_ms1: &[f64],
-    error_ms2_before: &[f64],
-    error_ms2_after: &[f64],
-) -> Result<String, PlotError> {
-    use plotters::prelude::*;
-
-    let mut buffer = String::new();
-    let mut min_val = f64::INFINITY;
-    let mut max_val = f64::NEG_INFINITY;
-    for value in error_ms1
-        .iter()
-        .chain(delta_ms2_ms1.iter())
-        .chain(error_ms2_before.iter())
-        .chain(error_ms2_after.iter())
-        .copied()
-        .filter(|v| v.is_finite())
-    {
-        min_val = min_val.min(value);
-        max_val = max_val.max(value);
-    }
-    if !min_val.is_finite() {
-        return Ok(buffer);
-    }
-
-    let margin = (max_val - min_val).abs().max(0.5) * 0.15;
-    {
-        let root = SVGBackend::with_string(&mut buffer, (1200, 400)).into_drawing_area();
-        root.fill(&WHITE)?;
-
-        let mut chart = ChartBuilder::on(&root)
-            .caption(
-                "Four-Stage Error Analysis: Complete Recalibration Story",
-                ("sans-serif", 18),
-            )
-            .margin(15)
-            .x_label_area_size(60)
-            .y_label_area_size(70)
-            .build_cartesian_2d(-0.5f64..4.5f64, (min_val - margin)..(max_val + margin))?;
-
-        chart
-            .configure_mesh()
-            .x_labels(4)
-            .x_desc("Analysis Stage")
-            .y_desc("Error (ppm)")
-            .draw()?;
-
-        let red_style = ShapeStyle::from(&RED).stroke_width(1);
-        chart.draw_series(std::iter::once(PathElement::new(
-            [(-0.5, 0.0), (4.5, 0.0)],
-            red_style,
-        )))?;
-        draw_quartet_stage(&mut chart, 0.8, error_ms1, RGBColor(68, 119, 170))?;
-        draw_quartet_stage(&mut chart, 1.8, error_ms2_before, RGBColor(255, 119, 0))?;
-        draw_quartet_stage(&mut chart, 2.8, delta_ms2_ms1, RGBColor(204, 51, 51))?;
-        draw_quartet_stage(&mut chart, 3.8, error_ms2_after, RGBColor(51, 153, 51))?;
-
-        root.present()?;
-    }
-
-    Ok(buffer)
-}
-
 fn render_cumulative_chart(
     title: &str,
     x_desc: &str,
@@ -235,33 +134,12 @@ fn render_cumulative_chart(
     Ok(Some(buffer))
 }
 
-/// Cumulative error distribution curves comparing MS1 and recalibrated MS2 errors.
-///
-/// # Errors
-///
-/// Returns [`PlotError`] if the SVG backend fails during drawing.
-pub fn render_cumulative_error_curves(
-    error_ppm_ms1: &[f64],
-    error_ppm_after: &[f64],
-) -> Result<String, PlotError> {
-    use plotters::style::RGBColor;
-    Ok(render_cumulative_chart(
-        "Cumulative Error Distribution: MS1 vs Recalibrated MS2",
-        "Absolute Error (ppm)",
-        &[
-            (error_ppm_ms1, RGBColor(68, 119, 170)),
-            (error_ppm_after, RGBColor(51, 153, 51)),
-        ],
-    )?
-    .unwrap_or_default())
-}
-
 /// Render cumulative error distribution with three curves: ms1, `ms2_before`, `ms2_after`.
 ///
 /// # Errors
 ///
 /// Returns [`PlotError`] if the SVG backend fails during drawing.
-pub fn render_cumulative_error_three_curves(
+pub(crate) fn render_cumulative_error_three_curves(
     error_ms1: &[f64],
     error_before: &[f64],
     error_after: &[f64],

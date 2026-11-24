@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-use crate::{
-    AdductFamily, ErrorBucket, ErrorMeasurement, MedianTracker, OrderedF64, PrecursorStats,
-    ReservoirSampler,
-};
+use crate::metrics::{ErrorMeasurement, MedianTracker};
+use crate::numeric::OrderedF64;
+use crate::{AdductFamily, ErrorBucket, PrecursorStats};
 
 #[test]
 fn adduct_family_covers_all_categories() {
@@ -126,11 +125,4 @@ fn record_error_updates_buckets_moments_median_and_sorting_helpers() {
     assert_eq!(stats.observed_precursor_median, 400.0);
     assert_eq!(stats.sorted_high_error_smiles().len(), 1);
     assert_eq!(stats.sorted_high_error_smiles()[0].0, "CCCC");
-
-    let mut reservoir = ReservoirSampler::new(3);
-    for i in 0..10 {
-        reservoir.push(i);
-    }
-    assert_eq!(reservoir.seen(), 10);
-    assert_eq!(reservoir.items().len(), 3);
 }

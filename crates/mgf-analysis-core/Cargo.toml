@@ -16,7 +16,6 @@ chem-depict = { path = "../chem-depict", version = "0.1" }
 chematic = { workspace = true, features = ["chem"] }
 mgf = { path = "../mgf", version = "0.1" }
 molecular-formulas = { version = "0.3", default-features = false }
-thiserror = { workspace = true }
 
 [lints]
 workspace = true

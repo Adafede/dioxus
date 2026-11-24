@@ -3,14 +3,15 @@
 
 //! Precursor error diagnostics before and after MS2 fragment recalibration.
 
-mod model;
-mod stats;
+pub(crate) mod model;
+pub(crate) mod stats;
 
-use crate::metrics::PrecursorStats;
+use model::{RecalibrationMeasurement, RecalibrationStats};
+
+use crate::metrics::stats::PrecursorStats;
 use crate::numeric::usize_to_f64;
-use crate::recalibration::{CalibrationModel, recalibrate_fragment_mz};
-
-pub use model::{RecalibrationMeasurement, RecalibrationStats};
+use crate::recalibration::calibration::recalibrate_fragment_mz;
+use crate::recalibration::types::CalibrationModel;
 
 pub(crate) fn compute_mean(values: &[f64]) -> f64 {
     if values.is_empty() {

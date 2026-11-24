@@ -101,54 +101,6 @@ fn fill_histogram_populates_first_middle_and_final_bins() {
     );
 }
 
-// ── render_recalibration_diagnostic_mz_comparison ────────────────
-
-#[test]
-fn render_mz_comparison_empty_arrays_returns_ok_empty() {
-    let result = render_recalibration_diagnostic_mz_comparison(&[], &[], &[]);
-    assert!(
-        result.is_ok(),
-        "empty mz comparison input should return Ok, not panic"
-    );
-    assert_eq!(result.unwrap(), "");
-}
-
-#[test]
-fn render_mz_comparison_only_ms1_returns_ok_empty() {
-    // ms2_before is empty → guard returns early
-    let result = render_recalibration_diagnostic_mz_comparison(&[100.0], &[], &[]);
-    assert!(result.is_ok(), "missing ms2_before should return Ok empty");
-    assert_eq!(result.unwrap(), "");
-}
-
-#[test]
-fn render_mz_comparison_valid_values_returns_ok_with_svg() {
-    let svg = render_recalibration_diagnostic_mz_comparison(
-        &[100.0, 200.0, 300.0],
-        &[102.0, 198.0, 299.0],
-        &[100.5, 199.5, 299.5],
-    )
-    .unwrap();
-    assert!(svg.contains("<svg"), "expected SVG root element");
-    assert!(svg.contains("<circle"), "expected scatter point <circle>");
-}
-
-#[test]
-fn render_diagnostic_mz_comparison_downsamples_large_inputs() {
-    let n = 4000usize;
-    let ms1: Vec<f64> = (0..n)
-        .map(|i| 200.0 + f64::from(u32::try_from(i).unwrap()))
-        .collect();
-    let ms2_before: Vec<f64> = ms1.iter().map(|v| v + 0.02).collect();
-    let ms2_after: Vec<f64> = ms1.iter().map(|v| v + 0.001).collect();
-    let svg = render_recalibration_diagnostic_mz_comparison(&ms1, &ms2_before, &ms2_after).unwrap();
-    let circles = svg.matches("<circle").count();
-    assert!(
-        circles <= 3_100,
-        "expected downsampled scatter circles (<= ~3000), got {circles}"
-    );
-}
-
 #[test]
 fn render_histogram_uniform_dataset_produces_non_degenerate_bars() {
     let svg = render_recalibration_diagnostic_histogram(&[5.0, 5.0, 5.0], &[5.0], 10).unwrap();

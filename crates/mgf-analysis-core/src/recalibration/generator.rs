@@ -5,12 +5,12 @@
 
 use std::fmt::Write as _;
 
-use mgf::is_ions_marker;
+use mgf::{extract_pepmass_from_line, is_ions_marker};
 
 use super::calibration::{
     apply_orbitrap_correction, apply_tof_correction, recalibrate_fragment_mz,
 };
-use super::parsing::{closest_ms2_precursor_mz, extract_pepmass_from_line, parse_fragment_prefix};
+use super::parsing::{closest_ms2_precursor_mz, parse_fragment_prefix};
 use super::types::{CalibrationModel, Peak};
 
 fn write_recalibrated_fragment_line(
@@ -29,33 +29,6 @@ fn write_recalibrated_fragment_line(
         result.push_str(field);
     }
     result.push('\n');
-}
-
-/// Appends recalibrated fragment lines to `result`, preserving extra columns and non-peak text.
-pub fn write_recalibrated_fragments<S: AsRef<str>>(
-    spectrum_frags: &[S],
-    result: &mut String,
-    delta: f64,
-    pepmass: f64,
-    model: CalibrationModel,
-) {
-    for frag in spectrum_frags {
-        let frag = frag.as_ref();
-        if let Some((mz, intensity)) = parse_fragment_prefix(frag) {
-            write_recalibrated_fragment_line(frag, mz, intensity, result, delta, pepmass, model);
-        } else {
-            result.push_str(frag);
-            result.push('\n');
-        }
-    }
-}
-
-/// Appends fragment lines verbatim to `result`.
-pub fn write_fragments_as_is<S: AsRef<str>>(spectrum_frags: &[S], result: &mut String) {
-    for frag in spectrum_frags {
-        result.push_str(frag.as_ref());
-        result.push('\n');
-    }
 }
 
 /// Generates recalibrated MGF text for every `BEGIN IONS ... END IONS` spectrum block.

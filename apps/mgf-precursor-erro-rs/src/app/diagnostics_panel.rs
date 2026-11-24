@@ -8,10 +8,9 @@ use mgf_analysis_core::{ErrorUnit, RecalibrationStats};
 use ui::StyleBuilder;
 
 use super::recalibration_panel::RecalibrationSummaryTable;
-use crate::plotting::{
-    render_cumulative_error_three_curves, render_recalibration_diagnostic_histogram,
-    render_recalibration_diagnostic_ppm,
-};
+use crate::plotting::cumulative::render_cumulative_error_three_curves;
+use crate::plotting::diagnostics::render_recalibration_diagnostic_ppm;
+use crate::plotting::histogram::render_recalibration_diagnostic_histogram;
 
 /// Renders memoized diagnostic SVGs (cumulative curves, scan-index error, histogram) and summary table.
 #[component]

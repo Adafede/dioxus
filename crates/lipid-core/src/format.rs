@@ -39,8 +39,9 @@ impl LipidFormat {
     }
 
     /// Detect format by scanning up to ten leading non-empty lines of `content`.
+    #[cfg(test)]
     #[must_use]
-    pub fn detect_from_content(content: &str) -> Option<Self> {
+    pub(crate) fn detect_from_content(content: &str) -> Option<Self> {
         let trimmed = content.trim();
         if trimmed.contains("BEGIN IONS") && trimmed.contains("END IONS") {
             return Some(Self::Mgf);

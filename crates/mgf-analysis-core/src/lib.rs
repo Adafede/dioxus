@@ -12,8 +12,7 @@
 //!
 //! ```rust
 //! use mgf_analysis_core::{
-//!     CalibrationModel, compute_recalibration_diagnostics, generate_recalibrated_mgf,
-//!     ingest_lines,
+//!     CalibrationModel, LineIngestor, compute_recalibration_diagnostics, generate_recalibrated_mgf,
 //! };
 //!
 //! let mgf_text = "\
@@ -26,7 +25,11 @@
 //! 138.0660 2500.0
 //! END IONS
 //! ";
-//! let stats = ingest_lines(mgf_text.lines(), |_| {});
+//! let mut ingestor = LineIngestor::default();
+//! for line in mgf_text.lines() {
+//!     ingestor.feed_line(line);
+//! }
+//! let stats = ingestor.finish();
 //! assert_eq!(stats.spectra, 1);
 //!
 //! let model = CalibrationModel::tof(1.0);
@@ -39,37 +42,21 @@
 
 mod adduct;
 mod diagnostics;
-mod error;
 mod ingestor;
 mod mass;
 mod metrics;
 mod numeric;
 mod recalibration;
 
-pub use adduct::{
-    AMMONIUM_MASS, AdductFamily, AdductSpec, ELECTRON_MASS, HYDROGEN_MASS, NITROGEN_MASS,
-    POTASSIUM_MASS, Polarity, SODIUM_MASS, expected_precursor_mz, is_supported_adduct,
-    normalize_adduct_label, parse_adduct_polarity, parse_adduct_term_mass, parse_polarity_tokens,
-    parse_unbracketed_polarity,
-};
-pub use diagnostics::{
-    RecalibrationMeasurement, RecalibrationStats, compute_recalibration_diagnostics,
-};
-pub use error::MgfAnalysisError;
-pub use ingestor::{
-    LineIngestor, MAX_RAW_RETENTION_BYTES, append_retained_line, ingest_lines, record_block,
-};
-pub use mass::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached};
-pub use metrics::{
-    ErrorBucket, ErrorMeasurement, ErrorUnit, HighErrorSmilesDetail, MAX_ECDF_POINTS,
-    MAX_PLOT_POINTS, MedianTracker, PlotPoint, PrecursorStats, WarningDetail,
-};
-pub use numeric::{OrderedF64, ReservoirSampler, floor_to_usize, reservoir_index, usize_to_f64};
-pub use recalibration::{
-    CalibrationModel, Peak, ShrinkageLambda, closest_ms2_precursor_mz, extract_pepmass_from_line,
-    find_ms2_precursor_peak, generate_recalibrated_mgf, is_fragment_line, recalibrate_fragment_mz,
-    recalibrate_fragments, write_fragments_as_is, write_recalibrated_fragments,
-};
+pub use adduct::AdductFamily;
+pub use diagnostics::compute_recalibration_diagnostics;
+pub use diagnostics::model::RecalibrationStats;
+pub use ingestor::{LineIngestor, MAX_RAW_RETENTION_BYTES, append_retained_line};
+pub use metrics::stats::PrecursorStats;
+pub use metrics::{ErrorBucket, ErrorUnit, HighErrorSmilesDetail, PlotPoint, WarningDetail};
+pub use numeric::{floor_to_usize, usize_to_f64};
+pub use recalibration::generator::{generate_recalibrated_mgf, recalibrate_fragments};
+pub use recalibration::types::{CalibrationModel, Peak, ShrinkageLambda};
 
 #[cfg(test)]
 #[expect(clippy::unwrap_used)]

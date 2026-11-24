@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use chematic::smiles;
 
 use crate::LipidFamily;
-use crate::lipids::{
+use crate::lipids::classify::{
     classify_formula, classify_smiles, classify_spectrum, counts_from_molecule, formula_counts,
 };
 

@@ -3,19 +3,11 @@
 
 //! Adduct-token grammar, polarity classification, and theoretical precursor *m/z*.
 
-mod parse;
+pub(crate) mod parse;
 
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::str::FromStr;
-
-use crate::error::MgfAnalysisError;
-
-pub use parse::{
-    AMMONIUM_MASS, ELECTRON_MASS, HYDROGEN_MASS, NITROGEN_MASS, POTASSIUM_MASS, SODIUM_MASS,
-    parse_adduct_term_mass, parse_polarity_tokens, parse_unbracketed_polarity,
-};
 
 thread_local! {
     static ADDUCT_SPEC_CACHE: RefCell<HashMap<String, Option<(f64, f64)>>> =
@@ -24,59 +16,11 @@ thread_local! {
 
 /// Ion polarity mode (`+` / `positive` vs `-` / `negative`).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum Polarity {
+pub(crate) enum Polarity {
     /// Positively charged ion mode.
     Positive,
     /// Negatively charged ion mode.
     Negative,
-}
-
-impl FromStr for Polarity {
-    type Err = MgfAnalysisError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let trimmed = s.trim();
-        if trimmed.eq_ignore_ascii_case("positive") || trimmed == "+" {
-            Ok(Self::Positive)
-        } else if trimmed.eq_ignore_ascii_case("negative") || trimmed == "-" {
-            Ok(Self::Negative)
-        } else {
-            Err(MgfAnalysisError::InvalidPolarity(s.to_string()))
-        }
-    }
-}
-
-/// Parsed adduct formula transformation (`m/z = (M * multiplier + shift ± z*e) / z`).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct AdductSpec {
-    /// Molecule stoichiometry multiplier (e.g., `2.0` for `[2M+H]+`).
-    pub multiplier: f64,
-    /// Net exact-mass shift from added/lost adduct species (Da, before electron adjustment).
-    pub shift: f64,
-    /// Inferred ion polarity, when specified on the adduct suffix or form.
-    pub polarity: Option<Polarity>,
-    /// Inferred charge magnitude, when specified in brackets/suffix.
-    pub charge: Option<f64>,
-}
-
-impl FromStr for AdductSpec {
-    type Err = MgfAnalysisError;
-
-    fn from_str(adduct: &str) -> Result<Self, Self::Err> {
-        let (multiplier, shift) = parse::parse_adduct_mass_components(adduct).ok_or_else(|| {
-            MgfAnalysisError::InvalidAdduct {
-                spec: adduct.to_string(),
-            }
-        })?;
-        let polarity = parse_adduct_polarity(Some(adduct));
-        let charge = parse::parse_charge_value(None, Some(adduct));
-        Ok(Self {
-            multiplier,
-            shift,
-            polarity,
-            charge,
-        })
-    }
 }
 
 /// Coarse chemical grouping of adduct forms for scatter legends and diagnostics.
@@ -100,7 +44,7 @@ pub enum AdductFamily {
 impl AdductFamily {
     /// Classify a raw or normalized adduct label into its [`AdductFamily`].
     #[must_use]
-    pub fn from_label(label: &str) -> Self {
+    pub(crate) fn from_label(label: &str) -> Self {
         fn has_ascii_ci(haystack: &str, needle: &str) -> bool {
             haystack
                 .as_bytes()
@@ -162,8 +106,8 @@ impl AdductFamily {
 
 fn fallback_proton_spec(polarity: Option<Polarity>, charge_value: f64) -> (f64, f64) {
     let shift = match polarity {
-        Some(Polarity::Negative) => -HYDROGEN_MASS * charge_value,
-        Some(Polarity::Positive) => HYDROGEN_MASS * charge_value,
+        Some(Polarity::Negative) => -parse::HYDROGEN_MASS * charge_value,
+        Some(Polarity::Positive) => parse::HYDROGEN_MASS * charge_value,
         None => 0.0,
     };
     (1.0, shift)
@@ -171,7 +115,7 @@ fn fallback_proton_spec(polarity: Option<Polarity>, charge_value: f64) -> (f64, 
 
 /// Computes expected precursor *m/z* from neutral mass and optional adduct, charge, and ion mode.
 #[must_use]
-pub fn expected_precursor_mz(
+pub(crate) fn expected_precursor_mz(
     neutral_mass: f64,
     adduct: Option<&str>,
     charge: Option<&str>,
@@ -180,7 +124,7 @@ pub fn expected_precursor_mz(
     let normalized_adduct = adduct.unwrap_or("").trim();
     let charge_value = parse::parse_charge_value(charge, adduct).unwrap_or(1.0);
     let polarity =
-        parse_polarity_tokens(charge, ion_mode).or_else(|| parse_adduct_polarity(adduct));
+        parse::parse_polarity_tokens(charge, ion_mode).or_else(|| parse_adduct_polarity(adduct));
 
     let (multiplier, shift) = if normalized_adduct.is_empty() {
         fallback_proton_spec(polarity, charge_value)
@@ -189,8 +133,8 @@ pub fn expected_precursor_mz(
             .unwrap_or_else(|| fallback_proton_spec(polarity, charge_value))
     };
     let electron_adjustment = match polarity {
-        Some(Polarity::Positive) => -ELECTRON_MASS * charge_value,
-        Some(Polarity::Negative) => ELECTRON_MASS * charge_value,
+        Some(Polarity::Positive) => -parse::ELECTRON_MASS * charge_value,
+        Some(Polarity::Negative) => parse::ELECTRON_MASS * charge_value,
         None => 0.0,
     };
 
@@ -200,7 +144,7 @@ pub fn expected_precursor_mz(
 
 /// Extracts [`Polarity`] from an adduct string (suffix after `]` or known unbracketed suffix).
 #[must_use]
-pub fn parse_adduct_polarity(adduct: Option<&str>) -> Option<Polarity> {
+pub(crate) fn parse_adduct_polarity(adduct: Option<&str>) -> Option<Polarity> {
     let adduct = adduct?.trim();
     if let Some((_, suffix)) = adduct.split_once(']') {
         let suffix = suffix.trim();
@@ -212,7 +156,7 @@ pub fn parse_adduct_polarity(adduct: Option<&str>) -> Option<Polarity> {
         }
         return None;
     }
-    parse_unbracketed_polarity(adduct)
+    parse::parse_unbracketed_polarity(adduct)
 }
 
 fn parse_adduct_mass_spec_cached(adduct: &str) -> Option<(f64, f64)> {
@@ -238,7 +182,7 @@ fn parse_adduct_mass_spec_cached(adduct: &str) -> Option<(f64, f64)> {
 
 /// Normalizes common adduct spellings into canonical notation (`[M+H]+`, `[M+Na]+`, etc.).
 #[must_use]
-pub fn normalize_adduct_label(adduct: &str) -> &str {
+pub(crate) fn normalize_adduct_label(adduct: &str) -> &str {
     let trimmed = adduct.trim();
     if trimmed.is_empty() {
         return "unknown";
@@ -282,6 +226,6 @@ pub fn normalize_adduct_label(adduct: &str) -> &str {
 
 /// Returns `true` when `adduct` parses into a valid mass transformation.
 #[must_use]
-pub fn is_supported_adduct(adduct: &str) -> bool {
+pub(crate) fn is_supported_adduct(adduct: &str) -> bool {
     parse_adduct_mass_spec_cached(adduct).is_some()
 }

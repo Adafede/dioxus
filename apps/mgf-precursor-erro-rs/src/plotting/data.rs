@@ -6,50 +6,28 @@
 
 use std::collections::HashMap;
 
-use mgf_analysis_core::{AdductFamily, PlotPoint, usize_to_f64};
+use mgf_analysis_core::{AdductFamily, PlotPoint};
 
 use super::color::adduct_family_color_hex;
 
 /// Prepared scatter-series data and viewport bounds.
 #[derive(Clone, Debug)]
-pub struct ScatterPlotData {
+pub(crate) struct ScatterPlotData {
     /// `(family_label, color_hex)` pairs for legend rendering.
-    pub legend_items: Vec<(&'static str, &'static str)>,
+    pub(crate) legend_items: Vec<(&'static str, &'static str)>,
     /// Padded minimum X bound.
-    pub x_min: f64,
+    pub(crate) x_min: f64,
     /// Padded maximum X bound.
-    pub x_max: f64,
+    pub(crate) x_max: f64,
     /// Symmetric positive/negative Y axis limit.
-    pub y_limit: f64,
+    pub(crate) y_limit: f64,
     /// Sampled `(x, y)` series grouped by adduct family.
-    pub series: Vec<(AdductFamily, Vec<(f64, f64)>)>,
-}
-
-pub(super) fn mean_and_std_dev(values: &[f64]) -> Option<(f64, f64)> {
-    let mut count = 0usize;
-    let mut sum = 0.0f64;
-    for value in values.iter().copied().filter(|v| v.is_finite()) {
-        count += 1;
-        sum += value;
-    }
-    if count == 0 {
-        return None;
-    }
-    let n = usize_to_f64(count);
-    let mean = sum / n;
-    let variance = values
-        .iter()
-        .copied()
-        .filter(|value| value.is_finite())
-        .map(|value| (value - mean).powi(2))
-        .sum::<f64>()
-        / n;
-    Some((mean, variance.sqrt()))
+    pub(crate) series: Vec<(AdductFamily, Vec<(f64, f64)>)>,
 }
 
 /// Groups raw scatter points by [`AdductFamily`] and downsamples large series.
 #[must_use]
-pub fn prepare_scatter_plot_data<F, G>(
+pub(crate) fn prepare_scatter_plot_data<F, G>(
     points: &[PlotPoint],
     x_value_fn: F,
     y_value_fn: G,
@@ -127,7 +105,7 @@ where
 
 /// Formats numeric tolerance threshold values without trailing zeros.
 #[must_use]
-pub fn format_threshold_value(value: f64) -> String {
+pub(crate) fn format_threshold_value(value: f64) -> String {
     let formatted = format!("{value:.6}");
     let trimmed = formatted.trim_end_matches('0').trim_end_matches('.');
     if trimmed.is_empty() {
@@ -137,15 +115,9 @@ pub fn format_threshold_value(value: f64) -> String {
     }
 }
 
-/// Converts a scalar value in Da to the requested unit string (`"mDa"` scales by 1000).
-#[must_use]
-pub fn display_error_value(value: f64, unit: &str) -> f64 {
-    if unit == "mDa" { value * 1000.0 } else { value }
-}
-
 /// Selects signed error in `unit` (`"ppm"` or `"mDa"`) from a [`PlotPoint`].
 #[must_use]
-pub fn display_error_value_for_point(point: &PlotPoint, unit: &str) -> f64 {
+pub(crate) fn display_error_value_for_point(point: &PlotPoint, unit: &str) -> f64 {
     match unit {
         "ppm" => point.signed_error_ppm,
         _ => point.signed_error_da * 1000.0,
@@ -162,7 +134,7 @@ pub(super) fn fallback_y_limit_for_unit(unit: &str) -> f64 {
 
 /// Builds step-function `(x, fraction)` points for an ECDF chart.
 #[must_use]
-pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f64)> {
+pub(crate) fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f64)> {
     let mut sorted: Vec<f64> = values
         .iter()
         .copied()
@@ -204,7 +176,7 @@ pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f6
 
 /// Uniformly downsamples `points` to at most `max_points` (keeping first/last).
 #[must_use]
-pub fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<(f64, f64)> {
+pub(crate) fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<(f64, f64)> {
     if points.len() <= max_points.max(1) {
         return points;
     }

@@ -3,32 +3,14 @@
 
 //! Value types for MS2 fragment recalibration (`ShrinkageLambda`, `CalibrationModel`, `Peak`).
 
-use crate::error::MgfAnalysisError;
-
 /// Validated shrinkage weight `lambda` in `[0.0, 1.0]` controlling precursor correction strength.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShrinkageLambda(f64);
 
 impl ShrinkageLambda {
-    /// Zero correction (`lambda = 0.0`).
-    pub const ZERO: Self = Self(0.0);
-    /// Default half shrinkage (`lambda = 0.5`).
-    pub const HALF: Self = Self(0.5);
-    /// Full precursor error transfer (`lambda = 1.0`).
-    pub const FULL: Self = Self(1.0);
-
-    /// Validates that `value` is finite and lies in `[0.0, 1.0]`.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`MgfAnalysisError::InvalidShrinkageLambda`] when `value` is non-finite or out of bounds.
-    pub fn new(value: f64) -> Result<Self, MgfAnalysisError> {
-        if value.is_finite() && (0.0..=1.0).contains(&value) {
-            Ok(Self(value))
-        } else {
-            Err(MgfAnalysisError::InvalidShrinkageLambda(value))
-        }
-    }
+    const HALF: Self = Self(0.5);
+    #[cfg(test)]
+    pub(crate) const FULL: Self = Self(1.0);
 
     /// Clamps finite values to `[0.0, 1.0]` and maps non-finite inputs to `0.0`.
     #[must_use]

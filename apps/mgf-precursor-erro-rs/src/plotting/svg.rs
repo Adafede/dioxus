@@ -92,7 +92,7 @@ fn extract_svg_attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
 
 /// Normalizes root `<svg>` attributes for fluid width with explicit `viewBox`.
 #[must_use]
-pub fn make_svg_responsive(mut svg_markup: String) -> String {
+pub(crate) fn make_svg_responsive(mut svg_markup: String) -> String {
     let Some(svg_start) = svg_markup.find("<svg") else {
         return svg_markup;
     };

@@ -15,8 +15,7 @@ ingestion backed by [`mgf`].
 
 ```rust
 use mgf_analysis_core::{
-    CalibrationModel, compute_recalibration_diagnostics, generate_recalibrated_mgf,
-    ingest_lines,
+    CalibrationModel, LineIngestor, compute_recalibration_diagnostics, generate_recalibrated_mgf,
 };
 
 let mgf_text = "\
@@ -29,7 +28,11 @@ ADDUCT=[M+H]+
 138.0660 2500.0
 END IONS
 ";
-let stats = ingest_lines(mgf_text.lines(), |_| {});
+let mut ingestor = LineIngestor::default();
+for line in mgf_text.lines() {
+    ingestor.feed_line(line);
+}
+let stats = ingestor.finish();
 assert_eq!(stats.spectra, 1);
 
 let model = CalibrationModel::tof(1.0);

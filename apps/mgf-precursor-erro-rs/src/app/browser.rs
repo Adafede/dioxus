@@ -128,17 +128,15 @@ async fn scan_blob_with_progress(
     let mut ingestor = LineIngestor::default();
     let mut raw_content = String::new();
     let mut raw_retention_capped = false;
-    let mut index = 0usize;
 
     while let Some(line) = reader.next_line().await? {
-        ingestor.feed_line(index, &line);
+        ingestor.feed_line(&line);
         append_retained_line(
             &mut raw_content,
             &mut raw_retention_capped,
             &line,
             MAX_RAW_RETENTION_BYTES,
         );
-        index += 1;
     }
 
     let mut result = ingestor.finish();

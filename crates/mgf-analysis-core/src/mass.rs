@@ -11,7 +11,7 @@ use chematic::chem;
 use molecular_formulas::prelude::*;
 
 /// Computes and caches the neutral isotopologue mass derived from a SMILES string.
-pub fn exact_mass_from_smiles_cached<S: BuildHasher>(
+pub(crate) fn exact_mass_from_smiles_cached<S: BuildHasher>(
     smiles: &str,
     cache: &mut HashMap<String, Option<f64>, S>,
 ) -> Option<f64> {
@@ -36,7 +36,7 @@ fn exact_mass_from_smiles_uncached(smiles: &str) -> Option<f64> {
 }
 
 /// Computes and caches the neutral isotopologue mass derived from a formula string.
-pub fn exact_mass_from_formula_cached<S: BuildHasher>(
+pub(crate) fn exact_mass_from_formula_cached<S: BuildHasher>(
     formula: &str,
     cache: &mut HashMap<String, Option<f64>, S>,
 ) -> Option<f64> {

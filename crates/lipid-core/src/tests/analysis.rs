@@ -2,10 +2,11 @@
 // SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
 
 use super::EXAMPLE_MGF;
+use crate::parser::analysis::{analyze, build_analysis, summarize};
+use crate::parser::extractor::extract_blocks;
 use crate::{
-    BlockExtractor, ClassMatchSet, FilterCriteria, LipidFamily, LipidFormat, analyze,
-    build_analysis, build_filtered_mgf_content, example_smiles, extract_blocks, lmsd_classes,
-    summarize,
+    BlockExtractor, ClassMatchSet, FilterCriteria, LipidFamily, LipidFormat,
+    build_filtered_mgf_content, example_smiles, lmsd_classes,
 };
 
 #[test]

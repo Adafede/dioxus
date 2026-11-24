@@ -3,13 +3,6 @@
 
 //! Streaming MGF/SMILES extraction and collection analysis.
 
-mod analysis;
-mod block;
-mod extractor;
-
-pub use analysis::{
-    Analysis, GalleryItem, Summary, analyze, build_analysis, build_analysis_from_classified,
-    build_gallery, classify_blocks, gallery_item, summarize,
-};
-pub use block::SpectrumBlock;
-pub use extractor::{BlockExtractor, extract_blocks, extract_blocks_from_lines};
+pub(crate) mod analysis;
+pub(crate) mod block;
+pub(crate) mod extractor;

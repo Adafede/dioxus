@@ -13,14 +13,23 @@ tagging, and export builders out of the Dioxus browser shell.
 ## Example
 
 ```rust
-use lipid_core::{analyze, lmsd_classes};
+use lipid_core::{
+    BlockExtractor, build_analysis_from_classified, classify_blocks, lmsd_classes,
+};
 
 let input = "CCCCCCCCCCCCCCCC(=O)O\tpalmitic_acid\nCCO\tethanol\n";
-let (blocks, summary) = analyze(input);
-assert_eq!(summary.total_items, 2);
-assert_eq!(summary.lipid_items, 1);
-assert!(blocks[0].is_lipid());
-assert_eq!(lmsd_classes().len(), 86);
+let mut extractor = BlockExtractor::default();
+for line in input.lines() {
+    extractor.push_line(line);
+}
+let mut blocks = extractor.finish();
+let classes = lmsd_classes();
+classify_blocks(&mut blocks, classes);
+let analysis = build_analysis_from_classified(blocks, 16, classes);
+assert_eq!(analysis.summary.total_items, 2);
+assert_eq!(analysis.summary.lipid_items, 1);
+assert!(analysis.blocks[0].is_lipid());
+assert_eq!(classes.len(), 86);
 ```
 
 ## License

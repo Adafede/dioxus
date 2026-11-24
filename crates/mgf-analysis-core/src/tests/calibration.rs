@@ -2,10 +2,8 @@
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
 use super::assert_close;
-use crate::{
-    CalibrationModel, MgfAnalysisError, Peak, ShrinkageLambda, recalibrate_fragment_mz,
-    recalibrate_fragments,
-};
+use crate::recalibration::calibration::recalibrate_fragment_mz;
+use crate::{CalibrationModel, Peak, ShrinkageLambda, recalibrate_fragments};
 
 #[test]
 fn calibration_model_and_shrinkage_lambda_validation() {
@@ -21,15 +19,8 @@ fn calibration_model_and_shrinkage_lambda_validation() {
     assert_eq!(tof.lambda(), Some(0.5));
     assert_eq!(tof.with_lambda(ShrinkageLambda::FULL).lambda(), Some(1.0));
 
-    assert!(matches!(
-        ShrinkageLambda::new(f64::NAN),
-        Err(MgfAnalysisError::InvalidShrinkageLambda(_))
-    ));
-    assert!(matches!(
-        ShrinkageLambda::new(1.5),
-        Err(MgfAnalysisError::InvalidShrinkageLambda(_))
-    ));
     assert_eq!(ShrinkageLambda::clamped(2.0).get(), 1.0);
+    assert_eq!(ShrinkageLambda::clamped(-0.5).get(), 0.0);
     assert_eq!(ShrinkageLambda::clamped(f64::NAN).get(), 0.0);
 }
 

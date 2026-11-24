@@ -2,10 +2,12 @@
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
 use super::assert_close;
+use crate::diagnostics::model::RecalibrationMeasurement;
 use crate::diagnostics::{compute_max_abs, compute_mean, compute_rms};
+use crate::metrics::ErrorMeasurement;
 use crate::{
-    AdductFamily, CalibrationModel, ErrorMeasurement, PrecursorStats, RecalibrationMeasurement,
-    RecalibrationStats, compute_recalibration_diagnostics,
+    AdductFamily, CalibrationModel, PrecursorStats, RecalibrationStats,
+    compute_recalibration_diagnostics,
 };
 
 #[test]

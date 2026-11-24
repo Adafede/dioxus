@@ -4,12 +4,15 @@
 //! Collection-level classification, summarization, and gallery construction.
 
 use super::block::SpectrumBlock;
+#[cfg(test)]
 use super::extractor::extract_blocks;
 use crate::bitset::ClassMatchSet;
-use crate::chemical_class::{ChemicalClass, lmsd_classes};
-use crate::lipids::LipidClassification;
+use crate::chemical_class::ChemicalClass;
+#[cfg(test)]
+use crate::chemical_class::lmsd::lmsd_classes;
+use crate::lipids::types::LipidClassification;
 
-/// Aggregate counts produced by [`summarize`] / [`analyze`].
+/// Aggregate counts produced by collection summarization.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Summary {
     /// Total number of blocks parsed from the input.
@@ -24,7 +27,7 @@ pub struct Summary {
 
 /// Summarize classification counts across `blocks`.
 #[must_use]
-pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
+pub(crate) fn summarize(blocks: &[SpectrumBlock]) -> Summary {
     let mut summary = Summary {
         total_items: blocks.len(),
         ..Summary::default()
@@ -78,7 +81,7 @@ pub struct GalleryItem {
 
 /// Project one classified [`SpectrumBlock`] into a [`GalleryItem`] without re-parsing SMILES.
 #[must_use]
-pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
+pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
     let class_matches = block.class_matches();
     let first_class = classes.iter().find(|c| class_matches.contains(c.index));
     let primary_class_color =
@@ -112,7 +115,7 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
 
 /// Build up to `limit` gallery items from lipid-positive blocks.
 #[must_use]
-pub fn build_gallery(
+pub(crate) fn build_gallery(
     blocks: &[SpectrumBlock],
     limit: usize,
     classes: &[ChemicalClass],
@@ -163,16 +166,18 @@ pub fn build_analysis_from_classified(
 }
 
 /// Classify `blocks` against LMSD classes and assemble an [`Analysis`].
+#[cfg(test)]
 #[must_use]
-pub fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
+pub(crate) fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
     let all_classes = lmsd_classes();
     classify_blocks(&mut blocks, all_classes);
     build_analysis_from_classified(blocks, gallery_limit, all_classes)
 }
 
 /// Parse, classify, and summarize in-memory MGF or SMILES text in one call.
+#[cfg(test)]
 #[must_use]
-pub fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
+pub(crate) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     let mut blocks = extract_blocks(content);
     classify_blocks(&mut blocks, lmsd_classes());
     let summary = summarize(&blocks);

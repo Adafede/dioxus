@@ -7,27 +7,27 @@ use crate::family::LipidFamily;
 
 /// Elemental composition extracted from a molecule or formula string.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ElementCounts {
+pub(crate) struct ElementCounts {
     /// Carbon count.
-    pub carbon: u32,
+    pub(crate) carbon: u32,
     /// Hydrogen count.
-    pub hydrogen: u32,
+    pub(crate) hydrogen: u32,
     /// Nitrogen count.
-    pub nitrogen: u32,
+    pub(crate) nitrogen: u32,
     /// Oxygen count.
-    pub oxygen: u32,
+    pub(crate) oxygen: u32,
     /// Phosphorus count.
-    pub phosphorus: u32,
+    pub(crate) phosphorus: u32,
     /// Sulfur count.
-    pub sulfur: u32,
+    pub(crate) sulfur: u32,
     /// Combined halogen count (`F`, `Cl`, `Br`, `I`).
-    pub halogens: u32,
+    pub(crate) halogens: u32,
 }
 
 impl ElementCounts {
     /// Double-bond equivalents (`C - H/2 - X/2 + N/2 + 1`).
     #[must_use]
-    pub fn double_bond_equivalent(&self) -> f64 {
+    pub(crate) fn double_bond_equivalent(&self) -> f64 {
         let c = f64::from(self.carbon);
         let h = f64::from(self.hydrogen);
         let n = f64::from(self.nitrogen);

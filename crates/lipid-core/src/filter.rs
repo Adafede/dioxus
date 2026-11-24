@@ -9,7 +9,7 @@ use std::sync::LazyLock;
 use crate::bitset::ClassMatchSet;
 use crate::chemical_class::ChemicalClass;
 use crate::family::LipidFamily;
-use crate::parser::SpectrumBlock;
+use crate::parser::block::SpectrumBlock;
 
 /// Filter parameters shared by gallery rendering and filtered exports.
 #[derive(Clone, Copy, Debug)]
@@ -68,7 +68,7 @@ pub fn collect_adduct_options(blocks: &[SpectrumBlock]) -> Vec<String> {
 
 /// Group chemical classes by [`LipidFamily`] in canonical LIPID MAPS rank order without cloning.
 #[must_use]
-pub fn group_classes_by_family(
+pub(crate) fn group_classes_by_family(
     classes: &[ChemicalClass],
 ) -> Vec<(LipidFamily, Vec<&ChemicalClass>)> {
     let mut families: Vec<(LipidFamily, Vec<&ChemicalClass>)> = Vec::new();
@@ -87,6 +87,6 @@ pub fn group_classes_by_family(
 #[must_use]
 pub fn lmsd_classes_by_family() -> &'static [(LipidFamily, Vec<&'static ChemicalClass>)] {
     static GROUPED: LazyLock<Vec<(LipidFamily, Vec<&'static ChemicalClass>)>> =
-        LazyLock::new(|| group_classes_by_family(crate::chemical_class::lmsd_classes()));
+        LazyLock::new(|| group_classes_by_family(crate::chemical_class::lmsd::lmsd_classes()));
     GROUPED.as_slice()
 }

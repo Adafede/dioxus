@@ -52,7 +52,7 @@ fn has_query(molecule: &Molecule, query: &LazyLock<Option<QueryMolecule>>) -> bo
 
 /// Returns `true` when `molecule` contains no ring atoms.
 #[must_use]
-pub fn is_acyclic(molecule: &Molecule) -> bool {
+pub(crate) fn is_acyclic(molecule: &Molecule) -> bool {
     let Some(query) = Q_RING.as_ref() else {
         return true;
     };
@@ -79,7 +79,7 @@ pub(crate) fn counts_from_molecule(molecule: &Molecule) -> ElementCounts {
 
 /// Structural broad lipid classification for an already-confirmed acyclic molecule.
 #[must_use]
-pub fn classify_acyclic_molecule(molecule: &Molecule) -> Option<LipidFamily> {
+pub(crate) fn classify_acyclic_molecule(molecule: &Molecule) -> Option<LipidFamily> {
     let mut chain_cached: Option<bool> = None;
     let mut has_chain =
         || *chain_cached.get_or_insert_with(|| has_query(molecule, &Q_ALIPHATIC_CHAIN));
@@ -169,7 +169,7 @@ fn classify_from_counts(counts: &ElementCounts) -> Option<LipidFamily> {
 
 /// Conservative formula-only fallback classifier when SMILES is missing or invalid.
 #[must_use]
-pub fn classify_formula(formula: &str) -> Option<LipidFamily> {
+pub(crate) fn classify_formula(formula: &str) -> Option<LipidFamily> {
     let trimmed = formula.trim();
     if trimmed.is_empty() {
         return None;

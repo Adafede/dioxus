@@ -12,7 +12,8 @@ use mgf::parse_leading_float;
 use crate::bitset::ClassMatchSet;
 use crate::chemical_class::ChemicalClass;
 use crate::family::LipidFamily;
-use crate::lipids::{LipidClassification, classify_acyclic_molecule, classify_formula, is_acyclic};
+use crate::lipids::classify::{classify_acyclic_molecule, classify_formula, is_acyclic};
+use crate::lipids::types::LipidClassification;
 
 /// One `BEGIN IONS ... END IONS` MGF spectrum or SMILES row.
 #[derive(Clone)]

@@ -17,33 +17,33 @@ pub(super) struct RunningStats {
 
 /// Complete recalibration measurement folded into [`RecalibrationStats`].
 #[derive(Clone, Copy, Debug)]
-pub struct RecalibrationMeasurement<'a> {
+pub(crate) struct RecalibrationMeasurement<'a> {
     /// MS1 error in ppm.
-    pub error_ppm_ms1: f64,
+    pub(crate) error_ppm_ms1: f64,
     /// Calibration delta (`MS2 - MS1`) in ppm.
-    pub delta_ppm_ms2_ms1: f64,
+    pub(crate) delta_ppm_ms2_ms1: f64,
     /// MS2 error before correction (ppm).
-    pub error_ppm_before: f64,
+    pub(crate) error_ppm_before: f64,
     /// MS2 error after correction (ppm).
-    pub error_ppm_after: f64,
+    pub(crate) error_ppm_after: f64,
     /// MS1 error in Da.
-    pub error_da_ms1: f64,
+    pub(crate) error_da_ms1: f64,
     /// Calibration delta (`MS2 - MS1`) in Da.
-    pub delta_da_ms2_ms1: f64,
+    pub(crate) delta_da_ms2_ms1: f64,
     /// MS2 error before correction (Da).
-    pub error_da_before: f64,
+    pub(crate) error_da_before: f64,
     /// MS2 error after correction (Da).
-    pub error_da_after: f64,
+    pub(crate) error_da_after: f64,
     /// MS1 precursor `m/z`.
-    pub precursor_ms1: f64,
+    pub(crate) precursor_ms1: f64,
     /// MS2 precursor `m/z` before correction.
-    pub precursor_ms2_before: f64,
+    pub(crate) precursor_ms2_before: f64,
     /// MS2 precursor `m/z` after correction.
-    pub precursor_ms2_after: f64,
+    pub(crate) precursor_ms2_after: f64,
     /// Optional adduct family label.
-    pub adduct_family: Option<&'a str>,
+    pub(crate) adduct_family: Option<&'a str>,
     /// Reservoir sample cap per series.
-    pub max_samples: usize,
+    pub(crate) max_samples: usize,
 }
 
 /// Summary and sampled distribution statistics before and after recalibration.

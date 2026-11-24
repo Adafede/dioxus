@@ -3,10 +3,8 @@
 
 //! Streaming `RecalibrationStats` accumulator and synchronized reservoir sampling.
 
-use super::model::RunningStats;
-use super::{
-    RecalibrationMeasurement, RecalibrationStats, compute_max_abs, compute_mean, compute_rms,
-};
+use super::model::{RecalibrationMeasurement, RecalibrationStats, RunningStats};
+use super::{compute_max_abs, compute_mean, compute_rms};
 use crate::numeric::{reservoir_index, usize_to_f64, write_reservoir_slot};
 
 impl RunningStats {
@@ -90,7 +88,7 @@ impl RecalibrationStats {
     }
 
     /// Pushes a complete four-stage measurement with aligned precursor `m/z` values.
-    pub fn push_measurement(&mut self, measurement: RecalibrationMeasurement<'_>) {
+    pub(crate) fn push_measurement(&mut self, measurement: RecalibrationMeasurement<'_>) {
         self.total_count += 1;
         self.stream_ppm_ms1.push(measurement.error_ppm_ms1);
         self.stream_delta_ppm.push(measurement.delta_ppm_ms2_ms1);
@@ -227,17 +225,5 @@ impl RecalibrationStats {
     #[must_use]
     pub fn rms_error_improvement_ppm(&self) -> f64 {
         self.rms_error_ppm_before - self.rms_error_ppm_after
-    }
-
-    /// MAE reduction in Da after recalibration.
-    #[must_use]
-    pub fn mean_error_improvement_da(&self) -> f64 {
-        self.mae_error_da_before - self.mae_error_da_after
-    }
-
-    /// RMS reduction in Da after recalibration.
-    #[must_use]
-    pub fn rms_error_improvement_da(&self) -> f64 {
-        self.rms_error_da_before - self.rms_error_da_after
     }
 }

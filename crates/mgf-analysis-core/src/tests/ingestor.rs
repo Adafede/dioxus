@@ -5,10 +5,8 @@ use std::collections::HashMap;
 
 use mgf::{MgfBlock, MgfHeader};
 
-use crate::{
-    MAX_RAW_RETENTION_BYTES, PrecursorStats, WarningDetail, append_retained_line, ingest_lines,
-    record_block,
-};
+use crate::ingestor::{ingest_lines, record_block};
+use crate::{MAX_RAW_RETENTION_BYTES, PrecursorStats, WarningDetail, append_retained_line};
 
 #[test]
 fn keeps_full_precision_when_computing_error() {

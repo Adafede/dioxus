@@ -8,23 +8,24 @@ use std::fmt::Write as _;
 use crate::chemical_class::ChemicalClass;
 use crate::family::LipidFamily;
 use crate::filter::{FilterCriteria, passes_item_filters};
-use crate::parser::{GalleryItem, SpectrumBlock};
+use crate::parser::analysis::GalleryItem;
+use crate::parser::block::SpectrumBlock;
 
 /// Structured LIPID MAPS `COMMENT=LIPID_MAPS_*` tags for a spectrum.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ClassTags {
+pub(crate) struct ClassTags {
     /// `CATEGORY` field (e.g. `"Fatty Acyls [FA]"`).
-    pub category: String,
+    pub(crate) category: String,
     /// `MAIN_CLASS` field (e.g. `"Fatty Acids and Conjugates [FA01]"`).
-    pub main_class: String,
+    pub(crate) main_class: String,
     /// `SUB_CLASS` field (currently always `"-"`).
-    pub sub_class: &'static str,
+    pub(crate) sub_class: &'static str,
 }
 
 impl ClassTags {
     /// Render `(key, value)` pairs for MGF comment headers.
     #[must_use]
-    pub fn as_pairs(&self) -> [(&'static str, &str); 3] {
+    pub(crate) fn as_pairs(&self) -> [(&'static str, &str); 3] {
         [
             ("CATEGORY", &self.category),
             ("MAIN_CLASS", &self.main_class),
@@ -35,7 +36,7 @@ impl ClassTags {
 
 /// Compute `CATEGORY` / `MAIN_CLASS` / `SUB_CLASS` tags from a [`GalleryItem`].
 #[must_use]
-pub fn class_tags_from_gallery(item: &GalleryItem, classes: &[ChemicalClass]) -> ClassTags {
+pub(crate) fn class_tags_from_gallery(item: &GalleryItem, classes: &[ChemicalClass]) -> ClassTags {
     let matched: Vec<&ChemicalClass> = classes
         .iter()
         .filter(|c| item.class_matches.contains(c.index))
@@ -96,7 +97,7 @@ fn tags_from_matched(matched: &[&ChemicalClass], broad: Option<LipidFamily>) -> 
 
 /// Compute fallback tags directly from a [`SpectrumBlock`].
 #[must_use]
-pub fn class_tags_from_block(block: &SpectrumBlock, classes: &[ChemicalClass]) -> ClassTags {
+pub(crate) fn class_tags_from_block(block: &SpectrumBlock, classes: &[ChemicalClass]) -> ClassTags {
     let category = block.classification.as_ref().map_or_else(
         || "Other Lipids [-]".to_string(),
         |c| c.family.category().to_string(),
@@ -119,7 +120,7 @@ pub fn class_tags_from_block(block: &SpectrumBlock, classes: &[ChemicalClass]) -
 
 /// Look up matching gallery item tags if in gallery cap, otherwise derive from block.
 #[must_use]
-pub fn block_class_tags(
+pub(crate) fn block_class_tags(
     block: &SpectrumBlock,
     gallery: &[GalleryItem],
     classes: &[ChemicalClass],
@@ -136,7 +137,7 @@ pub fn block_class_tags(
 
 /// Insert `COMMENT=LIPID_MAPS_*` lines right after `BEGIN IONS`.
 #[must_use]
-pub fn insert_class_comment(block_raw: &str, tags: &ClassTags) -> String {
+pub(crate) fn insert_class_comment(block_raw: &str, tags: &ClassTags) -> String {
     let mut out = String::with_capacity(block_raw.len() + 128);
     let split_pos = block_raw
         .find(|c: char| !c.is_whitespace())

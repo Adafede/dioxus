@@ -102,7 +102,7 @@ impl LipidFamily {
 
     /// Fallback `[XX00]` class code used when classifying from molecular formula alone.
     #[must_use]
-    pub const fn fallback_code(self) -> &'static str {
+    pub(crate) const fn fallback_code(self) -> &'static str {
         match self {
             Self::FattyAcyls => "[FA00]",
             Self::Glycerolipids => "[GL00]",
@@ -128,12 +128,5 @@ impl LipidFamily {
             Self::Saccharolipids => &SL_PALETTE,
             Self::Polyketides => &PK_PALETTE,
         }
-    }
-
-    /// Look up a [`LipidFamily`] by broad display name.
-    #[must_use]
-    pub fn from_name(name: &str) -> Option<Self> {
-        let trimmed = name.trim();
-        Self::ALL.into_iter().find(|fam| fam.name() == trimmed)
     }
 }

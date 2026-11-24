@@ -3,16 +3,13 @@
 
 //! Precursor error metric update helpers for [`PrecursorStats`].
 
-use super::stats::push_reservoir;
-use super::{
-    ErrorMeasurement, HighErrorSmilesDetail, MAX_ECDF_POINTS, MAX_PLOT_POINTS, PlotPoint,
-    PrecursorStats,
-};
+use super::stats::{PrecursorStats, push_reservoir};
+use super::{ErrorMeasurement, HighErrorSmilesDetail, MAX_ECDF_POINTS, MAX_PLOT_POINTS, PlotPoint};
 use crate::numeric::usize_to_f64;
 
 impl PrecursorStats {
     /// Records a single spectrum error observation into all running metrics and samplers.
-    pub fn record_error(&mut self, measurement: ErrorMeasurement<'_>) {
+    pub(crate) fn record_error(&mut self, measurement: ErrorMeasurement<'_>) {
         let prev_spectra = usize_to_f64(self.spectra);
         self.total_spectra += 1;
         self.spectra += 1;

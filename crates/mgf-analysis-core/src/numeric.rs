@@ -27,7 +27,7 @@ pub fn floor_to_usize(value: f64) -> usize {
 
 /// Newtype over `f64` implementing `Eq` and `Ord` via `f64::total_cmp`.
 #[derive(Clone, Copy, Debug)]
-pub struct OrderedF64(pub f64);
+pub(crate) struct OrderedF64(pub(crate) f64);
 
 impl PartialEq for OrderedF64 {
     fn eq(&self, other: &Self) -> bool {
@@ -51,7 +51,7 @@ impl PartialOrd for OrderedF64 {
 
 /// Deterministic splitmix-style reservoir index in `0..seen.max(1)`.
 #[must_use]
-pub fn reservoir_index(seen: usize) -> usize {
+pub(crate) fn reservoir_index(seen: usize) -> usize {
     let stream_index = u64::try_from(seen).unwrap_or(u64::MAX).max(1);
     let mixed = stream_index
         .wrapping_mul(0x9e37_79b9_7f4a_7c15)
@@ -63,53 +63,5 @@ pub fn reservoir_index(seen: usize) -> usize {
 pub(crate) fn write_reservoir_slot(series: &mut [f64], index: usize, value: f64) {
     if let Some(slot) = series.get_mut(index) {
         *slot = value;
-    }
-}
-
-/// Fixed-capacity deterministic reservoir sampler over a stream of `T`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ReservoirSampler<T> {
-    items: Vec<T>,
-    capacity: usize,
-    seen: usize,
-}
-
-impl<T> ReservoirSampler<T> {
-    /// Creates a new empty sampler capped at `capacity` items.
-    #[must_use]
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            items: Vec::with_capacity(capacity.min(1024)),
-            capacity,
-            seen: 0,
-        }
-    }
-
-    /// Feeds one item into the stream, inserting or probabilistically replacing an existing item.
-    pub fn push(&mut self, value: T) {
-        self.seen = self.seen.saturating_add(1);
-        if self.capacity == 0 {
-            return;
-        }
-        if self.items.len() < self.capacity {
-            self.items.push(value);
-            return;
-        }
-        let idx = reservoir_index(self.seen);
-        if let Some(slot) = self.items.get_mut(idx) {
-            *slot = value;
-        }
-    }
-
-    /// Retained sampled items.
-    #[must_use]
-    pub fn items(&self) -> &[T] {
-        &self.items
-    }
-
-    /// Total stream items observed so far.
-    #[must_use]
-    pub const fn seen(&self) -> usize {
-        self.seen
     }
 }

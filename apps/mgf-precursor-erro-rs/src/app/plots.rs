@@ -7,9 +7,9 @@ use dioxus::prelude::*;
 use mgf_analysis_core::{ErrorBucket, ErrorUnit, PrecursorStats, RecalibrationStats};
 use ui::StyleBuilder;
 
-use crate::plotting::{
-    make_svg_responsive, render_absolute_mass_bias_svg, render_ecdf_svg, tolerance_step_color,
-};
+use crate::plotting::color::tolerance_step_color;
+use crate::plotting::scatter::{render_absolute_mass_bias_svg, render_ecdf_svg};
+use crate::plotting::svg::make_svg_responsive;
 
 #[cfg(target_arch = "wasm32")]
 use super::browser::download_svg;
@@ -124,7 +124,7 @@ fn plot_shell(title: &'static str, subtitle: &'static str, svg_markup: Memo<Stri
 }
 
 #[component]
-pub fn EcdfPlot(
+pub(super) fn EcdfPlot(
     title: &'static str,
     subtitle: &'static str,
     metrics: Signal<Option<PrecursorStats>>,
@@ -172,7 +172,7 @@ pub fn EcdfPlot(
 }
 
 #[component]
-pub fn AbsoluteMassBiasPlot(
+pub(super) fn AbsoluteMassBiasPlot(
     title: &'static str,
     subtitle: &'static str,
     metrics: Signal<Option<PrecursorStats>>,

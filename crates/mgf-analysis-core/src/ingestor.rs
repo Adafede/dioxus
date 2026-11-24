@@ -12,8 +12,9 @@ use crate::adduct::{
     AdductFamily, expected_precursor_mz, is_supported_adduct, normalize_adduct_label,
 };
 use crate::mass::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached};
-use crate::metrics::{ErrorMeasurement, PrecursorStats, WarningDetail};
-use crate::recalibration::closest_ms2_precursor_mz;
+use crate::metrics::stats::PrecursorStats;
+use crate::metrics::{ErrorMeasurement, WarningDetail};
+use crate::recalibration::parsing::closest_ms2_precursor_mz;
 
 /// Upper bound (`64 MiB`) on retained raw MGF text kept in memory for recalibrated export.
 pub const MAX_RAW_RETENTION_BYTES: usize = 64 * 1024 * 1024;
@@ -65,7 +66,7 @@ impl Default for LineIngestor {
 
 impl LineIngestor {
     /// Feeds one MGF line into the underlying parser, scoring completed `END IONS` blocks.
-    pub fn feed_line(&mut self, _index: usize, line: &str) {
+    pub fn feed_line(&mut self, line: &str) {
         if let Some(block) = self.parser.push_line(line)
             && is_ions_marker(line, "END IONS")
         {
@@ -86,13 +87,14 @@ impl LineIngestor {
 }
 
 /// Drives an in-memory MGF line iterator through [`LineIngestor`].
-pub fn ingest_lines<'a>(
+#[cfg(test)]
+pub(crate) fn ingest_lines<'a>(
     lines: impl Iterator<Item = &'a str>,
     mut on_block_line: impl FnMut(u64),
 ) -> PrecursorStats {
     let mut ingestor = LineIngestor::default();
     for (index, line) in lines.enumerate() {
-        ingestor.feed_line(index, line);
+        ingestor.feed_line(line);
         if is_ions_marker(line, "END IONS") {
             on_block_line(u64::try_from(index).unwrap_or(u64::MAX));
         }
@@ -101,7 +103,7 @@ pub fn ingest_lines<'a>(
 }
 
 /// Evaluates one parsed [`MgfBlock`] and folds it into `metrics`.
-pub fn record_block<S: BuildHasher>(
+pub(crate) fn record_block<S: BuildHasher>(
     metrics: &mut PrecursorStats,
     block: &MgfBlock,
     smiles_cache: &mut HashMap<String, Option<f64>, S>,

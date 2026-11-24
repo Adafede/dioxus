@@ -32,20 +32,16 @@ const fn paul_tol_entry(index: usize) -> (&'static str, (u8, u8, u8)) {
 
 /// Returns the Paul Tol qualitative hex color assigned to `family`.
 #[must_use]
-pub const fn adduct_family_color_hex(family: AdductFamily) -> &'static str {
+pub(crate) const fn adduct_family_color_hex(family: AdductFamily) -> &'static str {
     paul_tol_entry(family.rank()).0
-}
-
-/// Returns the Paul Tol qualitative `RGBColor` assigned to `family`.
-#[must_use]
-pub const fn adduct_family_color(family: AdductFamily) -> plotters::style::RGBColor {
-    let (_, (r, g, b)) = paul_tol_entry(family.rank());
-    plotters::style::RGBColor(r, g, b)
 }
 
 /// Returns a filled `ShapeStyle` for scatter points belonging to `family`.
 #[must_use]
-pub fn adduct_family_shape_style(family: AdductFamily, alpha: f32) -> plotters::style::ShapeStyle {
+pub(crate) fn adduct_family_shape_style(
+    family: AdductFamily,
+    alpha: f32,
+) -> plotters::style::ShapeStyle {
     let (_, (r, g, b)) = paul_tol_entry(family.rank());
     let alpha = f64::from(alpha.clamp(0.0, 1.0));
     plotters::style::ShapeStyle::from(&plotters::style::RGBAColor(r, g, b, alpha)).filled()
@@ -73,14 +69,14 @@ fn batlow_entry(index: usize, total_steps: usize) -> [u8; 3] {
 
 /// Maps tolerance bucket `(index, total_steps)` to a CSS hex color string.
 #[must_use]
-pub fn tolerance_step_color(index: usize, total_steps: usize) -> String {
+pub(crate) fn tolerance_step_color(index: usize, total_steps: usize) -> String {
     let [r, g, b] = batlow_entry(index, total_steps);
     format!("#{r:02x}{g:02x}{b:02x}")
 }
 
 /// Maps tolerance bucket `(index, total_steps)` to a plotters `RGBColor`.
 #[must_use]
-pub fn tolerance_step_rgb(index: usize, total_steps: usize) -> plotters::style::RGBColor {
+pub(crate) fn tolerance_step_rgb(index: usize, total_steps: usize) -> plotters::style::RGBColor {
     let [r, g, b] = batlow_entry(index, total_steps);
     plotters::style::RGBColor(r, g, b)
 }

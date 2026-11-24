@@ -3,12 +3,5 @@
 
 //! Broad lipid classification from SMILES structure or molecular formula.
 
-mod classify;
-mod types;
-
-pub use classify::{classify_acyclic_molecule, classify_formula, is_acyclic};
-#[cfg(test)]
-pub(crate) use classify::{
-    classify_smiles, classify_spectrum, counts_from_molecule, formula_counts,
-};
-pub use types::{ElementCounts, LipidClassification};
+pub(crate) mod classify;
+pub(crate) mod types;

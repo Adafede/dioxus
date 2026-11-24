@@ -5,14 +5,12 @@
 
 #[cfg(test)]
 mod defaults;
-mod lmsd;
+pub(crate) mod lmsd;
 mod lmsd_part1;
 mod lmsd_part2;
 
 use chematic::core::Molecule;
 use chematic::smarts;
-
-pub use lmsd::lmsd_classes;
 
 use crate::family::LipidFamily;
 
@@ -20,7 +18,7 @@ use crate::family::LipidFamily;
 /// display color, and parent [`LipidFamily`].
 #[derive(Clone, Debug)]
 pub struct ChemicalClass {
-    /// Deterministic bit index in [`lmsd_classes`] (`0..86`).
+    /// Deterministic bit index in [`lmsd::lmsd_classes`] (`0..86`).
     pub index: usize,
     /// Display name (e.g. `"Fatty Acids and Conjugates [FA01]"`).
     pub name: String,
@@ -36,7 +34,7 @@ pub struct ChemicalClass {
 impl ChemicalClass {
     /// Construct and precompile a [`ChemicalClass`] entry.
     #[must_use]
-    pub fn new(
+    pub(crate) fn new(
         index: usize,
         name: impl Into<String>,
         smarts: &'static str,
@@ -55,14 +53,15 @@ impl ChemicalClass {
     }
 
     /// Returns `true` when the SMARTS string compiled into a valid query.
+    #[cfg(test)]
     #[must_use]
-    pub const fn is_compiled(&self) -> bool {
+    pub(crate) const fn is_compiled(&self) -> bool {
         self.compiled.is_some()
     }
 
     /// Returns `true` if `molecule` matches this class's precompiled SMARTS query.
     #[must_use]
-    pub fn matches(&self, molecule: &Molecule) -> bool {
+    pub(crate) fn matches(&self, molecule: &Molecule) -> bool {
         let Some(query) = &self.compiled else {
             return false;
         };

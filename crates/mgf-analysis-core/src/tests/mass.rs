@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use crate::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached};
+use crate::mass::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached};
 
 #[test]
 fn exact_mass_from_smiles_and_formula_pin_caffeine_blank_invalid_and_cache() {

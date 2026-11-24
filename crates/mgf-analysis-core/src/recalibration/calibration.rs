@@ -7,7 +7,12 @@ use super::types::{CalibrationModel, Peak, ShrinkageLambda};
 
 /// Applies `model` to a single fragment `mz` given precursor discrepancy `delta = ms2 - ms1`.
 #[must_use]
-pub fn recalibrate_fragment_mz(mz: f64, delta: f64, pepmass: f64, model: CalibrationModel) -> f64 {
+pub(crate) fn recalibrate_fragment_mz(
+    mz: f64,
+    delta: f64,
+    pepmass: f64,
+    model: CalibrationModel,
+) -> f64 {
     if !mz.is_finite() || !delta.is_finite() {
         return mz;
     }
