@@ -30,7 +30,7 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> Result<CxResult, CxError> {
         parse(&scaffold_smiles).map_err(|e| CxError::ScaffoldReparse(format!("{e:?}")))?;
     let unit_size = compute_unit_size(&ordered, shortest.atom_count());
     let scaffold_q = molecule_to_query(&scaffold);
-    let pattern = repeat_pattern(shortest, longest, unit_size, &scaffold_q)?;
+    let pattern = repeat_pattern(longest, unit_size, &scaffold_q)?;
     let unit_ms = unit_multiset(&pattern, longest, unit_size);
     let repeat_atoms = locate_repeat_in_scaffold(&scaffold, &unit_ms, unit_size)?;
     let nonrepeat = scaffold.atom_count() - repeat_atoms.len();
@@ -77,7 +77,6 @@ fn format_repeat_cx(scaffold_smiles: &str, atoms: &[usize]) -> String {
 
 /// Extra component from aligning `scaffold_q` into `longest` that represents repeats.
 pub(crate) fn repeat_pattern(
-    _shortest: &Molecule,
     longest: &Molecule,
     unit_size: usize,
     scaffold_q: &QueryMolecule,

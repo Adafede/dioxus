@@ -3,6 +3,7 @@
 
 //! Browser upload entry point for `json-count-rs`.
 
+// wasm32 Dioxus futures capturing `Blob` or `Signal` cannot satisfy `Send`.
 #![allow(clippy::future_not_send)]
 
 use dioxus::prelude::*;
@@ -28,8 +29,11 @@ fn spawn_scan(
     mut busy: Signal<bool>,
 ) {
     spawn(async move {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        // DOM `Blob::size` returns a non-negative integer stored as `f64`.
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "DOM Blob::size returns a non-negative integer stored as f64"
+        )]
         let total_bytes = blob.size() as u64;
         status.set(format!("Scanning {total_bytes} bytes..."));
 

@@ -60,5 +60,8 @@ pub use parser::extractor::BlockExtractor;
 #[cfg(test)]
 #[expect(clippy::unwrap_used)]
 #[expect(clippy::expect_used)]
-#[allow(clippy::indexing_slicing)]
+#[expect(
+    clippy::indexing_slicing,
+    reason = "tests index fixtures of asserted lengths"
+)]
 mod tests;

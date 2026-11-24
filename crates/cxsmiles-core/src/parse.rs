@@ -27,8 +27,10 @@ pub(crate) fn parse_list(smiles: &[String]) -> Result<Vec<Molecule>, CxError> {
 }
 
 /// Single-linkage clustering by ECFP4/Tanimoto similarity above `threshold`.
-#[allow(clippy::indexing_slicing)]
-// `n == 0` returns early above; every index is in `0..n` on vectors sized `n`.
+#[expect(
+    clippy::indexing_slicing,
+    reason = "n == 0 returns early; every index is in 0..n on vecs of length n"
+)]
 pub(crate) fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
     let n = mols.len();
     if n == 0 {
@@ -67,8 +69,10 @@ pub(crate) fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
 }
 
 /// Union-find path-compressing root lookup bounded by `p.len()`.
-#[allow(clippy::indexing_slicing)]
-// `x < p.len()`, and `parent` values are indices within `0..p.len()`.
+#[expect(
+    clippy::indexing_slicing,
+    reason = "x < p.len() and parent values stay within 0..p.len()"
+)]
 pub(crate) fn find_root(p: &mut [usize], x: usize) -> usize {
     let mut r = x;
     for _ in 0..p.len() {

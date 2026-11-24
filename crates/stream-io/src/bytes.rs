@@ -9,9 +9,10 @@ use std::time::Instant;
 use crate::error::StreamError;
 
 /// A source of bytes that chunked readers can pull ranges from.
-// `async fn` in a trait keeps host and wasm implementations signature-identical;
-// wasm futures are `!Send` while callers immediately `.await`.
-#[allow(async_fn_in_trait)]
+#[expect(
+    async_fn_in_trait,
+    reason = "host and wasm32 targets share identical signatures without Send bounds"
+)]
 pub trait ChunkSource: Debug {
     /// Total bytes this source can supply.
     #[must_use]

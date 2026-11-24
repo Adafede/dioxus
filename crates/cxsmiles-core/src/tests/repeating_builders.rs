@@ -13,7 +13,7 @@ use crate::types::ConstructKind;
 fn pattern_of(longest: &str, scaffold: &str, unit_size: usize) -> Vec<u32> {
     let long = mol(longest);
     let q = molecule_to_query(&mol(scaffold));
-    repeat_pattern(&mol(scaffold), &long, unit_size, &q).expect("the scaffold is in the longest")
+    repeat_pattern(&long, unit_size, &q).expect("the scaffold is in the longest")
 }
 
 fn copied_bonds(scaffold: &Molecule, a: (u32, u32), b: (u32, u32)) -> Vec<(u32, u32)> {

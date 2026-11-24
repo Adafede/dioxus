@@ -168,7 +168,10 @@ pub(crate) fn sanitize_filename(input: &str) -> String {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-#[allow(clippy::missing_const_for_fn)] // wasm32 implementation is non-const DOM calls
+#[expect(
+    clippy::missing_const_for_fn,
+    reason = "matches non-const wasm32 DOM implementation"
+)]
 pub(crate) fn download_with_mime(
     _content: &str,
     _filename: &str,

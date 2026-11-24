@@ -29,7 +29,7 @@ pub type Blob = ();
 ///
 /// # Errors
 /// Returns [`UploadError::FileExtraction`] if the file cannot be downcast to a `Blob`.
-#[allow(clippy::missing_const_for_fn)]
+#[allow(clippy::missing_const_for_fn)] // wasm32 branch uses non-const File/JsCast calls
 pub fn extract_blob_from_file_data(
     files: &[FileData],
 ) -> Result<Option<ExtractedFile>, UploadError> {

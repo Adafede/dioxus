@@ -28,6 +28,8 @@
 //! );
 //! ```
 
+// `ChunkSource` implementations on wasm32 are `!Send`, so public async scanning
+// helpers cannot enforce `Send` bounds on futures.
 #![allow(clippy::future_not_send)]
 #![warn(missing_docs)]
 

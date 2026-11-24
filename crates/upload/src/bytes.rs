@@ -31,14 +31,19 @@ fn monotonic_clock_ms() -> f64 {
 
 #[cfg(target_arch = "wasm32")]
 impl ChunkSource for BlobSource {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    // `Blob::size` is a non-negative integer stored as DOM `f64`.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "DOM Blob::size is a non-negative integer stored as f64"
+    )]
     fn total_bytes(&self) -> u64 {
         self.blob.size().max(0.0) as u64
     }
 
-    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-    // `Blob::slice` requires `f64` bounds; 53-bit exact range covers 8 PiB.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "DOM Blob::slice takes f64 offsets (53-bit exact up to 8 PiB)"
+    )]
     async fn read_chunk(&self, start: u64, end: u64) -> Result<Vec<u8>, StreamError> {
         let slice = self
             .blob
