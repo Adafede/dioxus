@@ -19,8 +19,6 @@
 //! This parser focuses on extracting the property blocks, since the connection
 //! tables are not needed for classification by chemical class.
 
-#![allow(clippy::module_name_repetitions)]
-
 use std::collections::HashMap;
 
 /// One record extracted from an SDF file — a map of property name → value.
@@ -91,86 +89,73 @@ struct ParsedRecord {
     consumed: usize,
 }
 
+fn parse_property_header(text: &str, abs_gt: usize) -> Option<(String, usize)> {
+    let line_end = text[abs_gt..].find('\n').map_or(text.len(), |p| abs_gt + p);
+    let header_line = text[abs_gt..line_end].trim_end_matches('\r');
+    let after_gt = header_line[1..].trim_start_matches([' ', '\t']);
+    let tag_tail = after_gt.strip_prefix('<')?;
+    let name_end = tag_tail.find('>')?;
+    Some((tag_tail[..name_end].to_string(), line_end))
+}
+
+fn read_property_value(text: &str, value_start: usize) -> (String, usize) {
+    let mut value_lines: Vec<&str> = Vec::new();
+    let mut line_start = value_start;
+    loop {
+        let line_end = text[line_start..]
+            .find('\n')
+            .map_or(text.len(), |p| line_start + p);
+        let line = &text[line_start..line_end];
+
+        if line.trim().is_empty() || line.starts_with('>') || line.starts_with("$$$$") {
+            break;
+        }
+        value_lines.push(line.trim_end());
+        line_start = line_end + 1;
+        if line_start >= text.len() {
+            break;
+        }
+    }
+    (value_lines.join("\n"), line_start)
+}
+
 fn parse_one_record(text: &str) -> Option<ParsedRecord> {
     let mut pos = 0;
     let mut properties: HashMap<String, String> = HashMap::new();
 
     loop {
         let rest = &text[pos..];
-
-        // If "$$$$" (record separator) comes before the next ">",
-        // end of record.
         let dollar_pos = rest.find("$$$$");
-        let gt_idx = if rest.starts_with('>') {
+        let Some(gt_idx) = (if rest.starts_with('>') {
             Some(0)
         } else {
             rest.find("\n>").map(|idx| idx + 1)
-        };
-        let Some(gt_idx) = gt_idx else {
+        }) else {
             break;
         };
 
-        if let Some(d) = dollar_pos
-            && d < gt_idx
-        {
+        if dollar_pos.is_some_and(|d| d < gt_idx) {
             break;
         }
 
         let abs_gt = pos + gt_idx;
-
-        // Check that this is a property block: "> <NAME>" (allowing extra spaces/tabs).
-        let line_end = text[abs_gt..].find('\n').map_or(text.len(), |p| abs_gt + p);
-        let header_line = text[abs_gt..line_end].trim_end_matches('\r');
-        let after_gt = header_line[1..].trim_start_matches([' ', '\t']);
-        let Some(tag_tail) = after_gt.strip_prefix('<') else {
+        let Some((name, line_end)) = parse_property_header(text, abs_gt) else {
             pos = abs_gt + 1;
             continue;
         };
-        let Some(name_end) = tag_tail.find('>') else {
-            pos = abs_gt + 1;
-            continue;
-        };
-        let name = tag_tail[..name_end].to_string();
 
-        // Value starts on the next line.
-        let value_start = if line_end < text.len() {
-            line_end + 1
-        } else {
+        if line_end >= text.len() {
             break;
-        };
-
-        // Collect value lines until a blank line, next ">", or "$$$$".
-        let mut value_lines: Vec<&str> = Vec::new();
-        let mut line_start = value_start;
-        loop {
-            let line_end = text[line_start..]
-                .find('\n')
-                .map_or(text.len(), |p| line_start + p);
-            let line = &text[line_start..line_end];
-
-            if line.trim().is_empty() || line.starts_with('>') || line.starts_with("$$$$") {
-                break;
-            }
-            value_lines.push(line.trim_end());
-            line_start = line_end + 1;
-            if line_start >= text.len() {
-                break;
-            }
         }
-
-        let value = value_lines.join("\n");
+        let (value, next_pos) = read_property_value(text, line_end + 1);
         properties.insert(name, value);
-        pos = line_start;
+        pos = next_pos;
     }
 
-    if properties.is_empty() {
-        None
-    } else {
-        Some(ParsedRecord {
-            record: Record { properties },
-            consumed: pos,
-        })
-    }
+    (!properties.is_empty()).then_some(ParsedRecord {
+        record: Record { properties },
+        consumed: pos,
+    })
 }
 
 /// `LipidMaps` LMSD-specific column definitions and TSV conversion.
@@ -213,8 +198,7 @@ pub mod lipidmaps {
     #[must_use]
     pub fn to_lmsd_tsv(sdf_text: &str) -> (String, usize) {
         let mut out = String::new();
-        let header = COLUMNS.join("\t");
-        out.push_str(&header);
+        out.push_str(&COLUMNS.join("\t"));
         out.push('\n');
 
         let mut count = 0;
@@ -246,122 +230,4 @@ pub mod lipidmaps {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used)] // tests unwrap fixtures to fail-fast rather than assert on the error
-#[expect(clippy::indexing_slicing)] // tests reach into fixture rows and columns by index
-mod tests {
-    use super::*;
-
-    const SAMPLE_SDF: &str = r"  CDK     2DS
-
-  20 21  0  0  0  0  0  0  0  0999 V2000
-    2.3120    0.1280    0.0000 C  0  0  0  0  0  0  0  0  0  0  0  0
-M  END
-> <LM_ID>
-LMFA00000001
-
-> <NAME>
-Test fatty acid
-
-> <SMILES>
-C(C(C(C(=O)O)O)O)O
-
-$$$$
-
-  CDK     2DS
-
-  15 16  0  0  0  0  0  0  0  0999 V2000
-    1.2340    0.5670    0.0000 C  0  0  0  0  0  0  0  0  0  0  0  0
-M  END
-> <LM_ID>
-LMFA00000002
-
-> <NAME>
-Missing SMILES lipid
-
-> <SMILES>
-
-$$$$
-";
-
-    #[test]
-    fn parse_sdf_extracts_properties() {
-        let parser = Parser::new(SAMPLE_SDF);
-        let records: Vec<_> = parser.collect();
-        assert_eq!(records.len(), 2);
-
-        let rec1 = &records[0];
-        assert_eq!(rec1.get("LM_ID"), Some("LMFA00000001"));
-        assert_eq!(rec1.get("NAME"), Some("Test fatty acid"));
-        assert_eq!(rec1.get("SMILES"), Some("C(C(C(C(=O)O)O)O)O"));
-    }
-
-    #[test]
-    fn to_lmsd_tsv_filters_empty_smiles() {
-        let (tsv, count) = lipidmaps::to_lmsd_tsv(SAMPLE_SDF);
-        assert_eq!(count, 1);
-        assert!(tsv.contains("LMFA00000001\tTest fatty acid"));
-        assert!(!tsv.contains("LMFA00000002"));
-    }
-
-    #[test]
-    fn to_lmsd_tsv_has_all_columns() {
-        let (tsv, _) = lipidmaps::to_lmsd_tsv(SAMPLE_SDF);
-        let header_line = tsv.lines().next().unwrap();
-        for col in lipidmaps::COLUMNS {
-            assert!(
-                header_line.contains(col),
-                "column {col} missing from header"
-            );
-        }
-        assert_eq!(lipidmaps::COLUMNS.len(), 19);
-    }
-
-    #[test]
-    fn empty_sdf_yields_empty_tsv() {
-        let (tsv, count) = lipidmaps::to_lmsd_tsv("");
-        assert_eq!(count, 0);
-        assert!(tsv.starts_with("LM_ID\tNAME"));
-    }
-
-    #[test]
-    fn to_lmsd_tsv_handles_missing_properties() {
-        let sdf = "> <LM_ID>\nLMFA00000003\n\n> <SMILES>\nC(=O)O\n\n$$$$\n";
-        let (tsv, count) = lipidmaps::to_lmsd_tsv(sdf);
-        assert_eq!(count, 1);
-        let lines: Vec<&str> = tsv.lines().collect();
-        assert_eq!(lines.len(), 2);
-        let field_count = lines[1].split('\t').count();
-        assert_eq!(field_count, lipidmaps::COLUMNS.len());
-    }
-
-    #[test]
-    fn to_lmsd_tsv_multi_line_value() {
-        let sdf = "> <LM_ID>\nLMFA00000004\n\n> <SYNONYMS>\nSyn1\nSyn2\n\n> <SMILES>\nCC\n\n$$$$\n";
-        let (tsv, count) = lipidmaps::to_lmsd_tsv(sdf);
-        assert_eq!(count, 1);
-        let lines: Vec<&str> = tsv.lines().collect();
-        let cols: Vec<&str> = lines[1].split('\t').collect();
-        let syn_idx = lipidmaps::COLUMNS
-            .iter()
-            .position(|&c| c == "SYNONYMS")
-            .unwrap();
-        assert_eq!(cols[syn_idx], "Syn1; Syn2");
-    }
-
-    #[test]
-    fn parse_sdf_supports_extra_header_spaces_and_sanitizes_tabs_and_crlf() {
-        let sdf = ">  <LM_ID>\r\nLMFA01010001\r\n\r\n>   <SYNONYMS>\r\na\tb\r\nc\r\n\r\n>  <SMILES>\r\nCC\r\n\r\n$$$$\r\n";
-        let (tsv, count) = lipidmaps::to_lmsd_tsv(sdf);
-        assert_eq!(count, 1);
-        let lines: Vec<&str> = tsv.lines().collect();
-        assert_eq!(lines.len(), 2, "CRLF inside value must not split TSV rows");
-        let cols: Vec<&str> = lines[1].split('\t').collect();
-        assert_eq!(cols.len(), lipidmaps::COLUMNS.len());
-        assert_eq!(cols[0], "LMFA01010001");
-        let syn_idx = lipidmaps::COLUMNS
-            .iter()
-            .position(|&c| c == "SYNONYMS")
-            .unwrap();
-        assert_eq!(cols[syn_idx], "a b; c");
-    }
-}
+mod tests;

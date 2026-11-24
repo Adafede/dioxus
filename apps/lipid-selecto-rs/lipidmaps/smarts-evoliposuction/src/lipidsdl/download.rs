@@ -6,8 +6,6 @@
 //! Uses `reqwest` + `tokio` to stream a file from a URL to disk, with
 //! automatic skip-if-exists and a progress callback.
 
-#![allow(clippy::module_name_repetitions)]
-
 use std::path::Path;
 
 use tokio::io::AsyncWriteExt;

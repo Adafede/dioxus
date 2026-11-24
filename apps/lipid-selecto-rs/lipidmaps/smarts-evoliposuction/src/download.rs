@@ -19,7 +19,7 @@ pub const LIPIDMAPS_LMSD_URL: &str = "https://www.lipidmaps.org/files/?file=LMSD
 /// # Errors
 ///
 /// Returns an error if the download fails.
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions, reason = "preserves public API name")]
 pub async fn download_lmsd(dest: &Path) -> Result<(), Error> {
     download_to(LIPIDMAPS_LMSD_URL, dest, noop_progress).await
 }
@@ -35,7 +35,6 @@ pub async fn download_lmsd(dest: &Path) -> Result<(), Error> {
 /// # Errors
 ///
 /// Returns an error if the zip file cannot be read or parsed.
-#[allow(clippy::module_name_repetitions)]
 pub fn sdf_zip_to_tsv(zip_path: &Path) -> Result<(String, usize), SdfConvertError> {
     let data = std::fs::read(zip_path)?;
     sdf_zip_to_tsv_from_bytes(&data)
@@ -46,7 +45,6 @@ pub fn sdf_zip_to_tsv(zip_path: &Path) -> Result<(String, usize), SdfConvertErro
 /// # Errors
 ///
 /// Returns an error if the zip data cannot be parsed.
-#[allow(clippy::module_name_repetitions)]
 pub fn sdf_zip_to_tsv_from_bytes(data: &[u8]) -> Result<(String, usize), SdfConvertError> {
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(data))?;
 

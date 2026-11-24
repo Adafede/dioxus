@@ -4,7 +4,6 @@
 //! Helpers for opening, resuming, and deduplicating `smarts_results.csv`.
 
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::fs::{self, OpenOptions};
 use std::path::Path;
 
@@ -41,7 +40,7 @@ pub const RESULTS_HEADERS: [&str; 19] = [
 pub fn open_results_writer(
     output: &Path,
     resume: bool,
-) -> Result<(csv::Writer<fs::File>, bool), Box<dyn Error>> {
+) -> std::io::Result<(csv::Writer<fs::File>, bool)> {
     let has_content = resume && output.metadata().is_ok_and(|meta| meta.len() > 0);
     let mut options = OpenOptions::new();
     options.create(true);

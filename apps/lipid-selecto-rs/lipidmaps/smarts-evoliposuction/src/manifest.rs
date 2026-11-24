@@ -15,7 +15,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 /// One row of the manifest CSV.
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions, reason = "preserves public API name")]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ManifestRow {
     pub level: String,
@@ -36,7 +36,7 @@ pub struct ManifestRow {
 /// # Errors
 ///
 /// Returns an error if the file cannot be read or parsed as CSV.
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions, reason = "preserves public API name")]
 pub fn read_manifest(path: &Path) -> Result<Vec<ManifestRow>, csv::Error> {
     csv::Reader::from_path(path)?
         .deserialize::<ManifestRow>()
@@ -48,7 +48,7 @@ pub fn read_manifest(path: &Path) -> Result<Vec<ManifestRow>, csv::Error> {
 /// # Errors
 ///
 /// Returns an error if the file cannot be written.
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions, reason = "preserves public API name")]
 pub fn write_manifest(path: &Path, rows: &[ManifestRow]) -> Result<(), csv::Error> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;

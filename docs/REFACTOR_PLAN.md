@@ -74,7 +74,7 @@ every gate green on each commit.
   - *Verify*: `./mk ci-fast` + `./mk local:readme-check`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 10 — Refactor standalone CLI `smarts-evoliposuction`**:
+- [x] **Step 10 — Refactor standalone CLI `smarts-evoliposuction`**:
   Fix `O(N log N)` disk reads in `order_rows_for_evolution`, eliminate ~48k-row
   cloning in `splitting.rs`, split `main.rs`/`splitting.rs`/`evolve.rs`/`sdf.rs`,
   and introduce typed errors/structs under `--locked`.
