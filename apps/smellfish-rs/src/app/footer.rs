@@ -8,7 +8,7 @@ use dioxus::prelude::*;
 
 /// Static footer banner with citation, data, code, references, and program links.
 #[component]
-pub fn Footer() -> Element {
+pub(super) fn Footer() -> Element {
     rsx! {
         footer { class: "app-footer",
             div { class: "footer-line",

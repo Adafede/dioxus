@@ -14,25 +14,19 @@ All domain logic in this crate compiles for both native hosts and
 ## Example
 
 ```rust
-use smellfish_core::csv::parse_csv_rows;
-use smellfish_core::evidence::{EvidenceCounts, EvidenceSignals, VerdictCategory, classify_np_evidence};
+use smellfish_core::csv::{format_csv_rows, parse_csv_rows};
+use smellfish_core::model::{EnrichmentOutcome, RdkitInspectResponse};
+use smellfish_core::pipeline::{RowInspection, finalize_pass2, prepare_pass1};
 
 let rows = parse_csv_rows("name,smiles\ncaffeine,CN1C=NC2=C1C(=O)N(C(=O)N2C)C\n").unwrap();
 assert_eq!(rows[0].label, "caffeine");
 
-let verdict = classify_np_evidence(&EvidenceSignals {
-    np_score: Some(2.6),
-    has_lotus: true,
-    has_pubchem: true,
-    lotus_scaffolds: 0,
-    counts: EvidenceCounts {
-        np_core: 2,
-        scaffold: 1,
-        natural: 3,
-        ..EvidenceCounts::default()
-    },
-});
-assert_eq!(verdict.category, VerdictCategory::Likely);
+let batch = prepare_pass1(vec![RowInspection {
+    raw: rows.into_iter().next().unwrap(),
+    outcome: Ok(RdkitInspectResponse::default()),
+}]);
+let outcome = finalize_pass2(batch, EnrichmentOutcome::default());
+assert!(format_csv_rows(&outcome.rows).contains("caffeine"));
 ```
 
 ## License

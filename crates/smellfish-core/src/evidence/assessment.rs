@@ -3,31 +3,27 @@
 
 //! Per-molecule evidence note synthesis combining Ertl NP-likeness, scaffolds, and motifs.
 
-use crate::model::{
-    DatasetMotifContext, MotifContext, NpScore, RdkitDescriptors, RdkitMotifHit, RingFamily,
-};
+use crate::model::{DatasetMotifContext, MotifContext, NpScore, RdkitDescriptors, RingFamily};
 
-use super::chemist::{EvidenceCounts, count_evidence, is_known_np_motif};
+use super::chemist::{EvidenceCounts, is_known_np_motif};
 use super::ring_family::classify_ring_family;
 
 /// Assessment result built for a single molecule row.
 #[derive(Clone, Debug, PartialEq)]
-pub struct EvidenceAssessment {
-    /// Scored Ertl NP-likeness + confidence (`None` when model unloaded).
-    pub np_score: Option<NpScore>,
+pub(crate) struct EvidenceAssessment {
     /// Human-readable classification label derived from the score (0.0 fallback when unloaded).
-    pub np_label: String,
+    pub(crate) np_label: String,
     /// Scaffold ring-family classification.
-    pub ring_family: RingFamily,
+    pub(crate) ring_family: RingFamily,
     /// Formatted evidence bullet notes.
-    pub evidence_notes: Vec<String>,
+    pub(crate) evidence_notes: Vec<String>,
     /// Typed summary of structural motif balance.
-    pub motif_context: MotifContext,
+    pub(crate) motif_context: MotifContext,
 }
 
 /// Empirical classification labels for the Ertl NP-likeness score.
 #[must_use]
-pub const fn np_likeness_label(score: f64) -> &'static str {
+pub(crate) const fn np_likeness_label(score: f64) -> &'static str {
     if score >= 2.0 {
         "strong natural product"
     } else if score >= 0.5 {
@@ -41,33 +37,35 @@ pub const fn np_likeness_label(score: f64) -> &'static str {
 
 /// Inputs required to assess NP evidence for one molecule.
 #[derive(Clone, Copy, Debug)]
-pub struct EvidenceInputs<'a> {
+pub(crate) struct EvidenceInputs<'a> {
     /// Whole-molecule `RDKit` descriptors.
-    pub descriptors: &'a RdkitDescriptors,
+    pub(crate) descriptors: &'a RdkitDescriptors,
     /// Matched motif labels.
-    pub motifs: &'a [String],
-    /// Matched motif hits with source/kingdom attribution.
-    pub motif_hits: &'a [RdkitMotifHit],
+    pub(crate) motifs: &'a [String],
     /// Stereocenter tags detected in the 2D depiction.
-    pub stereo_tags: &'a [String],
+    pub(crate) stereo_tags: &'a [String],
     /// Loaded Ertl score and confidence (`None` if unloaded).
-    pub np_score: Option<NpScore>,
+    pub(crate) np_score: Option<NpScore>,
     /// Dataset-level motif prevalence context.
-    pub dataset_context: &'a DatasetMotifContext,
+    pub(crate) dataset_context: &'a DatasetMotifContext,
     /// LOTUS 1%-prevalent scaffold SMILES hits.
-    pub lotus_scaffolds: &'a [String],
+    pub(crate) lotus_scaffolds: &'a [String],
 }
 
 /// Synthesizes evidence assessment for a molecule, computing motif counts directly.
+#[cfg(test)]
 #[must_use]
-pub fn assess_np_evidence(inputs: &EvidenceInputs<'_>) -> EvidenceAssessment {
-    let counts = count_evidence(inputs.motifs, inputs.motif_hits);
+pub(crate) fn assess_np_evidence(
+    inputs: &EvidenceInputs<'_>,
+    motif_hits: &[crate::model::RdkitMotifHit],
+) -> EvidenceAssessment {
+    let counts = super::chemist::count_evidence(inputs.motifs, motif_hits);
     assess_np_evidence_with_counts(inputs, counts)
 }
 
 /// Synthesizes evidence assessment reusing precomputed [`EvidenceCounts`].
 #[must_use]
-pub fn assess_np_evidence_with_counts(
+pub(crate) fn assess_np_evidence_with_counts(
     inputs: &EvidenceInputs<'_>,
     counts: EvidenceCounts,
 ) -> EvidenceAssessment {
@@ -91,7 +89,6 @@ pub fn assess_np_evidence_with_counts(
     ));
 
     EvidenceAssessment {
-        np_score: inputs.np_score,
         np_label: np_likeness_label(raw_score).to_string(),
         ring_family,
         evidence_notes: notes,

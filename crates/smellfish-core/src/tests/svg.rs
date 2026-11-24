@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-use crate::{is_safe_svg, sanitize_svg};
+use crate::svg::{is_safe_svg, sanitize_svg};
 
 #[test]
 fn accepts_plain_and_xml_prefixed_svg_and_rejects_active_payloads() {

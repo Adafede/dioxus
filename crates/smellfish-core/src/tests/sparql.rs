@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-use crate::sparql::{
-    MAX_MESSAGE_CHARS, QLEVER_PUBCHEM, QLEVER_WIKIDATA, WDQS_WIKIDATA, form_body, run_query,
-    summarise,
-};
+use crate::sparql::{MAX_MESSAGE_CHARS, QLEVER_PUBCHEM, form_body, run_query, summarise};
 use futures_executor::block_on;
 use lotus_search::testing::Scripted;
-use lotus_search::{FetchError, ResponseFormat};
+use lotus_search::{FetchError, QLEVER_WIKIDATA, ResponseFormat, WDQS_WIKIDATA};
 
 const ASK: &str = "SELECT ?s WHERE { ?s ?p ?o }";
 

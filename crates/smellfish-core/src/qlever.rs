@@ -6,9 +6,9 @@
 use crate::error::SmellfishError;
 use crate::model::{EndpointStatus, Enrichment, EnrichmentOutcome, InChIKey14, SourceSummary};
 use crate::query::{build_lotus_query_qlever, build_lotus_query_wdqs, build_pubchem_sparql};
-use crate::sparql::{QLEVER_PUBCHEM, QLEVER_WIKIDATA, WDQS_WIKIDATA, run_query};
+use crate::sparql::{QLEVER_PUBCHEM, run_query};
 use futures::future::join;
-use lotus_search::{Http, ResponseFormat};
+use lotus_search::{Http, QLEVER_WIKIDATA, ResponseFormat, WDQS_WIKIDATA};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 

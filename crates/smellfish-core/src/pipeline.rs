@@ -4,16 +4,15 @@
 //! Pure Pass-1 (dataset inspection & motif aggregation) and Pass-2 (enrichment merge & evidence
 //! evaluation) orchestration.
 
-use crate::evidence::{
-    EvidenceInputs, assess_np_evidence_with_counts, count_evidence, row_verdict_with_counts,
-    run_checks,
-};
+use crate::evidence::assessment::{EvidenceInputs, assess_np_evidence_with_counts};
+use crate::evidence::chemist::{count_evidence, run_checks};
+use crate::evidence::verdict::row_verdict_with_counts;
 use crate::model::{
     DatasetMotifContext, EndpointStatus, EnrichmentOutcome, InChIKey14, LotusCompound, MoleculeRow,
-    MotifSummary, NpScore, RawRow, RdkitInspectResponse, SourceClass, SubstituentCounts, Verdict,
+    MotifSummary, NpScore, RawRow, RdkitInspectResponse, SourceClass, Verdict,
 };
 use crate::svg::sanitize_svg;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Single-row `RDKit` inspection pair consumed by [`prepare_pass1`].
 #[derive(Debug)]
@@ -140,7 +139,7 @@ fn build_pass1_row(
         inspect
             .substituents
             .into_iter()
-            .fold(SubstituentCounts::new(), |mut acc, sub| {
+            .fold(BTreeMap::new(), |mut acc, sub| {
                 *acc.entry(sub).or_insert(0) += 1;
                 acc
             });
@@ -186,7 +185,6 @@ pub fn finalize_pass2(mut batch: PreparedBatch, enrichment: EnrichmentOutcome) -
                 &EvidenceInputs {
                     descriptors: &row.descriptors,
                     motifs: &row.motifs,
-                    motif_hits: &row.motif_hits,
                     stereo_tags: &row.stereo_tags,
                     np_score: row.np_score,
                     dataset_context: &batch.dataset_context,

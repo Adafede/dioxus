@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-use crate::csv::verdict_category_from_text;
-use crate::evidence::{
-    EvidenceCounts, EvidenceSignals, classify_np_evidence, count_evidence, row_verdict,
-};
+use crate::evidence::chemist::{EvidenceCounts, count_evidence};
+use crate::evidence::verdict::{EvidenceSignals, classify_np_evidence, row_verdict};
 use crate::model::{MoleculeRow, NpScore, RdkitMotifHit, SourceClass, VerdictCategory};
 
 fn counts(
@@ -65,17 +63,11 @@ fn assert_category_agreement(cases: &[(EvidenceSignals, VerdictCategory)]) {
             "verdict: {}",
             verdict.message
         );
-        assert_eq!(
-            verdict_category_from_text(&verdict.message),
-            *expected_category,
-            "legacy parser drifted for: {}",
-            verdict.message
-        );
     }
 }
 
 #[test]
-fn typed_verdict_matches_legacy_for_unloaded_synthetic_and_lotus() {
+fn classifies_unloaded_synthetic_and_lotus_verdicts() {
     assert_category_agreement(&[
         (
             ev_none(false, false, 0, counts(0, 0, 0, 0, 0, 0)),
@@ -129,7 +121,7 @@ fn typed_verdict_matches_legacy_for_unloaded_synthetic_and_lotus() {
 }
 
 #[test]
-fn typed_verdict_matches_legacy_for_scaffolds_pubchem_and_unbacked() {
+fn classifies_scaffolds_pubchem_and_unbacked_verdicts() {
     assert_category_agreement(&[
         (
             ev(2.5, false, false, 1, counts(0, 0, 0, 0, 0, 0)),

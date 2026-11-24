@@ -5,7 +5,7 @@
 
 /// Builds the Wikidata LOTUS query for `WDQS` using a nested `SELECT`.
 #[must_use]
-pub fn build_lotus_query_wdqs(inchikeys: &[String]) -> String {
+pub(crate) fn build_lotus_query_wdqs(inchikeys: &[String]) -> String {
     let values = format_sparql_values(inchikeys);
     if values.is_empty() {
         return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
@@ -35,7 +35,7 @@ SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
 
 /// Builds the Wikidata LOTUS query optimized for `QLever`'s compressed dictionary.
 #[must_use]
-pub fn build_lotus_query_qlever(inchikeys: &[String]) -> String {
+pub(crate) fn build_lotus_query_qlever(inchikeys: &[String]) -> String {
     let values = format_sparql_values(inchikeys);
     if values.is_empty() {
         return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
@@ -75,7 +75,7 @@ SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
 
 /// Builds the `PubChem` `QLever` query for a chunk of `InChIKey` values.
 #[must_use]
-pub fn build_pubchem_sparql(chunk: &[String]) -> String {
+pub(crate) fn build_pubchem_sparql(chunk: &[String]) -> String {
     let values = format_sparql_values(chunk);
     if values.is_empty() {
         return "SELECT DISTINCT ?inchikey ?related_cid WHERE {} # empty".to_string();
@@ -135,8 +135,9 @@ fn write_escaped_sparql_literal(out: &mut String, value: &str) {
 }
 
 /// Escapes backslashes, quotes, and ASCII control whitespace for a SPARQL string literal.
+#[cfg_attr(not(test), expect(dead_code, reason = "tested directly in unit tests"))]
 #[must_use]
-pub fn escape_sparql_literal(value: &str) -> String {
+pub(crate) fn escape_sparql_literal(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     write_escaped_sparql_literal(&mut out, value);
     out

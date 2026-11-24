@@ -15,7 +15,7 @@ use ui::{DocumentHead, EdamAnnotations, EdamTerm, WebMcpConfig};
 
 /// Renders the document `<head>` for smellfish-rs.
 #[component]
-pub fn SmellfishDocumentHead() -> Element {
+pub(crate) fn SmellfishDocumentHead() -> Element {
     let description = "Drop a CSV of SMILES, render molecules with RDKit.js, and score \
         natural-product originality with Ertl-style NP-likeness, LOTUS/PubChem evidence, \
         and dataset-derived scaffold and decoration motifs.";

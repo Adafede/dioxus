@@ -6,16 +6,14 @@
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-pub mod classification;
-pub mod types;
+mod classification;
+mod types;
 
 pub use classification::{MotifContext, RingFamily, Verdict, VerdictCategory};
-pub use types::{CheckStatus, InChIKey14, LotusCompound, NpScore, SourceClass};
+pub(crate) use types::InChIKey14;
+pub use types::{CheckStatus, LotusCompound, NpScore, SourceClass};
 
 use crate::error::SmellfishError;
-
-/// Map of Ertl substituent pattern label to occurrence count within one molecule.
-pub type SubstituentCounts = BTreeMap<String, usize>;
 
 /// One parsed input row prior to structure inspection.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -55,7 +53,7 @@ pub struct MoleculeRow {
     /// Matched motif labels.
     pub motifs: Vec<String>,
     /// Ertl substituent occurrence counts (`label -> count`).
-    pub substituents_counts: SubstituentCounts,
+    pub substituents_counts: BTreeMap<String, usize>,
     /// LOTUS 1%-prevalence scaffold SMILES matches.
     pub lotus_scaffolds: Vec<String>,
     /// Taxon names matched via LOTUS/Wikidata.
@@ -232,7 +230,7 @@ pub struct RdkitMotifHit {
 
 /// Returns `true` if `haystack` contains `needle` (ASCII case-insensitive).
 #[must_use]
-pub fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
+pub(crate) fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
     if needle.is_empty() {
         return true;
     }
@@ -244,6 +242,6 @@ pub fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
 
 /// Returns `true` if `label` contains any keyword in `motifs` (ASCII case-insensitive).
 #[must_use]
-pub fn matches_any(label: &str, motifs: &[&str]) -> bool {
+pub(crate) fn matches_any(label: &str, motifs: &[&str]) -> bool {
     motifs.iter().any(|m| contains_ignore_ascii_case(label, m))
 }

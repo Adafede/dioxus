@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-use crate::evidence::{
-    EvidenceInputs, assess_np_evidence, is_decoration_motif, is_known_np_motif, is_scaffold_motif,
-    np_likeness_label, run_checks,
+use crate::evidence::assessment::{EvidenceInputs, assess_np_evidence, np_likeness_label};
+use crate::evidence::chemist::{
+    is_decoration_motif, is_known_np_motif, is_scaffold_motif, run_checks,
 };
 use crate::model::{
     CheckStatus, DatasetMotifContext, MoleculeRow, MotifContext, NpScore, RdkitDescriptors,
@@ -44,18 +44,20 @@ fn real_ertl_score_stereo_and_no_hallucinated_rules() {
         aliphatic_ring_count: Some(2.0),
     };
     let ctx = DatasetMotifContext::default();
-    let assessment = assess_np_evidence(&EvidenceInputs {
-        descriptors: &desc,
-        motifs: &["Steroid-like fused ring".to_string()],
-        motif_hits: &[],
-        stereo_tags: &["R/S".to_string(), "R/S".to_string()],
-        np_score: Some(NpScore {
-            score: 3.42,
-            confidence: 0.75,
-        }),
-        dataset_context: &ctx,
-        lotus_scaffolds: &[],
-    });
+    let assessment = assess_np_evidence(
+        &EvidenceInputs {
+            descriptors: &desc,
+            motifs: &["Steroid-like fused ring".to_string()],
+            stereo_tags: &["R/S".to_string(), "R/S".to_string()],
+            np_score: Some(NpScore {
+                score: 3.42,
+                confidence: 0.75,
+            }),
+            dataset_context: &ctx,
+            lotus_scaffolds: &[],
+        },
+        &[],
+    );
     assert_eq!(assessment.np_label, "strong natural product");
     assert_eq!(assessment.ring_family, RingFamily::Steroid);
     assert!(
@@ -80,15 +82,17 @@ fn model_unavailable_and_dataset_common_motif_notes() {
     };
     ctx.motif_counts.insert("Flavonoid core".to_string(), 3);
     let desc = RdkitDescriptors::default();
-    let assessment = assess_np_evidence(&EvidenceInputs {
-        descriptors: &desc,
-        motifs: &["Flavonoid core".to_string()],
-        motif_hits: &[],
-        stereo_tags: &[],
-        np_score: None,
-        dataset_context: &ctx,
-        lotus_scaffolds: &[],
-    });
+    let assessment = assess_np_evidence(
+        &EvidenceInputs {
+            descriptors: &desc,
+            motifs: &["Flavonoid core".to_string()],
+            stereo_tags: &[],
+            np_score: None,
+            dataset_context: &ctx,
+            lotus_scaffolds: &[],
+        },
+        &[],
+    );
     assert_eq!(assessment.np_label, "weak NP signals");
     assert!(
         assessment
@@ -112,43 +116,47 @@ fn motif_balance_and_context_detection() {
 
     let desc = RdkitDescriptors::default();
     let ctx = DatasetMotifContext::default();
-    let empty = assess_np_evidence(&EvidenceInputs {
-        descriptors: &desc,
-        motifs: &[],
-        motif_hits: &[],
-        stereo_tags: &[],
-        np_score: Some(NpScore {
-            score: 0.2,
-            confidence: 0.9,
-        }),
-        dataset_context: &ctx,
-        lotus_scaffolds: &[],
-    });
+    let empty = assess_np_evidence(
+        &EvidenceInputs {
+            descriptors: &desc,
+            motifs: &[],
+            stereo_tags: &[],
+            np_score: Some(NpScore {
+                score: 0.2,
+                confidence: 0.9,
+            }),
+            dataset_context: &ctx,
+            lotus_scaffolds: &[],
+        },
+        &[],
+    );
     assert_eq!(empty.motif_context, MotifContext::NoneDetected);
     assert!(!empty.motif_context.is_detected());
 
-    let assessment = assess_np_evidence(&EvidenceInputs {
-        descriptors: &desc,
-        motifs: &[
-            "Steroid".to_string(),
-            "Lactone".to_string(),
-            "Sugar".to_string(),
-            "Sulfonamide".to_string(),
-        ],
-        motif_hits: &[
+    let assessment = assess_np_evidence(
+        &EvidenceInputs {
+            descriptors: &desc,
+            motifs: &[
+                "Steroid".to_string(),
+                "Lactone".to_string(),
+                "Sugar".to_string(),
+                "Sulfonamide".to_string(),
+            ],
+            stereo_tags: &[],
+            np_score: Some(NpScore {
+                score: 1.5,
+                confidence: 0.9,
+            }),
+            dataset_context: &ctx,
+            lotus_scaffolds: &[],
+        },
+        &[
             motif_hit("Steroid", SourceClass::Natural, "plants"),
             motif_hit("Lactone", SourceClass::Natural, ""),
             motif_hit("Sugar", SourceClass::Natural, "fungi"),
             motif_hit("Sulfonamide", SourceClass::Synthetic, ""),
         ],
-        stereo_tags: &[],
-        np_score: Some(NpScore {
-            score: 1.5,
-            confidence: 0.9,
-        }),
-        dataset_context: &ctx,
-        lotus_scaffolds: &[],
-    });
+    );
     assert!(assessment.motif_context.is_detected());
     assert!(
         assessment

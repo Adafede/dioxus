@@ -17,7 +17,7 @@ use super::results::MOTIF_GROUPS;
 
 /// A single molecule result card displaying depiction, NP score, checks, DB hits, and verdict.
 #[component]
-pub fn MoleculeCard(row: MoleculeRow) -> Element {
+pub(crate) fn MoleculeCard(row: MoleculeRow) -> Element {
     rsx! {
         article { class: "card",
             div { class: "card-head",

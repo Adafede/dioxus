@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-use crate::evidence::classify_ring_family;
+use crate::evidence::ring_family::classify_ring_family;
 use crate::model::{RdkitDescriptors, RingFamily};
 
 #[test]

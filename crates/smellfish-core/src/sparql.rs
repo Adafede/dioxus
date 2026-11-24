@@ -6,10 +6,8 @@
 use lotus_search::{FetchError, Http, HttpResponse, ResponseFormat};
 use std::fmt::Write as _;
 
-pub use lotus_search::{QLEVER_WIKIDATA, WDQS_WIKIDATA};
-
 /// `PubChem`'s public `QLever` SPARQL endpoint.
-pub const QLEVER_PUBCHEM: &str = "https://qlever.cs.uni-freiburg.de/api/pubchem";
+pub(crate) const QLEVER_PUBCHEM: &str = "https://qlever.cs.uni-freiburg.de/api/pubchem";
 
 pub(crate) const MAX_MESSAGE_CHARS: usize = 200;
 
@@ -18,7 +16,7 @@ pub(crate) const MAX_MESSAGE_CHARS: usize = 200;
 /// # Errors
 ///
 /// Returns the first [`FetchError`] encountered on transport/HTTP/decode failure.
-pub async fn run_query(
+pub(crate) async fn run_query(
     http: &impl Http,
     url: &str,
     query: &str,

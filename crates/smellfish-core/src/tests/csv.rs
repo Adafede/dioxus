@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 use crate::SmellfishError;
-use crate::csv::{build_csv, escape_csv, parse_csv_rows, verdict_category_from_text};
+use crate::csv::{escape_csv, format_csv_rows, parse_csv_rows};
 use crate::model::{
     CheckStatus, ChemistCheck, LotusCompound, MoleculeRow, NpScore, RingFamily, Verdict,
     VerdictCategory,
@@ -78,38 +78,6 @@ fn detect_column_prefers_exact_id_and_falls_back_to_col_zero() -> Result<(), Sme
 }
 
 #[test]
-fn legacy_verdict_text_categorization_matches_all_buckets() {
-    assert_eq!(
-        verdict_category_from_text("🌿 PubChem + strong NP evidence (Ertl +1.50)"),
-        VerdictCategory::Likely
-    );
-    assert_eq!(
-        verdict_category_from_text("📚 PubChem hit with NP signals"),
-        VerdictCategory::Neutral
-    );
-    assert_eq!(
-        verdict_category_from_text("📚 PubChem hit — weak NP signals (Ertl +0.26)"),
-        VerdictCategory::Caution
-    );
-    assert_eq!(
-        verdict_category_from_text("🌿 LOTUS-backed (Ertl +1.23)"),
-        VerdictCategory::Likely
-    );
-    assert_eq!(
-        verdict_category_from_text("👃 Smells fishy — highly synthetic"),
-        VerdictCategory::Fishy
-    );
-    assert_eq!(
-        verdict_category_from_text("🟧 Synthetic-leaning structure"),
-        VerdictCategory::Caution
-    );
-    assert_eq!(
-        verdict_category_from_text("👃 Citation needed — LOTUS scaffold hint"),
-        VerdictCategory::Skeptical
-    );
-}
-
-#[test]
 fn escape_csv_handles_rfc4180_and_line_breaks() {
     assert_eq!(escape_csv("hello"), "hello");
     assert_eq!(escape_csv("hello, world"), "\"hello, world\"");
@@ -119,7 +87,7 @@ fn escape_csv_handles_rfc4180_and_line_breaks() {
 }
 
 #[test]
-fn build_csv_formats_rows_and_neutralizes_formulas() {
+fn format_csv_rows_formats_rows_and_neutralizes_formulas() {
     let row = MoleculeRow {
         index: 1,
         label: "Caffeine, test".to_string(),
@@ -149,7 +117,7 @@ fn build_csv_formats_rows_and_neutralizes_formulas() {
         ..MoleculeRow::default()
     };
 
-    let csv = build_csv(&[row]);
+    let csv = format_csv_rows(&[row]);
     assert!(
         csv.contains("\"Caffeine, test\",CN1C=NC2=C1C(=O)N(C(=O)N2C)C,1.250,NP-like,85%,fused heteroaromatic scaffold,ethyl(1);methyl(3),Q60235;2519,likely,NP-likeness:pass"),
         "unexpected CSV row: {csv}"
@@ -176,7 +144,7 @@ fn build_csv_formats_rows_and_neutralizes_formulas() {
         verdict: Verdict::new(VerdictCategory::Fishy, "fishy"),
         ..MoleculeRow::default()
     };
-    let exported = build_csv(&[formula_row]);
+    let exported = format_csv_rows(&[formula_row]);
     let data_line = exported.lines().nth(1).unwrap_or("");
     assert!(
         data_line.starts_with("'=cmd|'/C calc'!A0,'+CCO,-1.250,Synthetic,90%,acyclic,"),

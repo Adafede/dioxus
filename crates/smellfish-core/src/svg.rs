@@ -16,7 +16,7 @@ const FORBIDDEN_MARKERS: [&str; 8] = [
 
 /// Returns `true` when `svg` is a plain `<svg>` document free of active scripts or inline handlers.
 #[must_use]
-pub fn is_safe_svg(svg: &str) -> bool {
+pub(crate) fn is_safe_svg(svg: &str) -> bool {
     let lower = svg.to_ascii_lowercase();
     let trimmed = lower.trim();
     let body = trimmed
@@ -37,7 +37,7 @@ pub fn is_safe_svg(svg: &str) -> bool {
 
 /// Filters an optional raw SVG string, dropping unsafe or malformed markup.
 #[must_use]
-pub fn sanitize_svg(svg: Option<String>) -> Option<String> {
+pub(crate) fn sanitize_svg(svg: Option<String>) -> Option<String> {
     svg.filter(|markup| is_safe_svg(markup))
 }
 

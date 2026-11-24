@@ -93,12 +93,12 @@ pub struct NpScore {
 
 /// First 14-character skeleton connectivity layer of an `InChIKey`.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct InChIKey14(String);
+pub(crate) struct InChIKey14(String);
 
 impl InChIKey14 {
     /// Extracts the 14-character connectivity layer from an `InChIKey` string.
     #[must_use]
-    pub fn from_inchikey(inchikey: &str) -> Option<Self> {
+    pub(crate) fn from_inchikey(inchikey: &str) -> Option<Self> {
         let trimmed = inchikey.trim();
         if trimmed.is_empty() {
             return None;
@@ -113,7 +113,7 @@ impl InChIKey14 {
 
     /// Underlying connectivity layer string slice.
     #[must_use]
-    pub fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
 }

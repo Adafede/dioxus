@@ -33,7 +33,7 @@ pub enum RingFamily {
 }
 
 impl RingFamily {
-    /// Human-readable scaffold description matching the legacy display labels.
+    /// Human-readable scaffold description.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -52,13 +52,13 @@ impl RingFamily {
 
     /// Returns `true` when the scaffold is classified as polyaromatic.
     #[must_use]
-    pub const fn is_polyaromatic(self) -> bool {
+    pub(crate) const fn is_polyaromatic(self) -> bool {
         matches!(self, Self::Polyaromatic)
     }
 
     /// Returns `true` for natural-product-associated ring families.
     #[must_use]
-    pub const fn is_np_skeleton(self) -> bool {
+    pub(crate) const fn is_np_skeleton(self) -> bool {
         matches!(
             self,
             Self::Steroid
@@ -166,7 +166,7 @@ pub enum VerdictCategory {
 impl VerdictCategory {
     /// Machine-readable CSV category label.
     #[must_use]
-    pub const fn csv_label(self) -> &'static str {
+    pub(crate) const fn csv_label(self) -> &'static str {
         match self {
             Self::Likely => "likely",
             Self::Neutral => "neutral",

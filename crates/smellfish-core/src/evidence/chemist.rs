@@ -61,7 +61,7 @@ const DECORATION_MOTIFS: &[&str] = &[
 
 /// Runs the three visual chemist checks (NP-likeness score, skeleton, database presence).
 #[must_use]
-pub fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
+pub(crate) fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     let (np_status, np_detail) = match row.np_score {
         None => (CheckStatus::Warn, "Ertl model not loaded".into()),
         Some(np) if np.score >= 0.5 => (CheckStatus::Pass, format!("Ertl score {:+.2}", np.score)),
@@ -111,13 +111,13 @@ pub fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
 
 /// Returns `true` when `label` names a scaffold motif known to be enriched in natural products.
 #[must_use]
-pub fn is_known_np_motif(label: &str) -> bool {
+pub(crate) fn is_known_np_motif(label: &str) -> bool {
     matches_any(label, SCAFFOLD_MOTIFS)
 }
 
 /// Returns `true` for scaffold ring systems characteristic of natural products.
 #[must_use]
-pub fn is_scaffold_motif(label: &str) -> bool {
+pub(crate) fn is_scaffold_motif(label: &str) -> bool {
     matches_any(label, SCAFFOLD_MOTIFS)
         || contains_ignore_ascii_case(label, "ring")
         || contains_ignore_ascii_case(label, "cyclohexane")
@@ -125,32 +125,32 @@ pub fn is_scaffold_motif(label: &str) -> bool {
 
 /// Returns `true` for side-chain / functional-group decoration motifs.
 #[must_use]
-pub fn is_decoration_motif(label: &str) -> bool {
+pub(crate) fn is_decoration_motif(label: &str) -> bool {
     matches_any(label, DECORATION_MOTIFS)
 }
 
 /// Per-molecule structural evidence counts computed once and shared across assessment and verdict.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct EvidenceCounts {
+pub(crate) struct EvidenceCounts {
     /// Ertl NP-typical scaffold motifs found in `motifs`.
-    pub np_core: usize,
+    pub(crate) np_core: usize,
     /// Scaffold ring motif hits.
-    pub scaffold: usize,
+    pub(crate) scaffold: usize,
     /// Side-chain / decoration motifs found in `motifs`.
-    pub decoration: usize,
+    pub(crate) decoration: usize,
     /// Motif hits classified as natural origin.
-    pub natural: usize,
+    pub(crate) natural: usize,
     /// Motif hits classified as synthetic origin.
-    pub synthetic: usize,
+    pub(crate) synthetic: usize,
     /// Motif hits with unclassified origin.
-    pub unknown: usize,
+    pub(crate) unknown: usize,
     /// Natural motif hits carrying at least one kingdom annotation.
-    pub kingdom_enriched: usize,
+    pub(crate) kingdom_enriched: usize,
 }
 
 /// Computes structural evidence counts for a molecule once from motifs and motif hits.
 #[must_use]
-pub fn count_evidence(motifs: &[String], motif_hits: &[RdkitMotifHit]) -> EvidenceCounts {
+pub(crate) fn count_evidence(motifs: &[String], motif_hits: &[RdkitMotifHit]) -> EvidenceCounts {
     let mut counts = EvidenceCounts::default();
 
     for motif in motifs {

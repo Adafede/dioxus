@@ -5,21 +5,21 @@
 
 use crate::model::{MoleculeRow, Verdict, VerdictCategory};
 
-use super::chemist::{EvidenceCounts, count_evidence};
+use super::chemist::EvidenceCounts;
 
 /// Flat evidence inputs consumed by [`classify_np_evidence`].
 #[derive(Clone, Copy, Debug, Default)]
-pub struct EvidenceSignals {
+pub(crate) struct EvidenceSignals {
     /// Ertl NP-likeness score (`None` when unloaded).
-    pub np_score: Option<f64>,
+    pub(crate) np_score: Option<f64>,
     /// Molecule itself is backed by a LOTUS organism record.
-    pub has_lotus: bool,
+    pub(crate) has_lotus: bool,
     /// Molecule is backed by `PubChem` records.
-    pub has_pubchem: bool,
+    pub(crate) has_pubchem: bool,
     /// Number of LOTUS 1%-prevalence scaffold matches.
-    pub lotus_scaffolds: usize,
+    pub(crate) lotus_scaffolds: usize,
     /// Structural motif counts shared with assessment.
-    pub counts: EvidenceCounts,
+    pub(crate) counts: EvidenceCounts,
 }
 
 impl EvidenceSignals {
@@ -41,15 +41,16 @@ impl EvidenceSignals {
 }
 
 /// Derives the screening verdict for a molecule row, computing motif counts directly.
+#[cfg(test)]
 #[must_use]
-pub fn row_verdict(row: &MoleculeRow) -> Verdict {
-    let counts = count_evidence(&row.motifs, &row.motif_hits);
+pub(crate) fn row_verdict(row: &MoleculeRow) -> Verdict {
+    let counts = super::chemist::count_evidence(&row.motifs, &row.motif_hits);
     row_verdict_with_counts(row, counts)
 }
 
 /// Derives the screening verdict for a molecule row reusing precomputed [`EvidenceCounts`].
 #[must_use]
-pub fn row_verdict_with_counts(row: &MoleculeRow, counts: EvidenceCounts) -> Verdict {
+pub(crate) fn row_verdict_with_counts(row: &MoleculeRow, counts: EvidenceCounts) -> Verdict {
     if let Some(err) = row.error.as_deref() {
         return Verdict::error(err);
     }
@@ -65,7 +66,7 @@ pub fn row_verdict_with_counts(row: &MoleculeRow, counts: EvidenceCounts) -> Ver
 
 /// Pure evidence classifier returning both a [`VerdictCategory`] and explanation message.
 #[must_use]
-pub fn classify_np_evidence(signals: &EvidenceSignals) -> Verdict {
+pub(crate) fn classify_np_evidence(signals: &EvidenceSignals) -> Verdict {
     let Some(score) = signals.np_score else {
         return classify_without_model(*signals);
     };

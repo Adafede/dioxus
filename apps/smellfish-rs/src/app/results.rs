@@ -9,7 +9,7 @@
 )]
 
 use dioxus::prelude::*;
-use smellfish_core::csv::build_csv;
+use smellfish_core::csv::format_csv_rows;
 use smellfish_core::model::{MoleculeRow, MotifSummary, SourceClass};
 
 use super::molecule_card::MoleculeCard;
@@ -35,7 +35,7 @@ pub(super) const MOTIF_GROUPS: [(&str, &str, MotifPredicate); 3] = [
 
 /// Hero banner.
 #[component]
-pub fn Hero() -> Element {
+pub(super) fn Hero() -> Element {
     rsx! {
         section { class: "hero",
             h1 { "\u{1f41f} Smellfish-rs" }
@@ -46,7 +46,7 @@ pub fn Hero() -> Element {
 
 /// Motif chip summary panel rendered when structural motifs are present.
 #[component]
-pub fn MotifPanel(motifs: Signal<Vec<MotifSummary>>) -> Element {
+pub(super) fn MotifPanel(motifs: Signal<Vec<MotifSummary>>) -> Element {
     let motifs_ref = motifs.read();
     rsx! {
         section { class: "panel",
@@ -73,7 +73,7 @@ pub fn MotifPanel(motifs: Signal<Vec<MotifSummary>>) -> Element {
 
 /// Header + card grid rendered once `rows` is non-empty.
 #[component]
-pub fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
+pub(super) fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
     let rows_ref = rows.read();
     rsx! {
         section { class: "panel",
@@ -84,7 +84,7 @@ pub fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
                     href: "#",
                     onclick: move |evt| {
                         evt.prevent_default();
-                        let csv = build_csv(&rows.read());
+                        let csv = format_csv_rows(&rows.read());
                         drop(upload::download_text(&csv, "smellfish-results.csv"));
                     },
                     "Download CSV"

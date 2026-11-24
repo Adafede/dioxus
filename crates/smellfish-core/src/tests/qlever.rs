@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 use crate::qlever::enrich_sources;
-use crate::sparql::{QLEVER_WIKIDATA, WDQS_WIKIDATA};
 use futures_executor::block_on;
 use lotus_search::testing::Scripted;
+use lotus_search::{QLEVER_WIKIDATA, WDQS_WIKIDATA};
 
 const ASK_OK: &str = r#"{"boolean":true}"#;
 const LOTUS_BINDINGS: &str = r#"{

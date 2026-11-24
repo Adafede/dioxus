@@ -7,7 +7,10 @@ use crate::model::{RdkitDescriptors, RingFamily, matches_any};
 
 /// Classifies the molecule's core scaffold ring family.
 #[must_use]
-pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -> RingFamily {
+pub(crate) fn classify_ring_family(
+    descriptors: &RdkitDescriptors,
+    motifs: &[String],
+) -> RingFamily {
     let has_any = |keywords: &[&str]| motifs.iter().any(|m| matches_any(m, keywords));
 
     if has_any(&["steroid"]) {
