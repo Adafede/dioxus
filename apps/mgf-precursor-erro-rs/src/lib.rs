@@ -21,7 +21,7 @@
 
 pub(crate) mod app;
 pub(crate) mod errors;
-/// SVG plotting renderers consumed by [`app`] and `examples/recalibration_demo.rs`.
+/// SVG plotting renderers consumed by [`app()`] and `examples/recalibration_demo.rs`.
 pub mod plotting;
 
 pub use app::app;
