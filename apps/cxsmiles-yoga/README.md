@@ -12,24 +12,22 @@ so this app derives them automatically from a candidate structure list using the
 
 ## How it works
 
-The UI (`src/app.rs`) is intentionally thin. All chemistry lives in a headless,
-unit-tested module (`src/cxsmiles/`) so it can be reused outside the browser.
+The UI (`src/app.rs` + `src/app/*`) is intentionally thin. All chemistry lives
+in the headless domain crate [`crates/cxsmiles-core`](../../crates/cxsmiles-core/README.md)
+and 2D SVG depiction lives in [`crates/chem-depict`](../../crates/chem-depict/README.md).
 
 ```
- input SMILES list   ──▶  parse (chematic::smiles)
-                        ──▶  cluster (ECFP4 + Tanimoto, τ = 0.3)
-                              └─ rejects unrelated structures so they are not
-                                 forced into one nonsensical CX-SMILES
-                        ──▶  Maximum Common Substructure (chematic::smarts::find_mcs)
+ input SMILES list   ──▶  parse & ECFP4/Tanimoto clustering (τ = 0.3)
+                               └─ rejects unrelated structures so they are not
+                                  forced into one nonsensical CX-SMILES
+                        ──▶  Maximum Common Substructure
                         ──▶  diff group vs. MCS → classify each variable region
-                              • discrete equivalents  →  m:   block
-                              • variable-length repeat →  Sg:n: block
-                        ──▶  serialize to a CX-SMILES string
-                              (m: /Sg:n: are hand-rolled — chematic's CX reader
-                               does not support these constructs)
+                               • discrete equivalents  →  m:   block
+                               • variable-length repeat →  Sg:n: block
+                        ──▶  serialize base SMILES and CX extension fields
                         ──▶  round-trip: enumerate the CX-SMILES and check that
-                              it re-expands to (a superset of) the inputs
-                              └─ surfaced as a confidence % in the UI
+                               it re-expands to (a superset of) the inputs
+                               └─ surfaced as a confidence % in the UI
 ```
 
 ### Construct families
@@ -50,24 +48,23 @@ clean shared scaffold" constitutional-isomer case is surfaced.
 
 ### 2D depiction is fully local
 
-All molecule rendering uses `chematic::depict` (`depict_svg` /
-`depict_svg_highlighted`, which run an in-process 2D layout) --- no RDKit.js, no
-remote service, no network calls. The scaffold and each enumerated candidate are
-drawn inline in the results panel.
+All molecule rendering uses the local `chem-depict` SVG engine (in-process 2D
+layout) --- no RDKit.js, no remote service, no network calls. The scaffold and
+each enumerated candidate are drawn inline in the results panel.
 
 --------------------------------------------------------------------------------
 
 ## Try it
 
 ```bash
-# Run the test suite (covers all six fixtures + a parse/write round-trip)
-cargo nextest run -p cxsmiles-yoga
+# Run the domain and app test suites
+cargo nextest run -p cxsmiles-core -p cxsmiles-yoga
 ```
 
-The headless core is exercised by the unit tests in `src/cxsmiles/`, covering
-the six seed fixtures --- biphenyl-Cl, moving -OCH₃, the double-`m:` acetyl
+The headless core is exercised by unit and property suites in `crates/cxsmiles-core`,
+covering the six seed fixtures --- biphenyl-Cl, moving -OCH₃, the double-`m:` acetyl
 case, the PFAS repeat, the alkyl repeat, and the six constitutional PFOS isomers ---
-plus a parse/write round-trip.
+plus parse/write round-trip and ceiling tests.
 
 ### Run in the browser
 
@@ -85,10 +82,9 @@ plus a parse/write round-trip.
   checkbox expands `m:` attachment lists across symmetry-equivalent positions
   within each aromatic ring component of the shared scaffold (via graph
   automorphisms restricted to `BondOrder::Aromatic` components).
-- **CX-SMILES hand-rolled.** `chematic::cx` (`CxSmiles` / `parse_cxsmiles` /
-  `write_cxsmiles`) does not support `m:` / `Sg:n:` constructs, and `chematic`'s
-  SMILES writer does not emit `*` for wildcard atoms, so the base scaffold and
-  extension fields are serialized directly.
+- **CX-SMILES hand-rolled.** Standard CX parsers do not handle arbitrary `m:` /
+  `Sg:n:` constructs alongside wildcard-atom indexing, so the base scaffold and
+  extension fields are serialized directly inside `cxsmiles-core`.
 - **Hashing / fingerprint library search.** Comparing a generated CX-SMILES
   against an external fingerprint library (e.g., ECFP4/Tanimoto
   nearest-neighbour lookup) to score or rank candidates is out of scope for this
@@ -98,9 +94,10 @@ plus a parse/write round-trip.
 
 ## Dependencies
 
-- [`chematic`](https://crates.io/crates/chematic) --- SMILES parsing/writing,
-  SMARTS/MCS (`find_mcs`, `find_matches`), ECFP4 fingerprints, 2D depiction.
+- `cxsmiles-core` --- CX-SMILES clustering, MCS generation, and round-trip engine.
+- `chem-depict` --- panic-guarded local SVG structure depiction.
 - [`dioxus`](https://dioxuslabs.com) `0.7` --- UI framework.
+- [`ui`](../../crates/ui/README.md) --- shared UI components and theme tokens.
 - `web-sys` --- clipboard API (`Window` + `Navigator` + `Clipboard` features).
 - `gloo-timers` --- async clipboard copy feedback timer.
 - [`crates/ui`](../../crates/ui) + [`crates/upload`](../../crates/upload) ---

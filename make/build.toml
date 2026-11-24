@@ -17,6 +17,7 @@ cwd = "${REPO_ROOT}"
 description = "Type-check each wasm app for wasm32-unknown-unknown."
 dependencies = [
   "check-wasm-chem-depict",
+  "check-wasm-cxsmiles-core",
   "check-wasm-cxsmiles-yoga",
   "check-wasm-index",
   "check-wasm-json-count-core",
@@ -27,6 +28,11 @@ dependencies = [
   "check-wasm-smellfish-rs",
   "check-wasm-stream-io",
 ]
+
+[tasks."check-wasm-cxsmiles-core"]
+cwd = "${REPO_ROOT}"
+description = "Type-check cxsmiles-core for wasm32-unknown-unknown."
+script = "cargo check -p cxsmiles-core --target wasm32-unknown-unknown --locked"
 
 [tasks."check-wasm-cxsmiles-yoga"]
 cwd = "${REPO_ROOT}"

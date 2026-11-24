@@ -76,7 +76,7 @@ cwd = "${REPO_ROOT}"
 description = "Coverage report for the logic crates, via nextest."
 script = """
 cargo llvm-cov nextest run --locked \\
-  -p json-count-core -p cxsmiles-yoga -p stream-io -p upload \\
+  -p json-count-core -p cxsmiles-core -p stream-io -p upload \\
   --profile ci --no-fail-fast
 """
 
@@ -117,7 +117,7 @@ script = "./mk mutants -p lipid-selecto-rs -p smellfish-rs"
 cwd = "${REPO_ROOT}"
 description = "List the mutants in the logic crates without running them."
 script = """
-cargo mutants --package json-count-core --package cxsmiles-yoga --list
+cargo mutants --package json-count-core --package cxsmiles-core --list
 """
 
 # ── Mutation testing on a laptop ─────────────────────────────────────────────

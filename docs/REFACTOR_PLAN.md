@@ -39,7 +39,7 @@ every gate green on each commit.
   - *Verify*: `./mk ci-fast` + `./mk mutants -p json-count-core`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 5 — Extract `crates/cxsmiles-core` & slim `apps/cxsmiles-yoga`**:
+- [x] **Step 5 — Extract `crates/cxsmiles-core` & slim `apps/cxsmiles-yoga`**:
   Break internal module cycles, move CX-SMILES generation into `cxsmiles-core`
   with `CxError`, sum-typed constructs, O(V+E) aromatic expansion, backtracking
   DFS, and memoized UI depictions using `ui::theme` tokens.

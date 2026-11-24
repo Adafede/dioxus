@@ -1,25 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the cxsmiles-yoga project
 
-// The `tests` tests, extracted from `graph.rs`.
-//
-// They were inline, and together they were several times the size of the
-// code they cover. `super` is still the `graph` module, so
-// `use super::*` below reaches exactly what it did before the move.
-use super::*;
-use chematic::smiles::parse;
+use chematic::core::{AtomIdx, BondOrder};
+use chematic::smarts::{BondPrimitive, find_matches};
 
-fn mol(smiles: &str) -> Molecule {
-    parse(smiles).expect("the fixtures in this module are valid SMILES")
-}
-
-// ── bond_to_primitive: every arm ─────────────────────────────────────────
+use super::mol;
+use crate::graph::{
+    Match, best_match, bond_to_primitive, components, matched_mask, molecule_to_query, subgraph,
+    unmatched_atoms,
+};
 
 #[test]
 fn every_bond_order_maps_to_its_own_primitive() {
-    // The four named orders are the whole point of the conversion, and the
-    // wildcard is the one that would silently absorb a new `BondOrder`
-    // variant, so each is asserted separately.
     assert_eq!(
         bond_to_primitive(BondOrder::Single),
         BondPrimitive::Single,
@@ -42,8 +34,6 @@ fn every_bond_order_maps_to_its_own_primitive() {
     );
 }
 
-// ── molecule_to_query ───────────────────────────────────────────────────
-
 #[test]
 fn a_query_has_one_atom_per_molecule_atom() {
     let c = mol("CCO");
@@ -53,9 +43,6 @@ fn a_query_has_one_atom_per_molecule_atom() {
 
 #[test]
 fn a_query_has_one_bond_and_two_adjacency_entries_per_molecule_bond() {
-    // The adjacency list is what the matcher's traversal walks, so a bond
-    // missing from it is a bond the query can never traverse even though
-    // `bonds` says it is there.
     let c = mol("CCO");
     let q = molecule_to_query(&c);
     assert_eq!(q.bonds.len(), 2, "CCO has two bonds");
@@ -65,9 +52,6 @@ fn a_query_has_one_bond_and_two_adjacency_entries_per_molecule_bond() {
 
 #[test]
 fn adjacency_is_symmetric() {
-    // Every bond must appear in the neighbour list of both its atoms. The
-    // second pass over `bonds` is what fills it, and a single-ended entry
-    // would make the traversal depend on which atom it started from.
     let c = mol("CCO");
     let q = molecule_to_query(&c);
     for (qi, bond) in q.bonds.iter().enumerate() {
@@ -84,8 +68,6 @@ fn adjacency_is_symmetric() {
 
 #[test]
 fn adjacency_neighbours_stay_inside_the_atom_list() {
-    // The second pass reads `bond.atom1`/`atom2` back out of the bond list;
-    // a stale index there would push into the wrong row or miss the vector.
     let c = mol("CCO");
     let q = molecule_to_query(&c);
     for (atom, neighbours) in q.adj.iter().enumerate() {
@@ -99,24 +81,17 @@ fn adjacency_neighbours_stay_inside_the_atom_list() {
     }
 }
 
-// ── subgraph ────────────────────────────────────────────────────────────
-
 #[test]
 fn a_subgraph_keeps_exactly_the_asked_for_atoms() {
     let c = mol("CCO");
-    let keep = [true, true, false];
-    let s = subgraph(&c, &keep);
+    let s = subgraph(&c, &[true, true, false]);
     assert_eq!(s.atom_count(), 2, "two atoms were kept");
 }
 
 #[test]
 fn a_subgraph_keeps_only_bonds_between_kept_atoms() {
-    // CCO keeping the last two carbons: one bond survives, the bond to the
-    // dropped oxygen does not. Both endpoints have to be mapped, which is
-    // what the `if let (Some, Some)` guards.
     let c = mol("CCO");
-    let keep = [false, true, true];
-    let s = subgraph(&c, &keep);
+    let s = subgraph(&c, &[false, true, true]);
     assert_eq!(s.atom_count(), 2, "two atoms");
     assert_eq!(s.bonds().count(), 1, "and only the bond between them");
 }
@@ -131,21 +106,13 @@ fn keeping_nothing_yields_an_empty_molecule() {
 
 #[test]
 fn a_shorter_mask_keeps_only_what_it_names() {
-    // The mask is indexed per atom and `map` is sized to the molecule, so a
-    // mask that stops short must drop the atoms it does not reach rather
-    // than read past its own end.
     let c = mol("CCO");
     let s = subgraph(&c, &[true]);
     assert_eq!(s.atom_count(), 1, "only the first atom was asked for");
 }
 
-// ── matched_mask / unmatched_atoms ──────────────────────────────────────
-
 #[test]
 fn a_mask_comes_back_in_atom_order() {
-    // `unmatched_atoms` is the inverse of `matched_mask`: what one sets, the
-    // other reports, in ascending order, and the two together must account
-    // for every atom exactly once.
     let c = mol("CCO");
     let mut hit: Match = Match::default();
     hit.insert(0, AtomIdx(1));
@@ -172,9 +139,6 @@ fn an_empty_mask_leaves_every_atom_unmatched() {
 
 #[test]
 fn a_hit_mentioning_an_atom_past_the_end_is_dropped_not_panicked_on() {
-    // The mask is sized to the molecule, so a hit index the molecule does
-    // not have has nowhere to go. It is skipped: an out-of-bounds write
-    // here would be a panic on a caller-supplied match.
     let c = mol("CCO");
     let mut hit: Match = Match::default();
     hit.insert(0, AtomIdx(9));
@@ -186,8 +150,6 @@ fn a_hit_mentioning_an_atom_past_the_end_is_dropped_not_panicked_on() {
     );
 }
 
-// ── components ──────────────────────────────────────────────────────────
-
 #[test]
 fn a_chain_is_one_component() {
     let c = mol("CCC");
@@ -197,9 +159,6 @@ fn a_chain_is_one_component() {
 
 #[test]
 fn two_fragments_are_two_components() {
-    // CCC with the middle carbon excluded from the set: the two ends are
-    // not connected *through* the set, so they are two components even
-    // though the molecule has the bond between them.
     let c = mol("CCC");
     let comps = components(&[0, 2], &c);
     assert_eq!(comps.len(), 2, "an excluded atom separates them");
@@ -223,9 +182,6 @@ fn asking_for_nothing_yields_nothing() {
 
 #[test]
 fn every_asked_for_atom_appears_in_exactly_one_component() {
-    // The total across components must equal the input, with no atom lost
-    // and none counted twice — the property that makes the split usable as
-    // a partition.
     let c = mol("CCCCO");
     let asked = [0, 1, 2, 4];
     let comps = components(&asked, &c);
@@ -234,16 +190,38 @@ fn every_asked_for_atom_appears_in_exactly_one_component() {
     assert_eq!(seen, asked, "a partition of exactly what was asked for");
 }
 
-// ── best_match ──────────────────────────────────────────────────────────
-
 #[test]
 fn no_embedding_is_an_error_and_not_an_empty_match() {
-    // An empty `Match` would report "everything unmatched", which reads as
-    // a result. There is no embedding here, and that has to be an error.
     let q = molecule_to_query(&mol("C"));
     let err = best_match(&q, &mol("O")).expect_err("carbon does not match oxygen");
     assert!(
         err.to_string().contains("no match"),
         "the error says what failed: {err}"
     );
+}
+
+#[test]
+fn every_embedding_of_a_query_has_the_same_size() {
+    let q = molecule_to_query(&mol("CC"));
+    let m = mol("CCCC");
+    let hits = find_matches(&q, &m);
+    assert!(hits.len() > 1, "the fixture must have several embeddings");
+    for hit in &hits {
+        assert_eq!(
+            hit.len(),
+            q.atoms.len(),
+            "an embedding covers every query atom"
+        );
+    }
+}
+
+#[test]
+fn a_branched_query_still_has_uniformly_sized_embeddings() {
+    let q = molecule_to_query(&mol("CC(C)C"));
+    let m = mol("CC(C)CC(C)C");
+    let hits = find_matches(&q, &m);
+    assert!(hits.len() > 1, "the fixture must have several embeddings");
+    for hit in &hits {
+        assert_eq!(hit.len(), q.atoms.len(), "one molecule atom per query atom");
+    }
 }

@@ -30,4 +30,4 @@ LOCAL_CI_GATES=(license-headers check readme-check lint-wasm feature-powerset)
 COVERAGE_FAIL_UNDER_LINES="73"
 # Mutation testing covers the logic crates; the apps are mostly Dioxus rendering
 # (`./mk local:mutants-ui` and `./mk local:mutants-mgf` run the rest on request).
-MUTANTS_PACKAGES=(json-count-core cxsmiles-yoga)
+MUTANTS_PACKAGES=(json-count-core cxsmiles-core)

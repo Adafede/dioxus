@@ -169,7 +169,7 @@ Workflows under `.github/workflows/` run through `./mk`:
 
 ## Known limitations
 
-- **WASM UI runtime tests**: host tests exercise pure domain logic (`cxsmiles`,
+- **WASM UI runtime tests**: host tests exercise pure domain logic (`cxsmiles-core`,
   `mgf`, `lipid-selecto-rs`, `json-count-rs`, `smellfish-rs` SPARQL/CSV/model,
   `upload` streaming, `ui` VirtualDom rendering), whereas browser DOM
   interactions (`web-sys` `Blob`, drag/drop events, live QLever/LIPID MAPS HTTP

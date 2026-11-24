@@ -23,6 +23,7 @@ cwd = "${REPO_ROOT}"
 description = "Clippy each wasm crate for wasm32-unknown-unknown, warnings denied."
 dependencies = [
   "lint-wasm-chem-depict",
+  "lint-wasm-cxsmiles-core",
   "lint-wasm-cxsmiles-yoga",
   "lint-wasm-index",
   "lint-wasm-json-count-core",
@@ -112,6 +113,14 @@ cwd = "${REPO_ROOT}"
 description = "Clippy mgf for wasm32, tests included."
 script = """
 cargo clippy -p mgf --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-cxsmiles-core"]
+cwd = "${REPO_ROOT}"
+description = "Clippy cxsmiles-core for wasm32, tests included."
+script = """
+cargo clippy -p cxsmiles-core --target wasm32-unknown-unknown --all-targets \
   --locked -- -D warnings
 """
 
