@@ -81,7 +81,7 @@ every gate green on each commit.
   - *Verify*: standalone `clippy` + `test --locked`, plus `./mk local:license-headers && ./mk test`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 11 — Final verification, metrics comparison & `REVIEW_NOTES.md`**:
+- [x] **Step 11 — Final verification, metrics comparison & `REVIEW_NOTES.md`**:
   Run full CI gates, WASM size/timing measurements, mutation checks, update
   [`DEBT.md`](./DEBT.md) if ratchets tightened, and commit `REVIEW_NOTES.md`.
   - *Verify*: `./mk ci` + `./mk commits` + standalone `--locked` checks
