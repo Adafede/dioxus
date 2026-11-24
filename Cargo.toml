@@ -14,6 +14,7 @@ members = [
   "apps/mgf-precursor-erro-rs",
   "apps/smellfish-rs",
   "crates/chem-depict",
+  "crates/json-count-core",
   "crates/mgf",
   "crates/stream-io",
   "crates/ui",

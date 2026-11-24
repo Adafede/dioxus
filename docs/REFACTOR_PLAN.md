@@ -32,7 +32,7 @@ every gate green on each commit.
   - *Verify*: `./mk ci-fast` + `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 4 — Extract `crates/json-count-core` & slim `apps/json-count-rs`**:
+- [x] **Step 4 — Extract `crates/json-count-core` & slim `apps/json-count-rs`**:
   Move streaming JSON counting, unescaping, number validation, and sorting into
   `json-count-core` with typed `JsonCountError`, explicit scanner state machine,
   reusable row/key buffers, and memoized UI rendering.

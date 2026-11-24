@@ -1,0 +1,22 @@
+[package]
+name = "json-count-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Streaming RFC 8259 JSON non-null field counter, string unescaper, and result sorter"
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["json", "parser", "sorting", "streaming", "validation"]
+categories = ["parsing"]
+publish = false
+
+[dependencies]
+stream-io = { path = "../stream-io", version = "0.1" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+futures-executor = { workspace = true }
+
+[lints]
+workspace = true

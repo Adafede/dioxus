@@ -1,39 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the json-count-rs project
 
-// The `escaping` tests, extracted from `processing.rs`.
-//
-// They were inline, and together they were several times the size of the
-// code they cover. `super` is still the `processing` module, so
-// `use super::*` below reaches exactly what it did before the move.
-use super::{unescape_json_string, unicode_escape};
+use crate::unescape::unicode_code_unit;
+use crate::unescape_json_string;
 
 fn unescape(s: &str) -> String {
     unescape_json_string(s.as_bytes())
 }
 
-// ── the plain pass-through ───────────────────────────────────────────────
+fn unicode_escape(raw: &[u8], at: usize) -> Option<char> {
+    unicode_code_unit(raw, at).and_then(|code| char::from_u32(u32::from(code)))
+}
 
 #[test]
 fn a_string_with_no_backslash_is_returned_unchanged() {
-    // The early return: without a `\\` there is nothing to unescape, and
-    // scanning for one costs a pass over the bytes.
     assert_eq!(unescape("plain text"), "plain text", "no escapes to expand");
     assert_eq!(unescape(""), "", "and nothing at all");
 }
 
 #[test]
 fn a_backslash_is_what_arms_the_scanner() {
-    // One backslash anywhere means the string is escaped, so the rest of the
-    // function has to survive the mixed case: escapes and literals together.
-    // `z` is not one of the eight escapes, so it stands for an unknown one.
-    //
-    // The backslash is *dropped* and only the character kept. That is lossy:
-    // `a\zb` and `azb` both unescape to `azb`, so a malformed file cannot be
-    // told from a well-formed one after this. Keeping the backslash would be
-    // the other defensible choice, but that is a behaviour change and not
-    // one to make while adding tests — so it is pinned here as what the code
-    // does, which is the first step to changing it deliberately.
     assert_eq!(
         unescape(r"a\zc"),
         "azc",
@@ -45,8 +31,6 @@ fn a_backslash_is_what_arms_the_scanner() {
         "and the scan carries on from just after it"
     );
 }
-
-// ── the two-character escapes ───────────────────────────────────────────
 
 #[test]
 fn every_single_character_escape_is_expanded() {
@@ -62,35 +46,18 @@ fn every_single_character_escape_is_expanded() {
 
 #[test]
 fn escapes_advance_past_both_characters() {
-    // Two characters per escape: advancing one would leave the second to be
-    // emitted as a literal, and this is the assertion that catches it.
     assert_eq!(unescape(r"\n\n"), "\n\n", "two escapes, four bytes in");
     assert_eq!(unescape(r"a\nb"), "a\nb", "literals either side survive");
 }
 
-// ── \uXXXX ───────────────────────────────────────────────────────────────
-
 #[test]
 fn a_unicode_escape_is_the_character_it_names() {
-    // 0041 is 'A'; 00e9 is 'é'. Both are BMP, which is all this handles.
-    //
-    // The `\u` has to be *in* these literals. They were written as `r"A"` and
-    // `r"é"` — the escapes missing, so what they actually asserted was that
-    // `unescape` returns its argument unchanged, which the pass-through branch
-    // above already covers and no `\u` code runs for. Every mutant of the
-    // `\u` arm survived on that: a `b'u'` arm that expands nothing still passes
-    // a test that never names a `\u`.
     assert_eq!(unescape(r"\u0041"), "A", r"\u0041 is A");
     assert_eq!(unescape(r"\u00e9"), "é", r"\u00e9 is e-acute");
 }
 
 #[test]
 fn a_unicode_escape_is_expanded_wherever_it_sits_in_the_body() {
-    // The offset passed to `unicode_escape` is `i + 2`, relative to the
-    // backslash, so an escape that follows literals and one that follows
-    // another escape are both checked here: reading the digits from `i` rather
-    // than from `i + 2` picks up the backslash and yields nothing, and reading
-    // them from `i * 2` reaches past the end of the body.
     assert_eq!(unescape(r"a\u0042b"), "aBb", "between literals");
     assert_eq!(unescape(r"\u0041\u0042"), "AB", "after another escape");
     assert_eq!(
@@ -102,8 +69,6 @@ fn a_unicode_escape_is_expanded_wherever_it_sits_in_the_body() {
 
 #[test]
 fn the_four_digits_are_read_from_the_right_place() {
-    // `at` is the offset of the first digit, so reading from `at` rather
-    // than `at - 1` would pick up the `u` and fail to parse as hex.
     assert_eq!(
         unicode_escape(b"\\u0041", 2),
         Some('A'),
@@ -118,8 +83,6 @@ fn the_four_digits_are_read_from_the_right_place() {
 
 #[test]
 fn a_unicode_escape_fails_when_the_digits_are_not_there() {
-    // Fewer than four bytes left: `get` returns None rather than slicing
-    // past the end, and the caller emits nothing.
     assert_eq!(unicode_escape(b"", 0), None, "no bytes at all");
     assert_eq!(unicode_escape(b"00", 0), None, "two digits");
     assert_eq!(unicode_escape(b"004", 0), None, "three digits");
@@ -133,9 +96,6 @@ fn a_unicode_escape_fails_when_the_digits_are_not_hex() {
 
 #[test]
 fn a_surrogate_is_not_a_character() {
-    // D800 is a surrogate half. `char::from_u32` refuses it, and the escape
-    // is dropped rather than emitting an unpaired surrogate, which would
-    // produce a string Rust cannot represent.
     assert_eq!(
         unicode_escape(b"d800", 0),
         None,
@@ -146,9 +106,6 @@ fn a_surrogate_is_not_a_character() {
 
 #[test]
 fn a_truncated_unicode_escape_falls_through_to_the_literal_branch() {
-    // The `b'u'` arm is guarded on four digits being present. Without the
-    // guard, a truncated escape would consume six bytes and emit nothing;
-    // with it, the `u` is treated as an unknown escape and kept.
     assert_eq!(
         unescape(r"\u00"),
         "u00",
@@ -188,13 +145,8 @@ fn surrogate_pairs_decode_and_lone_surrogates_emit_replacement() {
     }
 }
 
-// ── the literal run between escapes ─────────────────────────────────────
-
 #[test]
 fn a_run_of_plain_characters_is_copied_in_one_go() {
-    // The `else` branch finds the next backslash and copies everything up to
-    // it. A run with no backslash at all is the early return; this is the
-    // run that stops at one.
     assert_eq!(
         unescape(r"hello\nworld"),
         "hello\nworld",
@@ -210,16 +162,11 @@ fn a_run_of_plain_characters_is_copied_in_one_go() {
 
 #[test]
 fn a_run_stops_at_the_first_backslash() {
-    // `position` finds the *first* backslash, so a run cannot swallow the
-    // start of the next escape.
     assert_eq!(unescape(r"abc\n"), "abc\n", "and nothing past it");
 }
 
 #[test]
 fn a_backslash_at_the_end_is_a_literal() {
-    // There is no second byte to pair with, so the condition fails and the
-    // backslash is copied as ordinary text rather than panicking on
-    // `raw[i + 1]`.
     assert_eq!(
         unescape("abc\\"),
         "abc\\",
@@ -230,9 +177,6 @@ fn a_backslash_at_the_end_is_a_literal() {
 
 #[test]
 fn invalid_utf8_is_replaced_rather_than_rejected() {
-    // The body comes from a JSON file, so it can hold bytes that are not
-    // UTF-8. `from_utf8_lossy` is what keeps one bad byte from failing the
-    // whole column; the replacement character is the documented cost.
     let out = unescape_json_string(&[b'a', 0xFF, b'b']);
     assert_eq!(
         out.chars().count(),

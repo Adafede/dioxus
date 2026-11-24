@@ -19,6 +19,7 @@ dependencies = [
   "check-wasm-chem-depict",
   "check-wasm-cxsmiles-yoga",
   "check-wasm-index",
+  "check-wasm-json-count-core",
   "check-wasm-json-count-rs",
   "check-wasm-lipid-selecto-rs",
   "check-wasm-mgf",
@@ -71,6 +72,11 @@ script = "cargo check -p chem-depict --target wasm32-unknown-unknown --locked"
 cwd = "${REPO_ROOT}"
 description = "Type-check mgf for wasm32-unknown-unknown."
 script = "cargo check -p mgf --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-json-count-core"]
+cwd = "${REPO_ROOT}"
+description = "Type-check json-count-core for wasm32-unknown-unknown."
+script = "cargo check -p json-count-core --target wasm32-unknown-unknown --locked"
 
 # Every feature combination in the workspace.
 #

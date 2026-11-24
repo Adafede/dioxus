@@ -7,7 +7,7 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 `json-count-rs` --- count non-null JSON fields from an uploaded file.
 
 Drag-and-drop (or browse) a JSON file and see a live count of non-null values
-per key, rendered as a sortable table.
+per key, rendered as a sortable table backed by `json-count-core`.
 
 ## Run locally
 
