@@ -6,8 +6,9 @@ This document describes the hierarchical lipid classification system aligned
 with LIPID MAPS standards, covering **all 8 major structural families** and **86
 LMSD main classes** (`FA00–FA13`, `GL00–GL07`, `GP00–GP25`, `SP00–SP08`,
 `ST01–ST05`, `PR01–PR04`, `SL01–SL05`, `PK00–PK15` in
-`src/chemical_class/lmsd.rs`). Test suites in `src/chemical_class/defaults.rs`
-also define 22 coarse family-level reference patterns listed below.
+`crates/lipid-core/src/chemical_class/lmsd.rs`). Test suites in
+`crates/lipid-core/src/chemical_class/defaults.rs` also define 22 coarse
+family-level reference patterns listed below.
 
 ## LIPID MAPS Categories (8 Families)
 
@@ -155,7 +156,7 @@ Hexosylceramide (HexCer)
   Ceramide + Hexose (glucose/galactose) sugar
 ```
 
-## Color Scheme (Microshades Palettes in `src/chemical_class/mod.rs`)
+## Color Scheme (Microshades Palettes in `crates/lipid-core/src/family.rs`)
 
   | Family                    | Palette Constant | Hex Codes                                             |
   | ---                       | ---              | ---                                                   |
@@ -168,7 +169,7 @@ Hexosylceramide (HexCer)
   | Saccharolipids (SL)       | `SL_PALETTE`     | `#6a51a3`, `#807dba`, `#9e9ac8`, `#bcbddc`, `#dadaeb` |
   | Polyketides (PK)          | `PK_PALETTE`     | `#ff7f00`, `#fe9929`, `#fdae6b`, `#fec44f`, `#feeda0` |
 
-Note that `src/chemical_class/lmsd.rs` cycles shades 0--3 across the first four
+Note that `crates/lipid-core/src/chemical_class/lmsd.rs` cycles shades 0--3 across the first four
 main classes in each family and uses shade 4 for the rest.
 
 ## References

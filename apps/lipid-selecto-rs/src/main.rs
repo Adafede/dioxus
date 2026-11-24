@@ -44,7 +44,7 @@
 //!
 //! ## Classification strategy
 //!
-//! Rules are compiled into `src/chemical_class/lmsd.rs`. See
+//! Rules are compiled into `crates/lipid-core/src/chemical_class/lmsd.rs`. See
 //! [`LIPID_ARCHITECTURE.md`](./LIPID_ARCHITECTURE.md) and
 //! [`RULES_GUIDE.md`](./RULES_GUIDE.md) for the rule families, SMARTS syntax,
 //! and regeneration workflow via `lipidmaps/smarts-evoliposuction`.

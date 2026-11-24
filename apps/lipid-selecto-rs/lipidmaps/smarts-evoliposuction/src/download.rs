@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
 
-//! Download LMSD.sdf.zip from `LipidMaps` and convert to unique TSV.
-//!
-//! Uses [`lipidsdl`] for the actual work — this module is a thin adapter
-//! that ties the download URL to the SDF→TSV conversion.
+//! Download `LMSD.sdf.zip` from LIPID MAPS and convert to unique TSV using [`sdf`].
 
 mod sdf;
 

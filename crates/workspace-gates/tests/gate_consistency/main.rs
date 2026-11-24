@@ -3,7 +3,7 @@
 
 //! Repository checks the gate can run cheaply.
 //!
-//! That the local gate, the git hooks and CI are one gate is now structural:
+//! That the local gate, the git hooks and CI are one gate is structural:
 //! CI and the hooks only call `./mk`, and the standard rusti-graben `mk` pins and
 //! version-checks every tool (`./mk tools`). What remains here is what that
 //! cannot see: the apps' landmarks and file sizes, ignored data files, the

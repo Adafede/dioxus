@@ -3,15 +3,15 @@
 This document explains the SMARTS classification rules compiled into
 `lipid-selecto-rs`:
 
-- **Runtime classification (`lmsd_classes` in `src/chemical_class/lmsd.rs`)**:
+- **Runtime classification (`lmsd_classes` in `crates/lipid-core/src/chemical_class/lmsd.rs`)**:
   86 LIPID MAPS Structure Database (LMSD) main classes across all 8 LIPID MAPS
   categories (`FA`, `GL`, `GP`, `SP`, `ST`, `PR`, `SL`, `PK`).
 - **Coarse family reference rules (`#[cfg(test)]` in
-  `src/chemical_class/defaults.rs`)**: 22 broad family-level SMARTS patterns
+  `crates/lipid-core/src/chemical_class/defaults.rs`)**: 22 broad family-level SMARTS patterns
   covering the 8 categories, used in unit tests for coarse lipid class
   comparisons.
 
-## Coarse Family Overview (`src/chemical_class/defaults.rs`)
+## Coarse Family Overview (`crates/lipid-core/src/chemical_class/defaults.rs`)
 
 - **Fatty Acyls (FA)**: Saturated (`FA`), Monounsaturated (`MUFA`),
   Polyunsaturated (`PUFA`)
@@ -126,10 +126,10 @@ outputs matching lines verbatim.
 
 ## Example Dataset
 
-`src/examples/` contains **204 curated example lipids** split across 8 family
+`crates/lipid-core/src/examples.rs` (`crates/lipid-core/src/examples/`) contains **204 curated example lipids** split across 8 family
 modules (`fatty_acyls.rs`, `glycerolipids.rs`, `glycerophospholipids.rs`,
 `sphingolipids.rs`, `sterol_lipids.rs`, `prenol_lipids.rs`, `saccharolipids.rs`,
-`polyketides.rs`), accessed internally via `examples::example_smiles()`.
+`polyketides.rs`), accessed via `lipid_core::example_smiles()`.
 
 ## References
 

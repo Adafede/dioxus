@@ -7,7 +7,7 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 review](https://github.com/Adafede/dioxus/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/Adafede/dioxus/actions/workflows/dependency-review.yml)
 
 Cargo workspace for six client-side Dioxus WebAssembly applications in chemistry
-and mass spectrometry, backed by two shared crates (`ui` and `upload`) and
+and mass spectrometry, backed by shared domain and UI crates under `crates/` and
 pinned to Rust `1.100.0` via `rust-toolchain.toml`.
 
 - **index**: accessible landing page linking all applications in the suite.
@@ -16,7 +16,7 @@ pinned to Rust `1.100.0` via `rust-toolchain.toml`.
   analysis in Da and ppm, and SVG histogram plotting.
 - **lipid-selecto-rs**: browser-side MGF/SMILES lipid classification and
   filtering using 86 compiled-in LIPID MAPS SMARTS rules
-  (`src/chemical_class/lmsd.rs`).
+  (`crates/lipid-core/src/chemical_class/lmsd.rs`).
 - **cxsmiles-yoga**: CX-SMILES generator and coordinate depiction tool
   collapsing positional isomers (`m:`) and variable-length repeats (`Sg:n:`).
 - **smellfish-rs**: natural-product likeness scoring combining machine-learned
@@ -55,10 +55,17 @@ dioxus/
 │   ├── smellfish-rs/         NP-likeness scoring and LOTUS/QLever lookup (WASM + host tests)
 │   └── cxsmiles-yoga/        CX-SMILES generation from related structures (WASM + host tests)
 └── crates/
-    ├── upload/               chunked streaming readers (BlobCursor, BlobLines),
-    │                         ChunkSource/SliceSource, and browser download helpers
-    └── ui/                   shared Dioxus components (DocumentHead, UploadZone, etc.),
-                              pure-Rust StyleBuilder, theme tokens, and signal macros
+    ├── stream-io/            async byte and line streaming (BlobCursor, BlobLines, ChunkSource)
+    ├── upload/               browser BlobSource, Dioxus FileData extraction, DOM downloads
+    ├── ui/                   Dioxus components, StyleBuilder, theme tokens, signal macros
+    ├── mgf/                  streaming MGF block parser and header/peak model
+    ├── chem-depict/          panic-guarded SMILES parsing and 2D SVG depiction
+    ├── cxsmiles-core/        CX-SMILES positional and repeating series synthesis
+    ├── json-count-core/      streaming JSON non-null counter and column unescaping
+    ├── lipid-core/           LIPID MAPS classification, LMSD SMARTS rules, filtered exports
+    ├── mgf-analysis-core/    adduct grammar, precursor statistics, MS2 recalibration
+    ├── smellfish-core/       natural-product evidence, verdicts, CSV, SPARQL queries
+    └── workspace-gates/      repository-wide structure, surface, and ratchet checks
 ```
 
 Task runner configuration lives in:
@@ -122,10 +129,10 @@ Run the fast inner check while editing, or the full CI gate before pushing:
 Run `./mk --list` to list the standard `./mk` gates and `local:*` tasks, or
 `cargo make --no-workspace --list-all-steps` for every task in `make/*.toml`.
 
-Core `crates/upload`, `crates/ui`, and app logic modules run unit, integration,
-and doc tests on the host (`./mk test`). Because host builds skip
-`#[cfg(target_arch = "wasm32")]` code, always run `./mk local:lint-wasm` and
-`./mk wasm` (mapped to `check-wasm`) before pushing WASM changes.
+Pure domain crates and UI/upload adapters run unit, integration, and doc tests on
+the host (`./mk test`). Because host builds skip `#[cfg(target_arch = "wasm32")]`
+code, always run `./mk local:lint-wasm` and `./mk wasm` (mapped to `check-wasm`)
+before pushing WASM changes.
 
 The offline SMARTS generator CLI at
 `apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction` is intentionally

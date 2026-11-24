@@ -22,3 +22,18 @@ reason, owner, and removal condition.
 - `ECHOES_MAX_REUSE=0`
 - `Cargo.toml` lint `allow` count: `3`
 - `MUTANTS_PACKAGES=(json-count-core cxsmiles-core)`
+
+## Open Decisions (Hard Invariants)
+
+1. **Historical `smiles-parser` git patch (`.cargo/config.toml`)**: Retained so
+   branch-history checks (`./mk refquiem`) can resolve earlier git specs after
+   upstream renamed `smiles-parser` to `smiles-rs`.
+2. **External data, wire, and URL contracts**: MGF (`BEGIN IONS` / `END IONS`,
+   `PEPMASS`, `PRECURSOR_MZ`, `COMMENT=LIPID_MAPS_*`), CX-SMILES (`|...|`),
+   LIPID MAPS LMSD SDF/TSV columns and ZIP download URL, SPARQL endpoints
+   (QLever / WDQS), and Plausible Analytics domain config remain unchanged.
+3. **Standalone `smarts-evoliposuction` lockfile pins**: `smarts-evolution` and
+   `smarts-rs` float on `branch = "main"` while upstream `smarts-rs` uses a
+   different `smiles-rs` version than `smarts-evolution`; build and test
+   `smarts-evoliposuction` with `--locked` unless regenerating its lockfile
+   together with upstream alignment.
