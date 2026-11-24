@@ -16,6 +16,7 @@ members = [
   "crates/chem-depict",
   "crates/cxsmiles-core",
   "crates/json-count-core",
+  "crates/lipid-core",
   "crates/mgf",
   "crates/stream-io",
   "crates/ui",

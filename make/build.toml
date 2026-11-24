@@ -22,6 +22,7 @@ dependencies = [
   "check-wasm-index",
   "check-wasm-json-count-core",
   "check-wasm-json-count-rs",
+  "check-wasm-lipid-core",
   "check-wasm-lipid-selecto-rs",
   "check-wasm-mgf",
   "check-wasm-mgf-crate",
@@ -48,6 +49,11 @@ script = "cargo check -p index --target wasm32-unknown-unknown --locked"
 cwd = "${REPO_ROOT}"
 description = "Type-check json-count-rs for wasm32-unknown-unknown."
 script = "cargo check -p json-count-rs --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-lipid-core"]
+cwd = "${REPO_ROOT}"
+description = "Type-check lipid-core for wasm32-unknown-unknown."
+script = "cargo check -p lipid-core --target wasm32-unknown-unknown --locked"
 
 [tasks."check-wasm-lipid-selecto-rs"]
 cwd = "${REPO_ROOT}"

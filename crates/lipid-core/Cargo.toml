@@ -1,0 +1,20 @@
+[package]
+name = "lipid-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Pure-Rust LIPID MAPS SMARTS classification, MGF/SMILES streaming extraction, and filtering"
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["cheminformatics", "lipidomics", "lipids", "mass-spectrometry", "smarts"]
+categories = ["science"]
+publish = false
+
+[dependencies]
+chem-depict = { path = "../chem-depict", version = "0.1" }
+chematic = { workspace = true, features = ["chem", "smarts", "smiles"] }
+mgf = { path = "../mgf", version = "0.1" }
+
+[lints]
+workspace = true

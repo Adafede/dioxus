@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
 
-//! Shared types for the `app` module.
-//!
-//! These types cross-cut rendering, gallery preparation, and download
-//! logic — extracting them to a dedicated module keeps every other file
-//! focused on a single responsibility.
+//! Shared signal state for `lipid-selecto-rs` UI components.
 
-use dioxus::prelude::Signal;
+use dioxus::prelude::{ReadableExt, Signal};
+use lipid_core::ClassMatchSet;
 
-/// Grouped mutable filter signals for the summary panel.
-///
-/// Bundling the signals into a struct keeps the [`summary`](super::components::summary)
-/// signature compact and avoids passing separate filter arguments.
-#[derive(Clone)]
+/// Grouped reactive filter signals shared across summary, gallery, and export panels.
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) struct SummaryFilters {
-    pub selected_classes: Signal<Vec<String>>,
-    pub mz_min: Signal<f64>,
-    pub mz_max: Signal<f64>,
-    pub precursor_min: Signal<f64>,
-    pub precursor_max: Signal<f64>,
-    pub adduct_filter: Signal<String>,
+    pub(super) selected_classes: Signal<ClassMatchSet>,
+    pub(super) mz_min: Signal<f64>,
+    pub(super) mz_max: Signal<f64>,
+    pub(super) precursor_min: Signal<f64>,
+    pub(super) precursor_max: Signal<f64>,
+    pub(super) adduct_filter: Signal<String>,
+}
+
+impl SummaryFilters {
+    pub(super) fn read_adduct(&self) -> String {
+        self.adduct_filter.read().clone()
+    }
 }

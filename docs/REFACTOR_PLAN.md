@@ -46,7 +46,7 @@ every gate green on each commit.
   - *Verify*: `./mk ci-fast` + `./mk mutants -p cxsmiles-core`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 6 — Extract `crates/lipid-core` & slim `apps/lipid-selecto-rs`**:
+- [x] **Step 6 — Extract `crates/lipid-core` & slim `apps/lipid-selecto-rs`**:
   Unify LIPID MAPS family metadata into `LipidFamily`, wire MGF/SMILES parsing
   onto `mgf` + `chem-depict`, replace `HashMap<String, bool>` with `ClassMatchSet`,
   precompile SMARTS, and split `app/components.rs`.

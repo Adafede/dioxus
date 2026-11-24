@@ -28,6 +28,7 @@ dependencies = [
   "lint-wasm-index",
   "lint-wasm-json-count-core",
   "lint-wasm-json-count-rs",
+  "lint-wasm-lipid-core",
   "lint-wasm-lipid-selecto-rs",
   "lint-wasm-mgf",
   "lint-wasm-mgf-crate",
@@ -105,6 +106,14 @@ cwd = "${REPO_ROOT}"
 description = "Clippy chem-depict for wasm32, tests included."
 script = """
 cargo clippy -p chem-depict --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-lipid-core"]
+cwd = "${REPO_ROOT}"
+description = "Clippy lipid-core for wasm32, tests included."
+script = """
+cargo clippy -p lipid-core --target wasm32-unknown-unknown --all-targets \
   --locked -- -D warnings
 """
 

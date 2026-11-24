@@ -65,7 +65,7 @@ Baseline snapshot of the workspace prior to structural refactoring.
 
 8. **God files and oversized functions**
    - `apps/json-count-rs/src/processing.rs` (732 LOC), `main.rs` (499 LOC; `app()` 233 LOC), `scan_container` (102 LOC).
-   - `apps/lipid-selecto-rs/src/chemical_class/lmsd.rs` (703 LOC), `app/components.rs` (521 LOC; `gallery_with_filter` 97 LOC, 7 params).
+   - `apps/lipid-selecto-rs/src/chemical_class/lmsd.rs` (703 LOC), `app/components.rs` (521 LOC; gallery-filter component 97 LOC, 7 params).
    - `apps/mgf-precursor-erro-rs/src/app/results.rs` (488 LOC; `ResultsPanel` 456 LOC, 8 params), `diagnostics.rs` (471 LOC), `parser/adduct.rs` (424 LOC), `plotting/diagnostics.rs` (423 LOC), `parser/block.rs` (416 LOC).
    - `apps/cxsmiles-yoga/src/cxsmiles/positional.rs` (509 LOC; `build_positional_with_options` 122 LOC), `app.rs` (451 LOC), `repeating.rs` (439 LOC), `roundtrip.rs` (349 LOC) with bidirectional `positional`/`repeating` ↔ `roundtrip` module cycles.
    - `apps/smellfish-rs/src/styles.rs` (548 LOC), `rdkit_bridge.rs` (519 LOC), `app/results.rs` (398 LOC; `MoleculeCard` 147 LOC), `pipeline.rs` (378 LOC; `import_csv_text` 183 LOC), `evidence/verdict.rs` (`classify_np_evidence` 158 LOC).
@@ -76,7 +76,7 @@ Baseline snapshot of the workspace prior to structural refactoring.
    - `smarts-evoliposuction/src/splitting.rs:299-305,452`: clones ~48k SMILES strings twice per class.
    - `apps/cxsmiles-yoga/src/app.rs:237-283`: `results()` re-parses SMILES and re-renders 2D SVGs for all candidates synchronously on every keystroke; `cxsmiles/mod.rs:120-125` runs `build_repeating` on equal-size inputs and recomputes `roundtrip_coverage` twice; `repeating.rs:222-227` clones `Vec<u32>` up to 200k times in DFS; `positional.rs:364-424` performs `O(|pos| * N * (V+E))` aromatic DFS and linear `FxHashMap` scans.
    - `apps/json-count-rs/src/processing.rs:588-613`: allocates a new `HashSet<usize>` per JSON object row and a new `Vec<u8>` + `String` per key; `main.rs:387` clones and re-sorts all rows on every render.
-   - `apps/lipid-selecto-rs`: `lmsd_all()` (`lmsd.rs:701-703`) and `group_classes_by_family` (`app/analysis.rs:26-39`) deep-clone 86 compiled SMARTS `QueryMolecule`s on every render; `lipids/classify.rs:73-78` re-parses 10 SMARTS strings per molecule; `SpectrumBlock::raw` retains entire file text unboundedly; `parse_smiles_line` + `classify_and_match` + `render_svg` parse SMILES up to 4× per molecule.
+   - `apps/lipid-selecto-rs`: LMSD table access (`lmsd.rs:701-703`) and `group_classes_by_family` (`app/analysis.rs:26-39`) deep-clone 86 compiled SMARTS `QueryMolecule`s on every render; `lipids/classify.rs:73-78` re-parses 10 SMARTS strings per molecule; `SpectrumBlock::raw` retains entire file text unboundedly; `parse_smiles_line` + `classify_and_match` + `render_svg` parse SMILES up to 4× per molecule.
    - `apps/mgf-precursor-erro-rs`: 3 `MedianTracker` dual-heaps retain every spectrum in memory; `app/results.rs:345-448` re-renders 4 SVGs unmemoized per slider drag event; `plotting/diagnostics.rs` emits up to 10,000 `<circle>` DOM elements; `app/results.rs:281-291` scans error arrays 10× per render.
    - `apps/smellfish-rs`: `app/results.rs:96,119` clones every `MoleculeRow` + SVG and runs `to_ascii_lowercase()` SVG sanitization per render; `pipeline.rs:190,211` calls `count_evidence` twice per molecule; `qlever.rs` ignores QLever probe outcome and runs `ASK {}` unconditionally.
 

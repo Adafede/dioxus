@@ -168,9 +168,9 @@ The `all` subcommand skips `download` if non-empty `LMSD.sdf.zip` already exists
 ## Integration with `lipid-selecto-rs`
 
 Evolved rules are curated offline from `smarts_results.csv` into static
-`LmsdEntry` rows in `apps/lipid-selecto-rs/src/chemical_class/lmsd.rs` (exposed
-internally inside `lipid-selecto-rs` via `lmsd_classes()` and `lmsd_all()`). The
-WASM frontend does not read CSV files at runtime.
+`LmsdEntry` rows in `crates/lipid-core/src/chemical_class/lmsd_part{1,2}.rs`
+(exposed via `lipid_core::lmsd_classes()`). The WASM frontend does not read
+CSV files at runtime.
 
 See [`../README.md`](../README.md) for the surrounding `lipidmaps/` directory
 overview.

@@ -69,19 +69,20 @@ Stages:
   | `best_coverage_score` | Positive-set coverage score |
   | `status` | `ok`, `empty_after_parse`, `read_error`, etc. |
 
-### 2. Curated rules in `lipid-selecto-rs`
+### 2. Curated rules in `lipid-core`
 
 Selected SMARTS rules from LMSD evolution are stored statically in
-`apps/lipid-selecto-rs/src/chemical_class/lmsd.rs` (`LMSD_ENTRIES`, exposed
-crate-internally via `lmsd_classes()` and `lmsd_all()`). Each `ChemicalClass`
-carries `name`, `smarts`, `color`, and `family` (such as `"Fatty Acyls"`), and
-pre-compiles its SMARTS query at construction via `chematic::smarts`.
+`crates/lipid-core/src/chemical_class/lmsd_part{1,2}.rs` (exposed publicly via
+`lipid_core::lmsd_classes()`). Each `ChemicalClass` carries `name`, `smarts`,
+`color`, and `family` (such as `"Fatty Acyls"`), and pre-compiles its SMARTS
+query once via `LazyLock` + `chematic::smarts`.
 
 ### 3. UI integration
 
-Inside `apps/lipid-selecto-rs`, `chemical_class::lmsd_classes()` feeds the class
-selector cards and the browser MGF/SMILES classification logic under
-`src/parser/` and `src/app/`, grouping results in canonical LIPID MAPS family
+Inside `apps/lipid-selecto-rs`, `lipid_core::lmsd_classes()` and
+`lipid_core::lmsd_classes_by_family()` feed the class selector cards while
+`lipid_core::BlockExtractor`, `classify_blocks`, and `build_analysis_from_classified`
+drive MGF/SMILES classification, grouping results in canonical LIPID MAPS family
 order (`FA`, `GL`, `GP`, `SP`, `ST`, `PR`, `SL`, `PK`).
 
 ## Data Sources and External Dependencies

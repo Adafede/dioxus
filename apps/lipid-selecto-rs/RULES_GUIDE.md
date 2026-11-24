@@ -95,20 +95,20 @@ Entry System, which encodes full molecules).
 
 ## Updating or Adding Rules
 
-Rules are compiled statically into Rust (`src/chemical_class/lmsd.rs`) rather
+Rules are compiled statically into Rust (`crates/lipid-core/src/chemical_class/`) rather
 than loaded from external YAML files at runtime:
 
 1. Either evolve updated SMARTS patterns from LIPID MAPS using
    [`lipidmaps/smarts-evoliposuction`](./lipidmaps/smarts-evoliposuction/README.md)
    or craft a pattern compatible with `chematic::smarts`.
-2. Add or update an `LmsdEntry` in `LMSD_ENTRIES` inside
-   `src/chemical_class/lmsd.rs`. Each entry specifies `family`, `code`,
-   `description`, `smarts`, and LMSD `count` (ordered by descending database
-   count within each family).
+2. Add or update an `LmsdEntry` inside
+   `crates/lipid-core/src/chemical_class/lmsd_part1.rs` or `lmsd_part2.rs`.
+   Each entry specifies `family`, `code`, `description`, `smarts`, and LMSD
+   `count` (ordered by descending database count within each family).
 3. Verify compilation, SMARTS parsing, and unit tests:
 
 ```bash
-cargo nextest run -p lipid-selecto-rs --locked
+cargo nextest run -p lipid-core -p lipid-selecto-rs --locked
 ```
 
 ## Supported Input and Output Formats
