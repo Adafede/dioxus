@@ -2,44 +2,54 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Unified theme system for all Dioxus applications.
-//!
-//! Defines colors, spacing, typography, and shadows as Rust constants.
-//! No CSS files or variables—everything is type-safe and compile-time checked.
-//!
-//! # Design Philosophy
-//!
-//! - **Lotus aesthetic**: Clean, professional color palette with excellent contrast
-//! - **Responsive typography**: Fluid scaling using `clamp()` for all text sizes
-//! - **Accessibility first**: WCAG AAA contrast ratios, semantic HTML, keyboard navigation
-//! - **Pure Rust**: All styling defined as constants; inline styles generated in components
 
 use core::fmt;
 
+/// Light/dark theme selector for UI components.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum Theme {
+    /// High-contrast daytime palette.
+    #[default]
+    Light,
+    /// Low-light dark palette.
+    Dark,
+}
+
+impl Theme {
+    /// Returns the palette matching this theme.
+    #[must_use]
+    pub const fn colors(self) -> ColorScheme {
+        match self {
+            Self::Light => ColorScheme::LIGHT,
+            Self::Dark => ColorScheme::DARK,
+        }
+    }
+
+    /// Returns the card shadow token appropriate for this theme.
+    #[must_use]
+    pub const fn card_shadow(self) -> &'static str {
+        match self {
+            Self::Light => Shadow::SM,
+            Self::Dark => Shadow::SM_DARK,
+        }
+    }
+}
+
 /// Color palette for light and dark themes.
-///
-/// High-contrast light and dark color tokens shared across the workspace apps.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ColorScheme {
     pub bg: &'static str,
-    /// The light and dark palettes use the same value here, so `bg`/`bg2` and
-    /// `surface`/`surface2` exist to be overridden per-theme by an app that wants
-    /// a visible distinction between page and panel.
     pub bg2: &'static str,
     pub surface: &'static str,
     pub surface2: &'static str,
     pub border: &'static str,
     pub text: &'static str,
-    /// Muted steps of `text`, for progressively less important copy.
     pub text2: &'static str,
     pub text3: &'static str,
     pub accent: &'static str,
-    /// Hover/active state of `accent`.
     pub accent2: &'static str,
-    /// Success/taxon state color (Wikidata green: #396 = #339966)
     pub green: &'static str,
-    /// Error/compound/destructive action color (Wikidata red: #900 = #990000)
     pub red: &'static str,
-    /// Info/reference color (Wikidata blue: #069 = #006699)
     pub blue: &'static str,
     pub yellow: &'static str,
     pub(crate) purple: &'static str,
@@ -47,7 +57,6 @@ pub struct ColorScheme {
 
 impl ColorScheme {
     /// Light theme colors optimized for daytime viewing.
-    /// All text/background pairs meet WCAG AAA 7:1 contrast ratio.
     pub const LIGHT: Self = Self {
         bg: "#f7fafc",
         bg2: "#f7fafc",
@@ -59,15 +68,14 @@ impl ColorScheme {
         text3: "#516274",
         accent: "#0b5cab",
         accent2: "#084b8a",
-        green: "#339966", // Wikidata taxon #396
-        red: "#990000",   // Wikidata compound #900
-        blue: "#006699",  // Wikidata reference #069
+        green: "#339966",
+        red: "#990000",
+        blue: "#006699",
         yellow: "#8a4b0f",
         purple: "#6941c6",
     };
 
     /// Dark theme colors optimized for low-light viewing.
-    /// All text/background pairs meet WCAG AAA 7:1 contrast ratio.
     pub const DARK: Self = Self {
         bg: "#0f172a",
         bg2: "#0f172a",
@@ -79,17 +87,15 @@ impl ColorScheme {
         text3: "#a7b4c7",
         accent: "#8cbcff",
         accent2: "#5e98f3",
-        green: "#339966", // Wikidata taxon
-        red: "#990000",   // Wikidata compound
-        blue: "#006699",  // Wikidata reference
+        green: "#339966",
+        red: "#990000",
+        blue: "#006699",
         yellow: "#f0b35e",
         purple: "#c3a0ff",
     };
 }
 
-/// Spacing scale derived from 6px base unit
-///
-/// Maintains consistent 6px grid throughout the design system.
+/// Spacing scale derived from a 6px base unit.
 #[derive(Clone, Copy, Debug)]
 pub struct Spacing;
 
@@ -100,69 +106,42 @@ impl Spacing {
     pub const XL: &'static str = "28px";
 }
 
-/// Border radius scale for consistent rounding
+/// Border radius scale for consistent rounding.
 #[derive(Clone, Copy, Debug)]
 pub struct Radius;
 
 impl Radius {
-    /// Micro rounding for small elements
     pub const SM: &'static str = "4px";
-    /// Default rounding for cards and components
     pub const MD: &'static str = "10px";
-    /// Large rounding for hero sections
     pub const LG: &'static str = "16px";
 }
 
-/// Shadow system for depth and layering
-///
-/// Responsive to theme; shadows render differently in light/dark modes.
+/// Shadow system for depth and layering.
 #[derive(Clone, Copy, Debug)]
 pub struct Shadow;
 
 impl Shadow {
-    /// Subtle shadow for minimal elevation
     pub const XS: &'static str = "0 1px 2px rgba(15, 23, 42, 0.06)";
-    /// Small shadow for cards at rest
     pub const SM: &'static str = "0 4px 14px rgba(15, 23, 42, 0.06)";
-    /// Medium shadow for elevated cards
     pub const MD: &'static str = "0 10px 30px rgba(15, 23, 42, 0.09)";
-
-    /// Dark-mode small shadow (higher opacity)
     pub(crate) const SM_DARK: &'static str = "0 4px 14px rgba(0, 0, 0, 0.35)";
 }
 
-/// Typography scale with responsive fluid sizing
-///
-/// Uses CSS `clamp()` for automatic scaling between mobile and desktop.
-/// All sizes maintain 1.5 line-height for readability.
+/// Typography scale with responsive fluid sizing.
 #[derive(Clone, Copy, Debug)]
 pub struct Typography;
 
 impl Typography {
-    /// Label text: 0.6875–0.75rem, form labels, badges
     pub const LABEL: &'static str = "clamp(0.6875rem, 0.66rem + 0.14vw, 0.75rem)";
-    /// UI text: 0.8125–0.875rem, buttons, small text
     pub const UI: &'static str = "clamp(0.8125rem, 0.785rem + 0.16vw, 0.875rem)";
-    /// Body text: 0.875–0.9375rem, paragraphs, default
     pub const BODY: &'static str = "clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem)";
-    /// Heading 2: 1.125–1.5rem, main section headings
     pub const H2: &'static str = "clamp(1.125rem, 1.02rem + 0.6vw, 1.5rem)";
-    /// Heading 1: 1.375–1.85rem, page title
     pub const H1: &'static str = "clamp(1.375rem, 1.1rem + 0.85vw, 1.85rem)";
-
-    /// Line height for body copy (1.5 = excellent readability)
     pub const LINE_HEIGHT: &'static str = "1.5";
-
-    /// Font family: sans-serif stack with Inter as primary
     pub const SANS: &'static str = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif";
 }
 
-/// Motion settings shared by every component.
-///
-/// The contrast, focus-indicator and touch-target guarantees the palette and the
-/// components aim at are not encoded here — they are properties of the values in
-/// [`ColorScheme`] and of the component markup, and nothing in this module
-/// enforces or checks them.
+/// Motion settings shared by components.
 #[derive(Clone, Copy, Debug)]
 pub struct Interaction;
 
@@ -170,24 +149,7 @@ impl Interaction {
     pub const TRANSITION_DEFAULT: &'static str = "200ms ease-in-out";
 }
 
-/// Style string builder for inline CSS attributes
-///
-/// Accumulates CSS properties and returns the final style string.
-///
-/// # Example
-///
-/// ```rust
-/// use ui::theme::{ColorScheme, Radius, Spacing, StyleBuilder};
-///
-/// let colors = ColorScheme::LIGHT;
-/// let style = StyleBuilder::new()
-///     .color(colors.accent)
-///     .padding(Spacing::LG)
-///     .border_radius(Radius::MD)
-///     .build();
-/// assert!(style.contains("color: "));
-/// assert!(style.contains("padding: 20px"));
-/// ```
+/// Style string builder for inline CSS attributes.
 #[must_use]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StyleBuilder {
@@ -205,8 +167,16 @@ macro_rules! style_props {
 }
 
 impl StyleBuilder {
+    /// Creates an empty style builder without initial heap allocation.
     pub const fn new() -> Self {
         Self { css: String::new() }
+    }
+
+    /// Creates a style builder with a pre-allocated byte capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            css: String::with_capacity(capacity),
+        }
     }
 
     pub fn property(mut self, name: &str, value: &str) -> Self {

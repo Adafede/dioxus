@@ -8,26 +8,22 @@
     reason = "Dioxus Props derive macro generates an empty helper enum"
 )]
 
-use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
+use crate::theme::{Radius, Spacing, StyleBuilder, Theme, Typography};
 use dioxus::prelude::*;
 
-/// Properties for the Header component
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
+/// Properties for the [`Header`] component.
 #[derive(Clone, Props, Debug, Eq, PartialEq)]
 pub struct HeaderProps {
-    /// Title text displayed in the header
+    /// Title text displayed in the header.
     pub title: String,
-    /// Optional subtitle or tagline
+    /// Optional subtitle or tagline.
     pub subtitle: Option<String>,
-    /// Whether to use dark theme
+    /// Light/dark color theme.
     #[props(default)]
-    pub dark: bool,
+    pub theme: Theme,
 }
 
 /// Page header component with title and optional subtitle.
-///
-/// Renders semantic `<header>` with proper landmarks and accessible heading hierarchy.
-/// Uses pure Rust styling for consistent theming.
 ///
 /// # Example
 ///
@@ -49,13 +45,9 @@ pub struct HeaderProps {
 /// ```
 #[component]
 pub fn Header(props: HeaderProps) -> Element {
-    let colors = if props.dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
-    };
+    let colors = props.theme.colors();
 
-    let header_style = StyleBuilder::new()
+    let header_style = StyleBuilder::with_capacity(140)
         .background_color(colors.bg)
         .padding(&format!(
             "{} {} {} {}",
@@ -69,7 +61,7 @@ pub fn Header(props: HeaderProps) -> Element {
         .text_align("center")
         .build();
 
-    let title_style = StyleBuilder::new()
+    let title_style = StyleBuilder::with_capacity(160)
         .font_size(Typography::H1)
         .font_family(Typography::SANS)
         .font_weight("700")
@@ -78,7 +70,7 @@ pub fn Header(props: HeaderProps) -> Element {
         .line_height(Typography::LINE_HEIGHT)
         .build();
 
-    let subtitle_style = StyleBuilder::new()
+    let subtitle_style = StyleBuilder::with_capacity(140)
         .font_size(Typography::BODY)
         .font_family(Typography::SANS)
         .color(colors.text2)
@@ -100,13 +92,14 @@ pub fn Header(props: HeaderProps) -> Element {
 mod tests {
     use super::*;
     use crate::components::render_debug;
+    use crate::theme::ColorScheme;
 
     fn render_light_header() -> Element {
         rsx! {
             Header {
                 title: "Lipid Selector".to_string(),
                 subtitle: Some("SMARTS lipid classification".to_string()),
-                dark: false,
+                theme: Theme::Light,
             }
         }
     }
@@ -116,7 +109,7 @@ mod tests {
             Header {
                 title: "Compact Header".to_string(),
                 subtitle: None,
-                dark: true,
+                theme: Theme::Dark,
             }
         }
     }
@@ -124,24 +117,17 @@ mod tests {
     #[test]
     fn header_renders_title_optional_subtitle_and_theme() {
         let light = render_debug(render_light_header);
-        assert!(light.contains("Lipid Selector"), "missing title in {light}");
         assert!(
-            light.contains("SMARTS lipid classification"),
-            "missing subtitle in {light}"
-        );
-        assert!(
-            light.contains(ColorScheme::LIGHT.text),
-            "missing light heading color in {light}"
+            light.contains("Lipid Selector")
+                && light.contains("SMARTS lipid classification")
+                && light.contains(ColorScheme::LIGHT.text),
+            "light header mismatch: {light}"
         );
 
         let dark = render_debug(render_dark_header_without_subtitle);
         assert!(
-            dark.contains("Compact Header"),
-            "missing dark title in {dark}"
-        );
-        assert!(
-            dark.contains(ColorScheme::DARK.text),
-            "missing dark heading color in {dark}"
+            dark.contains("Compact Header") && dark.contains(ColorScheme::DARK.text),
+            "dark header mismatch: {dark}"
         );
     }
 }

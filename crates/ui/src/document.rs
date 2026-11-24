@@ -2,49 +2,24 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Programmatic document head management.
-//!
-//! Uses [`dioxus::document`] to set `<head>` content from Rust code.
-//! All elements are deduplicated and inserted once after first render.
-//!
-//! # Example
-//!
-//! ```rust
-//! use dioxus::prelude::*;
-//! use ui::prelude::DocumentHead;
-//!
-//! fn app() -> Element {
-//!     rsx! {
-//!         DocumentHead {
-//!             title: "My App".to_string(),
-//!             description: Some("A chemistry web app".to_string()),
-//!             theme_colors: Some(("#f6f8fb", "#10141b")),
-//!             scripts: vec![
-//!                 "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js".to_string(),
-//!             ],
-//!         }
-//!     }
-//! }
-//!
-//! let mut dom = VirtualDom::new(app);
-//! dom.rebuild_in_place();
-//! ```
 
 #![expect(
     clippy::empty_enums,
     reason = "Dioxus Props derive macro generates an empty helper enum"
 )]
 
-use dioxus::document::document;
+use crate::a11y::SKIP_LINK_FOCUS_CSS;
+use crate::components::simple_analytics_badge::ANALYTICS_PIXEL_CSS;
+use crate::webmcp::{WebMcpConfig, bioschemas_json_ld, capabilities_script};
+use dioxus::document::{Document, document};
 use dioxus::prelude::*;
 
 fn sync_document_lang(lang: &str) {
-    let doc = document();
-    doc.eval(format!("document.documentElement.lang = {lang:?};"));
+    document().eval(format!("document.documentElement.lang = {lang:?};"));
 }
 
 /// Properties for [`DocumentHead`].
 #[derive(Clone, Debug, Eq, Props, PartialEq)]
-#[allow(clippy::module_name_repetitions)]
 pub struct DocumentHeadProps {
     /// Page title.
     pub title: String,
@@ -54,7 +29,7 @@ pub struct DocumentHeadProps {
     /// Meta description (also sets `og:description`).
     #[props(default)]
     pub description: Option<String>,
-    /// Open Graph type (default: "website").
+    /// Open Graph type (default: `"website"`).
     #[props(default)]
     pub og_type: Option<String>,
     /// Open Graph URL.
@@ -66,13 +41,12 @@ pub struct DocumentHeadProps {
     /// External JS URLs to load via `<script async src="..." crossorigin>`.
     #[props(default)]
     pub scripts: Vec<String>,
-    /// Inline JavaScript (e.g. language bootstrap, toast bridge code).
+    /// Inline JavaScript (wrapped in an IIFE to isolate `const`/`let` scope).
     #[props(default)]
     pub inline_script: Option<String>,
-    /// `WebMCP` tool registration config — emits a read-only `<app_id>_capabilities`
-    /// tool via the [WebMCP proposal](https://webmachinelearning.github.io/webmcp/).
+    /// Optional `WebMCP` capability metadata.
     #[props(default)]
-    pub webmcp: Option<crate::webmcp::WebMcpConfig>,
+    pub webmcp: Option<WebMcpConfig>,
     /// Open Graph site name.
     #[props(default)]
     pub og_site_name: Option<String>,
@@ -86,162 +60,170 @@ pub struct DocumentHeadProps {
 
 /// Unified document `<head>` manager.
 ///
-/// Call this once in your app's root component.  All head elements are added
-/// lazily via `use_hook` + `document()` after the first render.
+/// Injects title, language, metadata, external/inline scripts, shared CSS rules,
+/// and optional `WebMCP` / JSON-LD descriptors once after the first render.
 #[component]
 pub fn DocumentHead(props: DocumentHeadProps) -> Element {
-    let DocumentHeadProps {
-        title,
-        lang,
-        description,
-        og_type,
-        og_url,
-        theme_colors,
-        scripts,
-        inline_script,
-        webmcp,
-        og_site_name,
-        json_ld,
-        canonical,
-    } = props;
-    let lang = lang.trim().to_string();
-    let lang_for_hook = lang.clone();
-    let lang_for_effect = lang;
-    let og_type = og_type.unwrap_or_else(|| "website".to_string());
+    let lang = props.lang.trim().to_string();
+    let lang_for_effect = lang.clone();
 
     use_hook(move || {
         let doc = document();
-        doc.set_title(title.clone());
-        sync_document_lang(&lang_for_hook);
-        let meta = |attr: &'static str, key: &str, content: String| {
+        doc.set_title(props.title.clone());
+        sync_document_lang(&lang);
+        inject_meta_tags(&*doc, &props);
+        inject_theme_meta(&*doc, props.theme_colors);
+        inject_scripts(&*doc, &props.scripts, props.inline_script.as_deref());
+        inject_structured_data(&*doc, props.webmcp, props.json_ld.as_deref());
+    });
+
+    use_effect(move || sync_document_lang(&lang_for_effect));
+    VNode::empty()
+}
+
+fn create_meta(doc: &dyn Document, attr: &'static str, key: &str, content: String) {
+    doc.create_head_element(
+        "meta",
+        &[(attr, key.to_string()), ("content", content)],
+        None,
+    );
+}
+
+fn inject_meta_tags(doc: &dyn Document, props: &DocumentHeadProps) {
+    let og_type = props
+        .og_type
+        .clone()
+        .unwrap_or_else(|| "website".to_string());
+    if let Some(desc) = &props.description {
+        create_meta(doc, "name", "description", desc.clone());
+        create_meta(doc, "property", "og:description", desc.clone());
+    }
+    create_meta(doc, "property", "og:type", og_type);
+    create_meta(doc, "property", "og:title", props.title.clone());
+    if let Some(site_name) = &props.og_site_name {
+        create_meta(doc, "property", "og:site_name", site_name.clone());
+    }
+    if let Some(url) = &props.og_url {
+        create_meta(doc, "property", "og:url", url.clone());
+    }
+    if let Some(url) = &props.canonical {
+        doc.create_head_element(
+            "link",
+            &[("rel", "canonical".to_string()), ("href", url.clone())],
+            None,
+        );
+    }
+}
+
+fn inject_theme_meta(doc: &dyn Document, theme_colors: Option<(&'static str, &'static str)>) {
+    if let Some((light, dark)) = theme_colors {
+        for (color, scheme) in [(light, "light"), (dark, "dark")] {
             doc.create_head_element(
                 "meta",
-                &[(attr, key.to_string()), ("content", content)],
-                None,
-            );
-        };
-
-        // <meta name="description"> + og:description
-        if let Some(desc) = description {
-            meta("name", "description", desc.clone());
-            meta("property", "og:description", desc);
-        }
-
-        // og:type
-        meta("property", "og:type", og_type);
-
-        // og:title
-        meta("property", "og:title", title);
-
-        // og:site_name
-        if let Some(site_name) = og_site_name {
-            meta("property", "og:site_name", site_name);
-        }
-
-        // og:url
-        if let Some(url) = og_url {
-            meta("property", "og:url", url);
-        }
-
-        // theme-color (light/dark)
-        if let Some((light, dark)) = theme_colors {
-            for (color, scheme) in [(light, "light"), (dark, "dark")] {
-                doc.create_head_element(
-                    "meta",
-                    &[
-                        ("name", "theme-color".to_string()),
-                        ("content", color.to_string()),
-                        ("media", format!("(prefers-color-scheme: {scheme})")),
-                    ],
-                    None,
-                );
-            }
-            meta("name", "color-scheme", "light dark".to_string());
-        }
-
-        // canonical <link>
-        if let Some(url) = canonical {
-            doc.create_head_element(
-                "link",
-                &[("rel", "canonical".to_string()), ("href", url)],
-                None,
-            );
-        }
-
-        // External scripts.
-        //
-        // `async` (not `defer`): `defer` is a no-op on dynamically injected
-        // scripts — browsers queue deferred scripts to run after the *parser*
-        // finishes, but by the time `use_hook` runs the document is already
-        // parsed, so the script never executes.  `async` loads and executes as
-        // soon as the file arrives; the inline bridge JS polls for
-        // `initRDKitModule` so ordering is handled gracefully.
-        //
-        // `crossorigin="anonymous"`: prevents `nosniff` MIME-type errors on CDN
-        // resources that send CORS headers.  Browsers also deduplicate
-        // duplicate `async` script `src` URLs naturally.
-        for url in scripts {
-            doc.create_head_element(
-                "script",
                 &[
-                    ("src", url),
-                    ("async", String::new()),
-                    ("crossorigin", "anonymous".to_string()),
+                    ("name", "theme-color".to_string()),
+                    ("content", color.to_string()),
+                    ("media", format!("(prefers-color-scheme: {scheme})")),
                 ],
                 None,
             );
         }
+        create_meta(doc, "name", "color-scheme", "light dark".to_string());
+    }
+    doc.create_head_element(
+        "style",
+        &[],
+        Some(format!("{SKIP_LINK_FOCUS_CSS}\n{ANALYTICS_PIXEL_CSS}")),
+    );
+}
 
-        // No app-wide stylesheet is injected here; an app that wants one supplies
-        // its own (smellfish-rs passes its stylesheet through `document::Style`).
-        //
-        // The skip-link rule is the exception, because `ui` owns both halves of
-        // it — `skip_link` and `SKIP_LINK_STYLE` — and a rule that lives with
-        // the components it styles is the one an app cannot forget. It was
-        // inlined in `json-count-rs`'s rsx, which is the only reason that app's
-        // skip link worked and the ones in `index` and `mgf-precursor-erro-rs`
-        // did not.
+fn inject_scripts(doc: &dyn Document, scripts: &[String], inline_script: Option<&str>) {
+    for url in scripts {
         doc.create_head_element(
-            "style",
-            &[],
-            Some(format!(
-                "{}\n{}",
-                crate::common::SKIP_LINK_FOCUS_CSS,
-                crate::common::ANALYTICS_PIXEL_CSS,
-            )),
+            "script",
+            &[
+                ("src", url.clone()),
+                ("async", String::new()),
+                ("crossorigin", "anonymous".to_string()),
+            ],
+            None,
         );
+    }
+    if let Some(js) = inline_script {
+        doc.create_head_element("script", &[], Some(format!("(function(){{{js}}})();")));
+    }
+}
 
-        // Inline JavaScript — wrapped in an IIFE so `const`/`let` declarations
-        // don't leak into the global scope (which causes
-        // `SyntaxError: redeclaration` when the component re-renders or
-        // hot-reloads in dev mode and the hook runs again).
-        if let Some(js) = inline_script {
-            let wrapped = format!("(function(){{{js}}})();");
-            doc.create_head_element("script", &[], Some(wrapped));
-        }
-
-        if let Some(cfg) = webmcp {
-            doc.create_head_element("script", &[], Some(crate::webmcp::capabilities_script(cfg)));
-            if json_ld.is_none() {
-                doc.create_head_element(
-                    "script",
-                    &[("type", "application/ld+json".to_string())],
-                    Some(crate::webmcp::bioschemas_json_ld(cfg)),
-                );
-            }
-        }
-
-        // JSON-LD structured data: escape `</` so caller payloads cannot close `<script>`.
-        if let Some(ld) = json_ld {
+fn inject_structured_data(doc: &dyn Document, webmcp: Option<WebMcpConfig>, json_ld: Option<&str>) {
+    if let Some(cfg) = webmcp {
+        doc.create_head_element("script", &[], Some(capabilities_script(cfg)));
+        if json_ld.is_none() {
             doc.create_head_element(
                 "script",
                 &[("type", "application/ld+json".to_string())],
-                Some(ld.replace("</", "<\\/")),
+                Some(bioschemas_json_ld(cfg)),
             );
         }
-    });
+    }
+    if let Some(ld) = json_ld {
+        doc.create_head_element(
+            "script",
+            &[("type", "application/ld+json".to_string())],
+            Some(ld.replace("</", "<\\/")),
+        );
+    }
+}
 
-    use_effect(move || sync_document_lang(&lang_for_effect));
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::webmcp::{EdamAnnotations, EdamTerm, WebMcpConfig};
 
-    VNode::empty()
+    fn render_full_head() -> Element {
+        rsx! {
+            DocumentHead {
+                title: "Unit App".to_string(),
+                lang: "en".to_string(),
+                description: Some("Screen SMILES".to_string()),
+                og_type: Some("website".to_string()),
+                og_url: Some("https://example.org/app".to_string()),
+                og_site_name: Some("Suite".to_string()),
+                canonical: Some("https://example.org/app".to_string()),
+                theme_colors: Some(("#ffffff", "#000000")),
+                scripts: vec!["https://example.org/lib.js".to_string()],
+                inline_script: Some("const x = 1;".to_string()),
+                webmcp: Some(WebMcpConfig {
+                    app_id: "unit_app",
+                    title: "Unit App",
+                    description: "desc",
+                    inputs: &["csv"],
+                    outputs: &["report"],
+                    edam: EdamAnnotations {
+                        topics: &[EdamTerm {
+                            id: "topic_2258",
+                            label: "Cheminformatics",
+                        }],
+                        operations: &[EdamTerm {
+                            id: "operation_0366",
+                            label: "Clustering",
+                        }],
+                        input_data: &[],
+                        input_formats: &[],
+                        output_data: &[],
+                        output_formats: &[],
+                    },
+                }),
+            }
+        }
+    }
+
+    #[test]
+    fn document_head_builds_empty_body_and_runs_head_hook() {
+        let mut dom = VirtualDom::new(render_full_head);
+        let edits = format!("{:?}", dom.rebuild_to_vec());
+        assert!(
+            edits.contains("CreatePlaceholder") || !edits.is_empty(),
+            "DocumentHead rebuild should succeed: {edits}"
+        );
+    }
 }

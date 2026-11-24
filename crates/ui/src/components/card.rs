@@ -8,43 +8,39 @@
     reason = "Dioxus Props derive macro generates an empty helper enum"
 )]
 
-use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typography};
+use crate::theme::{Interaction, Radius, Spacing, StyleBuilder, Theme, Typography};
 use dioxus::prelude::*;
 
-/// Properties for the Card component
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
+/// Properties for the [`Card`] component.
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct CardProps {
-    /// Card title
+    /// Card title.
     pub title: String,
-    /// Card content (typically description or body)
+    /// Card content (description or body).
     #[props(default)]
     pub children: Option<Element>,
-    /// Optional href for card link (makes card clickable)
+    /// Optional href making the card heading clickable.
     #[props(default)]
     pub href: Option<String>,
-    /// Whether to use dark theme
+    /// Light/dark theme.
     #[props(default)]
-    pub dark: bool,
+    pub theme: Theme,
 }
 
-/// Card component for displaying grouped content.
-///
-/// Renders a semantic `<article>` with consistent styling.
-/// Can be used as a standalone card or as a clickable link card.
+/// Card component for displaying grouped content in a semantic `<article>`.
 ///
 /// # Example
 ///
 /// ```rust
 /// use dioxus::prelude::*;
-/// use ui::prelude::Card;
+/// use ui::prelude::{Card, Theme};
 ///
 /// fn app() -> Element {
 ///     rsx! {
 ///         Card {
 ///             title: "My App".to_string(),
 ///             href: Some("https://example.com".to_string()),
-///             dark: false,
+///             theme: Theme::Light,
 ///             "Description of the app"
 ///         }
 ///     }
@@ -55,29 +51,21 @@ pub struct CardProps {
 /// ```
 #[component]
 pub fn Card(props: CardProps) -> Element {
-    let colors = if props.dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
-    };
+    let colors = props.theme.colors();
 
-    let card_style = StyleBuilder::new()
+    let card_style = StyleBuilder::with_capacity(240)
         .background_color(colors.surface)
         .border(&format!("1px solid {}", colors.border))
         .border_radius(Radius::MD)
         .padding(Spacing::LG)
-        .box_shadow(if props.dark {
-            Shadow::SM_DARK
-        } else {
-            Shadow::SM
-        })
-        .transition(crate::theme::Interaction::TRANSITION_DEFAULT)
+        .box_shadow(props.theme.card_shadow())
+        .transition(Interaction::TRANSITION_DEFAULT)
         .display("flex")
         .flex_direction("column")
         .gap(Spacing::MD)
         .build();
 
-    let title_style = StyleBuilder::new()
+    let title_style = StyleBuilder::with_capacity(160)
         .font_size(Typography::H2)
         .font_family(Typography::SANS)
         .font_weight("600")
@@ -86,7 +74,7 @@ pub fn Card(props: CardProps) -> Element {
         .line_height(Typography::LINE_HEIGHT)
         .build();
 
-    let content_style = StyleBuilder::new()
+    let content_style = StyleBuilder::with_capacity(160)
         .font_size(Typography::BODY)
         .font_family(Typography::SANS)
         .color(colors.text2)
@@ -100,7 +88,7 @@ pub fn Card(props: CardProps) -> Element {
             if let Some(href) = props.href {
                 a {
                     href: href,
-                    style: StyleBuilder::new()
+                    style: StyleBuilder::with_capacity(96)
                         .text_decoration("none")
                         .color("inherit")
                         .display("block")
@@ -122,6 +110,7 @@ pub fn Card(props: CardProps) -> Element {
 mod tests {
     use super::*;
     use crate::components::render_debug;
+    use crate::theme::ColorScheme;
 
     fn render_linked_light_card() -> Element {
         let description = "Interactive spectrum inspection";
@@ -129,7 +118,7 @@ mod tests {
             Card {
                 title: "MS/MS Viewer".to_string(),
                 href: Some("https://example.org/msms".to_string()),
-                dark: false,
+                theme: Theme::Light,
                 "{description}"
             }
         }
@@ -139,7 +128,7 @@ mod tests {
         rsx! {
             Card {
                 title: "Summary".to_string(),
-                dark: true,
+                theme: Theme::Dark,
             }
         }
     }
@@ -148,30 +137,20 @@ mod tests {
     fn card_renders_linked_and_plain_variants() {
         let linked = render_debug(render_linked_light_card);
         assert!(
-            linked.contains("MS/MS Viewer"),
-            "missing linked card title in {linked}"
-        );
-        assert!(
-            linked.contains("https://example.org/msms"),
-            "missing card href in {linked}"
-        );
-        assert!(
-            linked.contains("Interactive spectrum inspection"),
-            "missing card body in {linked}"
+            linked.contains("MS/MS Viewer")
+                && linked.contains("https://example.org/msms")
+                && linked.contains("Interactive spectrum inspection"),
+            "missing linked card contents in {linked}"
         );
 
         let plain = render_debug(render_plain_dark_card);
         assert!(
-            plain.contains("Summary"),
-            "missing plain card title in {plain}"
-        );
-        assert!(
-            plain.contains(ColorScheme::DARK.surface),
-            "dark card should use dark surface color in {plain}"
+            plain.contains("Summary") && plain.contains(ColorScheme::DARK.surface),
+            "missing dark plain card details in {plain}"
         );
         assert!(
             !plain.contains("cursor: pointer"),
-            "non-linked card should not add link cursor style in {plain}"
+            "non-linked card added link cursor"
         );
     }
 }

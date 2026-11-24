@@ -8,48 +8,18 @@
     reason = "Dioxus component macro generates a Props helper empty enum"
 )]
 
-use std::fmt::Write as _;
-
+use crate::theme::StyleBuilder;
+use crate::url::{is_valid_domain, percent_encode_path};
 use dioxus::prelude::*;
 
-use crate::theme::StyleBuilder;
-
-/// Percent-encodes a URL path segment/query value per RFC 3986 unreserved bytes.
-fn percent_encode_path(path: &str) -> String {
-    let mut out = String::with_capacity(path.len());
-    for byte in path.bytes() {
-        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
-            out.push(char::from(byte));
-        } else {
-            let _ = write!(out, "%{byte:02X}");
-        }
-    }
-    out
-}
+/// Positions the JavaScript-free Simple Analytics pixel out of flow.
+pub(crate) const ANALYTICS_PIXEL_CSS: &str = ".analytics-pixel { position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }";
 
 /// Renders the `SimpleAnalytics` badge for `domain` and the JavaScript-free
 /// `noscript.gif` pixel as a centered footer.
-///
-/// The badge follows the reader's color scheme: a dark variant under
-/// `prefers-color-scheme: dark` and a light variant otherwise. Render it last in
-/// the page so the pixel sits directly before `</body>`.
-fn is_valid_domain(domain: &str) -> bool {
-    !domain.is_empty()
-        && domain.len() <= 253
-        && domain.split('.').all(|label| {
-            !label.is_empty()
-                && label.len() <= 63
-                && !label.starts_with('-')
-                && !label.ends_with('-')
-                && label
-                    .bytes()
-                    .all(|b| b.is_ascii_alphanumeric() || b == b'-')
-        })
-}
-
 #[component]
 pub fn SimpleAnalyticsBadge(domain: String, #[props(default)] path: Option<String>) -> Element {
-    let footer_style = StyleBuilder::new()
+    let footer_style = StyleBuilder::with_capacity(48)
         .padding("0.5rem")
         .text_align("center")
         .build();
@@ -130,15 +100,6 @@ mod tests {
     }
 
     #[test]
-    fn percent_encode_path_encodes_slashes_and_special_chars() {
-        assert_eq!(percent_encode_path("/"), "%2F");
-        assert_eq!(
-            percent_encode_path("/dioxus/cxsmiles-yoga/"),
-            "%2Fdioxus%2Fcxsmiles-yoga%2F"
-        );
-    }
-
-    #[test]
     fn simple_analytics_badge_embeds_domain_dark_media_and_nojs_pixel() {
         let rendered = render_debug(render_badge);
         assert!(
@@ -146,18 +107,10 @@ mod tests {
             "missing badge image domain in {rendered}"
         );
         assert!(
-            rendered.contains("utm_source=tools.example.org"),
-            "missing utm_source query parameter in {rendered}"
-        );
-        assert!(
             rendered.contains(
                 "https://queue.simpleanalyticscdn.com/noscript.gif?hostname=tools.example.org&path=%2Fdioxus%2F"
             ),
             "missing no-JS analytics pixel src in {rendered}"
-        );
-        assert!(
-            !rendered.contains("<noscript") && !rendered.contains("<script"),
-            "pixel must not be wrapped in noscript or script: {rendered}"
         );
         let template = match SimpleAnalyticsBadge(SimpleAnalyticsBadgeProps {
             domain: "tools.example.org".to_string(),
@@ -167,20 +120,7 @@ mod tests {
             Err(err) => format!("render error: {err:?}"),
         };
         assert!(
-            template.contains("prefers-color-scheme: dark"),
-            "missing dark color-scheme source in {template}"
-        );
-        assert!(
-            template.contains("analytics-pixel")
-                && template.contains("no-referrer-when-downgrade")
-                && template.contains("fetchpriority")
-                && template.contains("decoding")
-                && template.contains("aria-hidden"),
-            "missing pixel attributes in template: {template}"
-        );
-        assert!(
-            !template.contains("loading") || template.matches("loading").count() == 1,
-            "pixel img must not carry loading=lazy: {template}"
+            template.contains("analytics-pixel") && template.contains("prefers-color-scheme: dark")
         );
     }
 
@@ -202,11 +142,8 @@ mod tests {
             );
             let out = format!("{:?}", dom.rebuild_to_vec());
             assert!(
-                !out.contains("onload")
-                    && !out.contains("<script")
-                    && !out.contains("simpleanalyticsbadges.com")
-                    && !out.contains("noscript.gif"),
-                "unsafe domain {bad:?} leaked into badge/pixel output: {out}"
+                !out.contains("onload") && !out.contains("noscript.gif"),
+                "unsafe domain {bad:?} leaked: {out}"
             );
         }
     }

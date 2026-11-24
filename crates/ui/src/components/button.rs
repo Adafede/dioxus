@@ -8,49 +8,43 @@
     reason = "Dioxus Props derive macro generates an empty helper enum"
 )]
 
-use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typography};
+use crate::theme::{Radius, Shadow, Spacing, StyleBuilder, Theme, Typography};
 use dioxus::prelude::*;
 
-/// Button variant enumeration
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
+/// Button variant enumeration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ButtonVariant {
-    /// Primary action button (filled with accent color)
+    /// Primary action button (filled with accent color).
     Primary,
-    /// Secondary action button (outline style)
+    /// Secondary action button (outline style).
     Secondary,
-    /// Tertiary/subtle button (ghost style)
+    /// Tertiary/subtle button (ghost style).
     Tertiary,
 }
 
-/// Properties for the Button component
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
+/// Properties for the [`Button`] component.
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct ButtonProps {
-    /// Button label text
+    /// Button label text.
     pub label: String,
-    /// Button variant
+    /// Visual style variant.
     #[props(default = ButtonVariant::Primary)]
     pub variant: ButtonVariant,
-    /// Whether the button is disabled
+    /// Whether the button is disabled.
     #[props(default)]
     pub disabled: bool,
-    /// Whether to use dark theme
+    /// Light/dark color theme.
     #[props(default)]
-    pub dark: bool,
-    /// HTML button type. Default to `button` to avoid accidental form submission.
+    pub theme: Theme,
+    /// HTML button type. Defaults to `"button"`.
     #[props(default = "button")]
     pub r#type: &'static str,
-    /// Optional click handler. When `None` (the default), no `onclick`
-    /// attribute is emitted — backward-compatible with call sites that omit it.
+    /// Optional click handler.
     #[props(default)]
     pub onclick: Option<EventHandler<Event<MouseData>>>,
 }
 
-/// Button component with multiple variants.
-///
-/// Provides accessible buttons with consistent styling across the application.
-/// Supports Primary, Secondary, and Tertiary variants with proper focus and hover states.
+/// Button component with Primary, Secondary, and Tertiary variants.
 ///
 /// # Example
 ///
@@ -72,25 +66,19 @@ pub struct ButtonProps {
 /// ```
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
-    let colors = if props.dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
-    };
-
+    let colors = props.theme.colors();
     let (bg_color, text_color, border_color, box_shadow) = match props.variant {
         ButtonVariant::Primary => (colors.accent, colors.surface, colors.accent, Shadow::XS),
         ButtonVariant::Secondary => (colors.surface, colors.text, colors.border, Shadow::XS),
         ButtonVariant::Tertiary => ("transparent", colors.accent, "transparent", "none"),
     };
-
     let border_value = if props.variant == ButtonVariant::Tertiary {
         "none".to_string()
     } else {
         format!("1px solid {border_color}")
     };
 
-    let button_style = StyleBuilder::new()
+    let button_style = StyleBuilder::with_capacity(280)
         .background_color(bg_color)
         .color(text_color)
         .border(&border_value)
@@ -129,6 +117,7 @@ pub fn Button(props: ButtonProps) -> Element {
 mod tests {
     use super::*;
     use crate::components::render_debug;
+    use crate::theme::ColorScheme;
 
     fn render_primary_submit() -> Element {
         rsx! {
@@ -145,7 +134,7 @@ mod tests {
             Button {
                 label: "Inspect".to_string(),
                 variant: ButtonVariant::Secondary,
-                dark: true,
+                theme: Theme::Dark,
             }
         }
     }
@@ -163,33 +152,14 @@ mod tests {
     #[test]
     fn button_renders_variants_and_disabled_state() {
         let primary = render_debug(render_primary_submit);
-        assert!(
-            primary.contains("Save result"),
-            "missing primary label in {primary}"
-        );
-        assert!(
-            primary.contains("submit"),
-            "missing submit type in {primary}"
-        );
+        assert!(primary.contains("Save result") && primary.contains("submit"));
 
         let secondary = render_debug(render_secondary_dark);
-        assert!(
-            secondary.contains(ColorScheme::DARK.border),
-            "dark secondary should use dark border in {secondary}"
-        );
+        assert!(secondary.contains(ColorScheme::DARK.border));
 
         let tertiary = render_debug(render_tertiary_disabled);
-        assert!(
-            tertiary.contains("border: none"),
-            "tertiary button should omit border in {tertiary}"
-        );
-        assert!(
-            tertiary.contains("cursor: not-allowed"),
-            "disabled button should set not-allowed cursor in {tertiary}"
-        );
-        assert!(
-            tertiary.contains("opacity: 0.6"),
-            "disabled button should dim opacity in {tertiary}"
-        );
+        assert!(tertiary.contains("border: none"));
+        assert!(tertiary.contains("cursor: not-allowed"));
+        assert!(tertiary.contains("opacity: 0.6"));
     }
 }

@@ -12,7 +12,7 @@ constants, and styling utilities---all defined in pure Rust.
 ## Design Philosophy
 
 - **Pure-Rust theme tokens**: Colors, spacing, and typography defined in Rust
-  via `StyleBuilder`, `ColorScheme`, `Spacing`, and `Typography`
+  via `StyleBuilder`, `Theme`, `ColorScheme`, `Spacing`, and `Typography`
 - **Document head helper**: [`DocumentHead`](prelude::DocumentHead) manages page
   metadata, theme setup, and JSON-LD directly from Rust
 - **Accessible components**: Semantic HTML landmarks, keyboard navigation, and
@@ -29,7 +29,7 @@ fn app() -> Element {
         Header {
             title: "My App".to_string(),
         }
-        div { style: StyleBuilder::new().padding(Spacing::LG).build(),
+        div { style: StyleBuilder::with_capacity(64).padding(Spacing::LG).build(),
             Card {
                 title: "Content".to_string(),
                 "Body text here"

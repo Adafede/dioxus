@@ -1,63 +1,165 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Shared file-drop zone (drag + browse), de-duplicating the per-app upload
-//! pattern found in `apps/json-count-rs` and `apps/lipid-selecto-rs`.
-//!
-//! Provides the shared rendering (Card + hidden `<input>`), the drag‑state
-//! toggling and the `file_name`/`status`/`busy` bookkeeping. The app owns the
-//! signals (passed by value — `Signal` is `Copy`) and supplies the app‑specific
-//! file processing via `EventHandler` callbacks.
-//!
-//! Why `EventHandler` props (not a bundled handlers struct): a generic
-//! `struct UploadHandlers<…>` of bare closures only compiles when the call site
-//! mono‑morphises it in the same crate; shared components in `crates/ui` have no
-//! same‑crate call site, so the closures fail the rsx `on*` coercion.
-//! `EventHandler` props are wired here with bare `move |e| … .call(e)` closures
-//! (`ListenerCallback`), never a stored `Callback` on an rsx prop.
-//!
-//! The blob extraction (`upload::extract_blob_from_file_data`, returning
-//! `Result<Option<ExtractedFile>, UploadError>`) is intentionally kept in the
-//! apps so `crates/ui` stays free of the `crates/upload` dep.
+//! Shared file-drop zone (drag + browse) for local browser uploads.
 
 #![expect(
     clippy::empty_enums,
-    reason = "Dioxus component macro generates a Props helper empty enum"
+    reason = "Dioxus Props derive macro generates a Props helper empty enum"
 )]
 
-use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
+use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Theme, Typography};
 use dioxus::events::{DragData, FormData};
 use dioxus::prelude::*;
 
-#[component]
-pub fn UploadZone(
-    /// Filename of the selected file (displayed under the drop zone).
-    file_name: Signal<String>,
-    /// Human-readable status ("Choose a JSON file…", "Scanning…", error msg).
-    status: Signal<String>,
-    /// Whether a scan/analysis is in flight (disables the input).
-    busy: Signal<bool>,
-    /// Whether a drag is currently over the zone (toggles the dashed border).
-    drag_active: Signal<bool>,
-    /// Browse or programmatic file pick — app extracts the blob + processes it.
-    on_file_change: EventHandler<Event<FormData>>,
-    /// Drop — app extracts the blob + processes it (the shared handler already
-    /// resets `drag_active` before delegating).
-    on_drop: EventHandler<Event<DragData>>,
-    /// `<input type=file>` accept attribute.
-    accept: &'static str,
-    /// Prominent label inside the drop zone.
-    label: &'static str,
-    /// Small hint under the label.
-    hint: &'static str,
-    /// Leading icon/glyph for the label.
-    icon: &'static str,
-) -> Element {
-    let colors = ColorScheme::LIGHT;
-    let mut drag_active = drag_active;
+/// Semantic tone of the status line below [`UploadZone`].
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum UploadStatusTone {
+    /// Normal informational progress text.
+    #[default]
+    Normal,
+    /// Error / failure message styled in the theme's red token.
+    Error,
+}
 
+impl UploadStatusTone {
+    /// Infers the tone from a human-readable status message.
+    #[must_use]
+    pub fn from_message(message: &str) -> Self {
+        if message.contains("Error") || message.contains("error") || message.contains("Unexpected")
+        {
+            Self::Error
+        } else {
+            Self::Normal
+        }
+    }
+
+    const fn color(self, colors: ColorScheme) -> &'static str {
+        match self {
+            Self::Normal => colors.text,
+            Self::Error => colors.red,
+        }
+    }
+}
+
+/// Properties for the [`UploadZone`] component.
+#[derive(Clone, Props, PartialEq)]
+pub struct UploadZoneProps {
+    /// Filename of the selected file.
+    pub file_name: Signal<String>,
+    /// Human-readable status text.
+    pub status: Signal<String>,
+    /// Whether an import/scan is currently running.
+    pub busy: Signal<bool>,
+    /// Whether a drag operation is hovering over the zone.
+    pub drag_active: Signal<bool>,
+    /// Browse or programmatic file change handler.
+    pub on_file_change: EventHandler<Event<FormData>>,
+    /// Drag-and-drop handler.
+    pub on_drop: EventHandler<Event<DragData>>,
+    /// `<input type=file>` accept filter.
+    pub accept: &'static str,
+    /// Prominent action label.
+    pub label: &'static str,
+    /// Secondary hint text.
+    pub hint: &'static str,
+    /// Leading glyph / badge.
+    pub icon: &'static str,
+    /// Unique DOM ID prefix preventing collisions when multiple zones appear on one page.
+    #[props(default = "upload")]
+    pub id_prefix: &'static str,
+    /// Optional explicit status tone override; defaults to inferring from `status`.
+    #[props(default)]
+    pub status_tone: Option<UploadStatusTone>,
+    /// Light/dark color theme.
+    #[props(default)]
+    pub theme: Theme,
+}
+
+impl core::fmt::Debug for UploadZoneProps {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("UploadZoneProps")
+            .field("accept", &self.accept)
+            .field("label", &self.label)
+            .field("id_prefix", &self.id_prefix)
+            .field("status_tone", &self.status_tone)
+            .field("theme", &self.theme)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Accessible drag-and-drop + file picker zone.
+#[component]
+pub fn UploadZone(props: UploadZoneProps) -> Element {
+    let colors = props.theme.colors();
+    let mut drag_active = props.drag_active;
     let is_drag_active = *drag_active.read();
-    let upload_style = StyleBuilder::new()
+    let status_text = props.status.read();
+    let tone = props
+        .status_tone
+        .unwrap_or_else(|| UploadStatusTone::from_message(&status_text));
+    let input_id = format!("{}-input", props.id_prefix);
+    let status_id = format!("{}-status", props.id_prefix);
+
+    let zone_style = build_zone_style(colors, is_drag_active);
+    let hidden_input_style = build_hidden_input_style();
+    let activate_drag = move |evt: Event<DragData>| {
+        evt.prevent_default();
+        drag_active.set(true);
+    };
+
+    rsx! {
+        label {
+            r#for: "{input_id}",
+            style: zone_style,
+            ondragenter: activate_drag,
+            ondragover: activate_drag,
+            ondragleave: move |evt: Event<DragData>| {
+                evt.prevent_default();
+                drag_active.set(false);
+            },
+            ondrop: move |evt: Event<DragData>| {
+                evt.prevent_default();
+                drag_active.set(false);
+                props.on_drop.call(evt);
+            },
+            span {
+                style: StyleBuilder::with_capacity(48).font_size(Typography::BODY).font_weight("600").build(),
+                "{props.icon} {props.label}"
+            }
+            span {
+                style: StyleBuilder::with_capacity(80).font_size(Typography::LABEL).font_weight("500").color(colors.text3).build(),
+                "{props.hint}"
+            }
+            input {
+                id: "{input_id}",
+                r#type: "file",
+                accept: props.accept,
+                disabled: *props.busy.read(),
+                onchange: move |evt: Event<FormData>| props.on_file_change.call(evt),
+                aria_describedby: "{status_id}",
+                style: hidden_input_style,
+            }
+        }
+        if !props.file_name.read().is_empty() {
+            p {
+                style: StyleBuilder::with_capacity(96).margin(&format!("{} 0 0", Spacing::MD)).color(colors.text2).font_size(Typography::BODY).build(),
+                "Selected: {props.file_name.read()}"
+            }
+        }
+        p {
+            id: "{status_id}",
+            role: "status",
+            aria_live: "polite",
+            aria_atomic: "true",
+            style: StyleBuilder::with_capacity(96).margin(&format!("{} 0 0", Spacing::MD)).font_weight("600").color(tone.color(colors)).build(),
+            "{status_text}"
+        }
+    }
+}
+
+fn build_zone_style(colors: ColorScheme, drag_active: bool) -> String {
+    StyleBuilder::with_capacity(320)
         .display("flex")
         .flex_direction("column")
         .align_items("center")
@@ -69,7 +171,7 @@ pub fn UploadZone(
         .property("position", "relative")
         .border(&format!(
             "2px dashed {}",
-            if is_drag_active {
+            if drag_active {
                 colors.blue
             } else {
                 colors.border
@@ -78,102 +180,24 @@ pub fn UploadZone(
         .border_radius(Radius::MD)
         .padding(Spacing::LG)
         .cursor("pointer")
-        .background_color(if is_drag_active {
+        .background_color(if drag_active {
             colors.surface2
         } else {
             colors.surface
         })
         .color(colors.text2)
-        .build();
+        .build()
+}
 
-    let status_text = status.read();
-    let status_color = if status_text.contains("Error")
-        || status_text.contains("error")
-        || status_text.contains("Unexpected")
-    {
-        colors.red
-    } else {
-        colors.text
-    };
-    let activate_drag = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(true);
-    };
-
-    rsx! {
-        label {
-            r#for: "upload-input",
-            style: upload_style,
-            ondragenter: activate_drag,
-            ondragover: activate_drag,
-            ondragleave: move |evt: Event<DragData>| {
-                evt.prevent_default();
-                drag_active.set(false);
-            },
-            ondrop: move |evt: Event<DragData>| {
-                evt.prevent_default();
-                drag_active.set(false);
-                on_drop.call(evt);
-            },
-
-            span {
-                style: StyleBuilder::new()
-                    .font_size(Typography::BODY)
-                    .font_weight("600")
-                    .build(),
-                "{icon} {label}"
-            }
-            span {
-                style: StyleBuilder::new()
-                    .font_size(Typography::LABEL)
-                    .font_weight("500")
-                    .color(colors.text3)
-                    .build(),
-                "{hint}"
-            }
-
-            input {
-                id: "upload-input",
-                r#type: "file",
-                accept: accept,
-                disabled: *busy.read(),
-                onchange: move |evt: Event<FormData>| on_file_change.call(evt),
-                aria_describedby: "upload-status",
-                style: StyleBuilder::new()
-                    .property("position", "absolute")
-                    .property("inset", "0")
-                    .width("100%")
-                    .height("100%")
-                    .opacity("0")
-                    .cursor("pointer")
-                    .build(),
-            }
-        }
-
-        if !file_name.read().is_empty() {
-            p {
-                style: StyleBuilder::new()
-                    .margin(&format!("{} 0 0", Spacing::MD))
-                    .color(colors.text2)
-                    .font_size(Typography::BODY)
-                    .build(),
-                "Selected: {file_name.read()}"
-            }
-        }
-
-        p {
-            id: "upload-status",
-            role: "status",
-            aria_live: "polite",
-            aria_atomic: "true",
-            style: StyleBuilder::new()
-                .margin(&format!("{} 0 0", Spacing::MD))
-                .font_weight("600")
-                .color(status_color)
-                .build(),
-            "{status.read()}"
-        }
-    }
+fn build_hidden_input_style() -> String {
+    StyleBuilder::with_capacity(110)
+        .property("position", "absolute")
+        .property("inset", "0")
+        .width("100%")
+        .height("100%")
+        .opacity("0")
+        .cursor("pointer")
+        .build()
 }
 
 #[cfg(test)]
@@ -219,6 +243,7 @@ mod tests {
                 label: "Drop JSON",
                 hint: "Max 500 MB",
                 icon: "[JSON]",
+                id_prefix: "custom-upload",
             }
         }
     }
@@ -226,32 +251,18 @@ mod tests {
     #[test]
     fn upload_zone_renders_idle_and_drag_error_states() {
         let idle = render_debug(render_idle_upload_zone);
-        assert!(
-            idle.contains("[MGF] Drop MGF file"),
-            "missing icon/label in {idle}"
-        );
-        assert!(idle.contains(".mgf"), "missing accept attribute in {idle}");
-        assert!(
-            !idle.contains("Selected:"),
-            "idle upload zone should hide selected filename in {idle}"
-        );
+        assert!(idle.contains("[MGF] Drop MGF file") && idle.contains(".mgf"));
+        assert!(!idle.contains("Selected:"));
 
         let active = render_debug(render_active_error_upload_zone);
         assert!(
-            active.contains("Selected: spectra.mgf"),
-            "populated upload zone should show filename in {active}"
-        );
-        assert!(
-            active.contains("Error parsing header"),
-            "missing error status message in {active}"
-        );
-        assert!(
-            active.contains(ColorScheme::LIGHT.red),
-            "error status should color text red in {active}"
-        );
-        assert!(
-            active.contains(ColorScheme::LIGHT.blue),
-            "active drag should highlight border blue in {active}"
+            active.contains("Selected: spectra.mgf")
+                && active.contains("Error parsing header")
+                && active.contains("custom-upload-input")
+                && active.contains("custom-upload-status")
+                && active.contains(ColorScheme::LIGHT.red)
+                && active.contains(ColorScheme::LIGHT.blue),
+            "active upload zone mismatch: {active}"
         );
     }
 }

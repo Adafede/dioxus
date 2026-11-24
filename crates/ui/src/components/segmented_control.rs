@@ -8,21 +8,19 @@
     reason = "Dioxus Props derive macro generates empty helper enums"
 )]
 
-use crate::theme::{ColorScheme, Interaction, Shadow, StyleBuilder, Typography};
+use crate::theme::{Interaction, Shadow, StyleBuilder, Theme, Typography};
 use dioxus::prelude::*;
 
-/// Item rendered inside a segmented control.
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
+/// Item rendered inside a [`SegmentedControl`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SegmentedControlItem {
-    /// The display label for this item.
+    /// Display label for this option.
     pub label: &'static str,
-    /// The value used for comparison with `selected_value`.
+    /// Value compared against `selected_value`.
     pub value: &'static str,
 }
 
 /// Properties for the [`SegmentedControl`] component.
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct SegmentedControlProps {
     /// ARIA label for the control group.
@@ -33,13 +31,13 @@ pub struct SegmentedControlProps {
     pub items: &'static [SegmentedControlItem],
     /// Callback fired when selection changes.
     pub on_select: EventHandler<String>,
-    /// Use dark theme colors.
-    #[props(default = false)]
-    pub dark: bool,
-    /// Items should stretch to fill available space.
+    /// Light/dark color theme.
+    #[props(default)]
+    pub theme: Theme,
+    /// Stretch items evenly across available horizontal space.
     #[props(default = false)]
     pub stretch: bool,
-    /// Wrap items to multiple lines if needed.
+    /// Allow wrapping items across lines.
     #[props(default = true)]
     pub wrap: bool,
     /// ARIA current attribute value when item is active.
@@ -47,23 +45,12 @@ pub struct SegmentedControlProps {
     pub active_aria_current: &'static str,
 }
 
-/// A segmented button control for selecting one option from multiple.
+/// Segmented button control for selecting one option from a static list.
 #[component]
 pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
-    let SegmentedControlProps {
-        aria_label,
-        selected_value,
-        items,
-        on_select,
-        dark,
-        stretch,
-        wrap,
-        active_aria_current,
-    } = props;
-
-    let group_style = StyleBuilder::new()
+    let group_style = StyleBuilder::with_capacity(96)
         .display("inline-flex")
-        .flex_wrap(if wrap { "wrap" } else { "nowrap" })
+        .flex_wrap(if props.wrap { "wrap" } else { "nowrap" })
         .align_items("center")
         .gap("6px")
         .build();
@@ -71,18 +58,18 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
     rsx! {
         div {
             role: "group",
-            aria_label,
+            aria_label: props.aria_label,
             style: group_style,
-            for item in items {
+            for item in props.items {
                 SegmentedButton {
                     key: "{item.value}",
                     label: item.label,
                     value: item.value,
-                    active: item.value == selected_value,
-                    dark,
-                    stretch,
-                    active_aria_current,
-                    on_select,
+                    active: item.value == props.selected_value,
+                    theme: props.theme,
+                    stretch: props.stretch,
+                    active_aria_current: props.active_aria_current,
+                    on_select: props.on_select,
                 }
             }
         }
@@ -90,14 +77,13 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
 }
 
 #[derive(Clone, Props, Debug, PartialEq)]
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 struct SegmentedButtonProps {
     pub label: &'static str,
     pub value: &'static str,
     pub active: bool,
     pub on_select: EventHandler<String>,
-    #[props(default = false)]
-    pub dark: bool,
+    #[props(default)]
+    pub theme: Theme,
     #[props(default = false)]
     pub stretch: bool,
     #[props(default = "true")]
@@ -106,28 +92,14 @@ struct SegmentedButtonProps {
 
 #[component]
 fn SegmentedButton(props: SegmentedButtonProps) -> Element {
-    let SegmentedButtonProps {
-        label,
-        value,
-        active,
-        on_select,
-        dark,
-        stretch,
-        active_aria_current,
-    } = props;
-
-    let colors = if dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
-    };
-    let (bg, fg, border_color, shadow) = if active {
+    let colors = props.theme.colors();
+    let (bg, fg, border_color, shadow) = if props.active {
         (colors.accent, colors.surface, colors.accent, Shadow::XS)
     } else {
         (colors.surface2, colors.text, colors.border, "none")
     };
 
-    let button_style = StyleBuilder::new()
+    let button_style = StyleBuilder::with_capacity(320)
         .display("inline-flex")
         .align_items("center")
         .justify_content("center")
@@ -144,18 +116,20 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
         .box_shadow(shadow)
         .cursor("pointer")
         .transition(Interaction::TRANSITION_DEFAULT)
-        .flex(if stretch { "1 1 0%" } else { "0 0 auto" })
+        .flex(if props.stretch { "1 1 0%" } else { "0 0 auto" })
         .property("white-space", "nowrap")
         .build();
 
+    let value = props.value;
+    let on_select = props.on_select;
     rsx! {
         button {
             r#type: "button",
-            aria_pressed: if active { "true" } else { "false" },
-            aria_current: if active { active_aria_current } else { "false" },
+            aria_pressed: if props.active { "true" } else { "false" },
+            aria_current: if props.active { props.active_aria_current } else { "false" },
             style: button_style,
             onclick: move |_| on_select.call(value.to_string()),
-            "{label}"
+            "{props.label}"
         }
     }
 }
@@ -164,6 +138,7 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
 mod tests {
     use super::*;
     use crate::components::render_debug;
+    use crate::theme::ColorScheme;
 
     static ITEMS: &[SegmentedControlItem] = &[
         SegmentedControlItem {
@@ -193,7 +168,7 @@ mod tests {
                 aria_label: "Dark selector".to_string(),
                 selected_value: "da".to_string(),
                 items: ITEMS,
-                dark: true,
+                theme: Theme::Dark,
                 stretch: true,
                 wrap: false,
                 active_aria_current: "page",
@@ -206,32 +181,20 @@ mod tests {
     fn segmented_control_renders_active_state_and_layout_options() {
         let light = render_debug(render_light_control);
         assert!(
-            light.contains("Unit selector"),
-            "missing aria_label in {light}"
-        );
-        assert!(light.contains("PPM"), "missing first item in {light}");
-        assert!(light.contains("Da"), "missing second item in {light}");
-        assert!(
-            light.contains("flex-wrap: wrap"),
-            "default segmented control should wrap in {light}"
+            light.contains("Unit selector")
+                && light.contains("PPM")
+                && light.contains("Da")
+                && light.contains("flex-wrap: wrap"),
+            "light segmented control mismatch: {light}"
         );
 
         let dark = render_debug(render_dark_stretched_nowrap);
         assert!(
-            dark.contains("flex-wrap: nowrap"),
-            "nowrap prop should apply flex-wrap: nowrap in {dark}"
-        );
-        assert!(
-            dark.contains("flex: 1 1 0%"),
-            "stretch prop should flex items equally in {dark}"
-        );
-        assert!(
-            dark.contains("page"),
-            "active item should emit custom aria_current in {dark}"
-        );
-        assert!(
-            dark.contains(ColorScheme::DARK.accent),
-            "dark active item should use dark accent in {dark}"
+            dark.contains("flex-wrap: nowrap")
+                && dark.contains("flex: 1 1 0%")
+                && dark.contains("page")
+                && dark.contains(ColorScheme::DARK.accent),
+            "dark segmented control mismatch: {dark}"
         );
     }
 }

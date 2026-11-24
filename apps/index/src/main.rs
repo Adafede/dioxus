@@ -216,4 +216,26 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn app_card_renders_article_link_title_and_description() {
+        let mut dom = VirtualDom::new(|| {
+            let app = AppInfo {
+                id: "demo",
+                title: "Demo Tool",
+                path: "./demo/",
+                description: "Inspect demo data",
+            };
+            rsx! {
+                AppCard { app }
+            }
+        });
+        let rendered = format!("{:?}", dom.rebuild_to_vec());
+        assert!(
+            rendered.contains("Demo Tool")
+                && rendered.contains("./demo/")
+                && rendered.contains("Inspect demo data"),
+            "AppCard output missing fields: {rendered}"
+        );
+    }
 }

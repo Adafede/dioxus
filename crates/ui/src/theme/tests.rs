@@ -82,4 +82,10 @@ fn style_builder_multiple_properties() {
     );
     assert!(style.contains("cursor: pointer"), "missing cursor: {style}");
     assert_eq!(StyleBuilder::default().build(), "");
+    assert!(
+        Theme::Light.colors() == ColorScheme::LIGHT
+            && Theme::Dark.colors() == ColorScheme::DARK
+            && Theme::Light.card_shadow() != Theme::Dark.card_shadow(),
+        "Theme variants should map to light/dark palettes and shadows"
+    );
 }

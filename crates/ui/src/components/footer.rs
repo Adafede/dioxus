@@ -8,33 +8,29 @@
     reason = "Dioxus Props derive macro generates an empty helper enum"
 )]
 
-use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
+use crate::theme::{Radius, Spacing, StyleBuilder, Theme, Typography};
 use dioxus::prelude::*;
 
-/// Properties for the Footer component
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
+/// Properties for the [`Footer`] component.
 #[derive(Clone, Props, Debug, Eq, PartialEq)]
 pub struct FooterProps {
-    /// Whether to use dark theme
+    /// Light/dark color theme.
     #[props(default)]
-    pub dark: bool,
+    pub theme: Theme,
 }
 
-/// Page footer component with navigation and attribution.
-///
-/// Renders semantic `<footer>` with proper contentinfo landmark and accessible links.
-/// All external links include `rel="noopener noreferrer"` for security and performance.
+/// Page footer component with navigation and source attribution.
 ///
 /// # Example
 ///
 /// ```rust
 /// use dioxus::prelude::*;
-/// use ui::prelude::Footer;
+/// use ui::prelude::{Footer, Theme};
 ///
 /// fn app() -> Element {
 ///     rsx! {
 ///         Footer {
-///             dark: false,
+///             theme: Theme::Light,
 ///         }
 ///     }
 /// }
@@ -44,13 +40,9 @@ pub struct FooterProps {
 /// ```
 #[component]
 pub fn Footer(props: FooterProps) -> Element {
-    let colors = if props.dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
-    };
+    let colors = props.theme.colors();
 
-    let footer_style = StyleBuilder::new()
+    let footer_style = StyleBuilder::with_capacity(140)
         .background_color(colors.bg)
         .border(&format!("1px solid {}", colors.border))
         .border_radius(Radius::LG)
@@ -58,7 +50,7 @@ pub fn Footer(props: FooterProps) -> Element {
         .text_align("center")
         .build();
 
-    let text_style = StyleBuilder::new()
+    let text_style = StyleBuilder::with_capacity(140)
         .font_size(Typography::BODY)
         .font_family(Typography::SANS)
         .color(colors.text3)
@@ -66,7 +58,7 @@ pub fn Footer(props: FooterProps) -> Element {
         .line_height(Typography::LINE_HEIGHT)
         .build();
 
-    let link_style = StyleBuilder::new()
+    let link_style = StyleBuilder::with_capacity(96)
         .color(colors.accent)
         .text_decoration("none")
         .border_bottom("1px solid transparent")
@@ -100,39 +92,28 @@ pub fn Footer(props: FooterProps) -> Element {
 mod tests {
     use super::*;
     use crate::components::render_debug;
+    use crate::theme::ColorScheme;
 
     fn render_light_footer() -> Element {
-        rsx! {
-            Footer { dark: false }
-        }
+        rsx! { Footer { theme: Theme::Light } }
     }
 
     fn render_dark_footer() -> Element {
-        rsx! {
-            Footer { dark: true }
-        }
+        rsx! { Footer { theme: Theme::Dark } }
     }
 
     #[test]
     fn footer_renders_themed_styles() {
         let light = render_debug(render_light_footer);
         assert!(
-            light.contains(ColorScheme::LIGHT.bg),
-            "light footer should use light background in {light}"
-        );
-        assert!(
-            light.contains(ColorScheme::LIGHT.accent),
-            "light footer should style links with light accent in {light}"
+            light.contains(ColorScheme::LIGHT.bg) && light.contains(ColorScheme::LIGHT.accent),
+            "light footer style mismatch: {light}"
         );
 
         let dark = render_debug(render_dark_footer);
         assert!(
-            dark.contains(ColorScheme::DARK.bg),
-            "dark footer should use dark background in {dark}"
-        );
-        assert!(
-            dark.contains(ColorScheme::DARK.text3),
-            "dark footer should use dark muted text in {dark}"
+            dark.contains(ColorScheme::DARK.bg) && dark.contains(ColorScheme::DARK.text3),
+            "dark footer style mismatch: {dark}"
         );
     }
 }

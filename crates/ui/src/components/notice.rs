@@ -8,14 +8,13 @@
     reason = "Dioxus Props derive macro generates an empty helper enum"
 )]
 
-use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typography};
+use crate::theme::{Radius, Shadow, Spacing, StyleBuilder, Theme, Typography};
 use dioxus::prelude::*;
 
 /// Visual tone for a notice bar.
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NoticeTone {
-    /// Neutral informational tone (no specific semantic meaning).
+    /// Neutral informational tone.
     Neutral,
     /// Informational tone (blue/cyan themed).
     Info,
@@ -28,10 +27,9 @@ pub enum NoticeTone {
 }
 
 /// Properties for the [`NoticeBar`] component.
-#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct NoticeBarProps {
-    /// The main label text displayed in the notice bar.
+    /// Main label badge displayed in the notice bar.
     pub label: String,
     /// Visual tone/style of the notice bar.
     #[props(default = NoticeTone::Neutral)]
@@ -39,37 +37,30 @@ pub struct NoticeBarProps {
     /// ARIA role attribute for accessibility.
     #[props(default = "status")]
     pub role: &'static str,
-    /// ARIA live region setting for dynamic updates.
+    /// ARIA live region setting.
     #[props(default = "polite")]
     pub aria_live: &'static str,
-    /// Whether to use dark theme colors.
-    #[props(default = false)]
-    pub dark: bool,
+    /// Light/dark color theme.
+    #[props(default)]
+    pub theme: Theme,
     /// CSS margin for the outer container.
     #[props(default = "10px 22px 0")]
     pub margin: &'static str,
     /// CSS padding for the inner content area.
     #[props(default = "9px 12px")]
     pub padding: &'static str,
-    /// Optional trailing content (e.g., icons, buttons).
+    /// Optional trailing content.
     #[props(default)]
     pub trailing: Option<Element>,
-    /// Optional child elements to display in the notice body.
+    /// Optional child body elements.
     #[props(default)]
     pub children: Option<Element>,
 }
 
 /// A notice bar component for displaying informational messages with visual tone styling.
-///
-/// Supports neutral, info, success, warning, and danger tones with customizable
-/// content and styling.
 #[component]
 pub fn NoticeBar(props: NoticeBarProps) -> Element {
-    let colors = if props.dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
-    };
+    let colors = props.theme.colors();
     let tone_color = match props.tone {
         NoticeTone::Neutral => colors.accent,
         NoticeTone::Info => colors.blue,
@@ -77,11 +68,11 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         NoticeTone::Warning => colors.yellow,
         NoticeTone::Danger => colors.red,
     };
-    let border_color = format!("color-mix(in srgb, {} 24%, {})", tone_color, colors.border);
-    let label_background = format!("color-mix(in srgb, {} 12%, {})", tone_color, colors.bg2);
-    let outer_background = format!("color-mix(in srgb, {} 4%, {})", tone_color, colors.bg2);
+    let border_color = format!("color-mix(in srgb, {tone_color} 24%, {})", colors.border);
+    let label_background = format!("color-mix(in srgb, {tone_color} 12%, {})", colors.bg2);
+    let outer_background = format!("color-mix(in srgb, {tone_color} 4%, {})", colors.bg2);
 
-    let outer_style = StyleBuilder::new()
+    let outer_style = StyleBuilder::with_capacity(300)
         .margin(props.margin)
         .padding(props.padding)
         .display("flex")
@@ -97,7 +88,7 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         .font_size(Typography::UI)
         .build();
 
-    let label_style = StyleBuilder::new()
+    let label_style = StyleBuilder::with_capacity(240)
         .display("inline-flex")
         .align_items("center")
         .padding("2px 8px")
@@ -112,7 +103,7 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         .property("white-space", "nowrap")
         .build();
 
-    let body_style = StyleBuilder::new()
+    let body_style = StyleBuilder::with_capacity(140)
         .display("flex")
         .flex_direction("row")
         .flex_wrap("wrap")
@@ -123,7 +114,7 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         .color(colors.text)
         .build();
 
-    let trailing_style = StyleBuilder::new()
+    let trailing_style = StyleBuilder::with_capacity(110)
         .display("flex")
         .flex_direction("row")
         .flex_wrap("wrap")
@@ -153,6 +144,7 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
 mod tests {
     use super::*;
     use crate::components::render_debug;
+    use crate::theme::ColorScheme;
 
     fn render_danger_light() -> Element {
         let retry = "Retry";
@@ -171,43 +163,31 @@ mod tests {
 
     fn render_all_dark_tones() -> Element {
         rsx! {
-            NoticeBar { label: "N".to_string(), tone: NoticeTone::Neutral, dark: true }
-            NoticeBar { label: "I".to_string(), tone: NoticeTone::Info, dark: true }
-            NoticeBar { label: "S".to_string(), tone: NoticeTone::Success, dark: true }
-            NoticeBar { label: "W".to_string(), tone: NoticeTone::Warning, dark: true }
+            NoticeBar { label: "N".to_string(), tone: NoticeTone::Neutral, theme: Theme::Dark }
+            NoticeBar { label: "I".to_string(), tone: NoticeTone::Info, theme: Theme::Dark }
+            NoticeBar { label: "S".to_string(), tone: NoticeTone::Success, theme: Theme::Dark }
+            NoticeBar { label: "W".to_string(), tone: NoticeTone::Warning, theme: Theme::Dark }
         }
     }
 
     #[test]
     fn notice_bar_renders_tones_aria_and_slots() {
         let danger = render_debug(render_danger_light);
-        assert!(danger.contains("Failed"), "missing label in {danger}");
         assert!(
-            danger.contains("Retry"),
-            "missing trailing slot in {danger}"
-        );
-        assert!(
-            danger.contains("Invalid SMILES line 4"),
-            "missing children text in {danger}"
-        );
-        assert!(danger.contains("alert"), "missing alert role in {danger}");
-        assert!(
-            danger.contains(ColorScheme::LIGHT.red),
-            "danger tone should use red token in {danger}"
+            danger.contains("Failed")
+                && danger.contains("Retry")
+                && danger.contains("Invalid SMILES line 4")
+                && danger.contains("alert")
+                && danger.contains(ColorScheme::LIGHT.red),
+            "danger notice mismatch: {danger}"
         );
 
         let all_dark = render_debug(render_all_dark_tones);
         assert!(
-            all_dark.contains(ColorScheme::DARK.blue),
-            "info tone should use blue token in {all_dark}"
-        );
-        assert!(
-            all_dark.contains(ColorScheme::DARK.green),
-            "success tone should use green token in {all_dark}"
-        );
-        assert!(
-            all_dark.contains(ColorScheme::DARK.yellow),
-            "warning tone should use yellow token in {all_dark}"
+            all_dark.contains(ColorScheme::DARK.blue)
+                && all_dark.contains(ColorScheme::DARK.green)
+                && all_dark.contains(ColorScheme::DARK.yellow),
+            "dark tones mismatch: {all_dark}"
         );
     }
 }

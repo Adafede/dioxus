@@ -67,7 +67,7 @@ every gate green on each commit.
   - *Verify*: `./mk ci-fast`
   - *Rollback*: `git revert HEAD`
 
-- [ ] **Step 9 — Refactor `crates/ui` & `apps/index`**:
+- [x] **Step 9 — Refactor `crates/ui` & `apps/index`**:
   Replace `common` with focused accessibility and URL modules, introduce `Theme`
   and `UploadStatus`, pre-allocate `StyleBuilder`, decompose `DocumentHead` and
   `UploadZone`, and reuse the shared `Card` component in `apps/index`.
