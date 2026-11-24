@@ -5,6 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+#[cfg(test)]
 use csv::ReaderBuilder;
 use rand::rngs::StdRng;
 use rand::{RngExt, SeedableRng};
@@ -17,16 +18,14 @@ mod types;
 use self::slug::{category_of_main, category_rank, dedupe_slug, slugify, target_negative_count};
 
 pub use self::types::{
-    ClassSplit, ColumnNames, Dataset, DatasetRow, Level, SkippedClass, SplitConfig, SplitError,
-    SplitResult, SubclassNegatives,
+    ClassSplit, Dataset, DatasetRow, Level, SkippedClass, SplitConfig, SplitResult,
+    SubclassNegatives,
 };
+#[cfg(test)]
+use self::types::{ColumnNames, SplitError};
 
-/// Parse CSV text into a [`Dataset`], dropping rows with empty `SMILES` or `MAIN_CLASS`.
-///
-/// # Errors
-///
-/// Returns [`SplitError::Csv`] on malformed CSV or [`SplitError::MissingColumns`] when required headers are absent.
-pub fn parse_csv(csv_text: &str, columns: &ColumnNames) -> Result<Dataset, SplitError> {
+#[cfg(test)]
+fn parse_csv(csv_text: &str, columns: &ColumnNames) -> Result<Dataset, SplitError> {
     let mut reader = ReaderBuilder::new().from_reader(csv_text.as_bytes());
     let headers = reader.headers()?.clone();
 
@@ -64,6 +63,7 @@ pub fn parse_csv(csv_text: &str, columns: &ColumnNames) -> Result<Dataset, Split
     Ok(Dataset { rows })
 }
 
+#[cfg(test)]
 fn require_columns(
     columns: &ColumnNames,
     smiles_idx: Option<usize>,

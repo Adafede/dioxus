@@ -4,15 +4,14 @@
 //! Core logic for splitting SMILES datasets into positive/negative pairs
 //! and running smarts-evolution on each pair.
 
-pub mod download;
-pub mod error;
-pub mod evolve;
-pub mod lipidsdl;
-pub mod manifest;
-pub mod results_io;
-pub mod splitting;
+mod download;
+mod error;
+mod evolve;
+mod manifest;
+mod results_io;
+mod splitting;
 
-pub use download::{SdfConvertError, download_lmsd, sdf_zip_to_tsv};
+pub use download::{LIPIDMAPS_LMSD_URL, SdfConvertError, sdf_zip_to_tsv};
 pub use error::CliError;
 pub use evolve::{
     Config, EvolutionResult, ParseCounts, TestedSmartsRecord, evolve_all, evolve_all_with_progress,
@@ -20,6 +19,6 @@ pub use evolve::{
 pub use manifest::{ManifestRow, read_manifest, write_manifest};
 pub use results_io::{RESULTS_HEADERS, already_done, open_results_writer};
 pub use splitting::{
-    ClassSplit, ColumnNames, Dataset, DatasetRow, Level, SkippedClass, SplitConfig, SplitError,
-    SplitResult, SubclassNegatives, parse_csv, split_dataset,
+    ClassSplit, Dataset, DatasetRow, Level, SkippedClass, SplitConfig, SplitResult,
+    SubclassNegatives, split_dataset,
 };

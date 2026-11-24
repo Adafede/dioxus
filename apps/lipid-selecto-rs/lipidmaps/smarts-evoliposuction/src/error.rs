@@ -4,8 +4,6 @@
 //! Typed top-level CLI errors for `smarts-evoliposuction`.
 
 use crate::SdfConvertError;
-use crate::lipidsdl::download::Error as DownloadError;
-use crate::splitting::SplitError;
 use thiserror::Error;
 
 /// Unified error type returned by `smarts-evoliposuction` CLI subcommands.
@@ -21,15 +19,9 @@ pub enum CliError {
     /// HTTP request failure during dataset download.
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
-    /// Async download failure.
-    #[error("download error: {0}")]
-    Download(#[from] DownloadError),
     /// LMSD archive/SDF conversion failure.
     #[error(transparent)]
     SdfConvert(#[from] SdfConvertError),
-    /// Dataset splitting failure.
-    #[error(transparent)]
-    Split(#[from] SplitError),
     /// Input TSV/CSV file contained no header or data.
     #[error("Empty input file")]
     EmptyInput,

@@ -6,7 +6,7 @@
 use std::fs;
 use std::path::Path;
 
-use smarts_evoliposuction::{CliError, download::LIPIDMAPS_LMSD_URL, sdf_zip_to_tsv};
+use smarts_evoliposuction::{CliError, LIPIDMAPS_LMSD_URL, sdf_zip_to_tsv};
 
 pub(crate) fn download_step(dest: &Path) -> Result<(), CliError> {
     let tsv_path = dest.with_extension("tsv");

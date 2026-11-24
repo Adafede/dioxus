@@ -6,23 +6,14 @@
 //! Uses [`lipidsdl`] for the actual work — this module is a thin adapter
 //! that ties the download URL to the SDF→TSV conversion.
 
+mod sdf;
+
 use std::path::Path;
 
-use crate::lipidsdl::download::{Error, download_to, noop_progress};
-use crate::lipidsdl::sdf::lipidmaps::to_lmsd_tsv;
+use sdf::to_lmsd_tsv;
 
 /// The canonical LMSD download URL.
 pub const LIPIDMAPS_LMSD_URL: &str = "https://www.lipidmaps.org/files/?file=LMSD&ext=sdf.zip";
-
-/// Download LMSD.sdf.zip to `dest` (skipped if already present).
-///
-/// # Errors
-///
-/// Returns an error if the download fails.
-#[expect(clippy::module_name_repetitions, reason = "preserves public API name")]
-pub async fn download_lmsd(dest: &Path) -> Result<(), Error> {
-    download_to(LIPIDMAPS_LMSD_URL, dest, noop_progress).await
-}
 
 /// Extract and convert the first entry of a zip archive to LMSD-format TSV.
 ///
@@ -45,7 +36,7 @@ pub fn sdf_zip_to_tsv(zip_path: &Path) -> Result<(String, usize), SdfConvertErro
 /// # Errors
 ///
 /// Returns an error if the zip data cannot be parsed.
-pub fn sdf_zip_to_tsv_from_bytes(data: &[u8]) -> Result<(String, usize), SdfConvertError> {
+fn sdf_zip_to_tsv_from_bytes(data: &[u8]) -> Result<(String, usize), SdfConvertError> {
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(data))?;
 
     // Find the first .sdf entry in the archive.

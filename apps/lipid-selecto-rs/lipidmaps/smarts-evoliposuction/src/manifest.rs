@@ -15,7 +15,6 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 /// One row of the manifest CSV.
-#[expect(clippy::module_name_repetitions, reason = "preserves public API name")]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ManifestRow {
     pub level: String,
@@ -36,7 +35,6 @@ pub struct ManifestRow {
 /// # Errors
 ///
 /// Returns an error if the file cannot be read or parsed as CSV.
-#[expect(clippy::module_name_repetitions, reason = "preserves public API name")]
 pub fn read_manifest(path: &Path) -> Result<Vec<ManifestRow>, csv::Error> {
     csv::Reader::from_path(path)?
         .deserialize::<ManifestRow>()
@@ -48,7 +46,6 @@ pub fn read_manifest(path: &Path) -> Result<Vec<ManifestRow>, csv::Error> {
 /// # Errors
 ///
 /// Returns an error if the file cannot be written.
-#[expect(clippy::module_name_repetitions, reason = "preserves public API name")]
 pub fn write_manifest(path: &Path, rows: &[ManifestRow]) -> Result<(), csv::Error> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -93,8 +90,8 @@ main_class,FA,Fatty Acyls,FA,,fa,fa_pos.smiles,fa_neg.smiles,50,50\n";
     }
 
     #[test]
-    fn read_manifest_backward_compatible_no_category() {
-        // Older manifests may not have a `category` column — it should default to "".
+    fn read_manifest_without_category_defaults_empty() {
+        // Manifests omitting the `category` column default it to "".
         let content = "level,label,main_class,subclass,slug,positive_path,negative_path,positive_count,negative_count\n\
 main_class,FA,FA,,fa,fa_pos.smiles,fa_neg.smiles,50,50\n";
         let mut tmp = NamedTempFile::new().unwrap();

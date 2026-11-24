@@ -6,14 +6,16 @@
 use std::fmt;
 
 /// Column names to read from the input CSV.
+#[cfg(test)]
 #[derive(Debug, Clone)]
-pub struct ColumnNames {
-    pub smiles: String,
-    pub category: String,
-    pub main_class: String,
-    pub subclass: String,
+pub(super) struct ColumnNames {
+    pub(super) smiles: String,
+    pub(super) category: String,
+    pub(super) main_class: String,
+    pub(super) subclass: String,
 }
 
+#[cfg(test)]
 impl Default for ColumnNames {
     fn default() -> Self {
         Self {
@@ -82,15 +84,16 @@ pub struct DatasetRow {
     pub subclass: String,
 }
 
-/// A parsed, in-memory dataset built with [`crate::splitting::parse_csv`].
+/// A parsed, in-memory dataset of SMILES and classification labels.
 #[derive(Debug, Clone, Default)]
 pub struct Dataset {
     pub rows: Vec<DatasetRow>,
 }
 
-/// CSV parsing errors returned by [`crate::splitting::parse_csv`].
+/// CSV parsing errors returned by [`super::parse_csv`].
+#[cfg(test)]
 #[derive(Debug, thiserror::Error)]
-pub enum SplitError {
+pub(super) enum SplitError {
     #[error("CSV error: {0}")]
     Csv(#[from] csv::Error),
     #[error("missing column(s) in CSV header: {}", .0.join(", "))]

@@ -185,20 +185,12 @@ fn evolve_inner(
 }
 
 /// Run evolution silently in batch mode for one class split.
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "evolve_all preserves public library API name"
-)]
 #[must_use]
 pub fn evolve_all(config: &Config, positive_path: &Path, negative_path: &Path) -> EvolutionResult {
     evolve_inner(config, positive_path, negative_path, false)
 }
 
 /// Run evolution with stderr progress output for one class split.
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "evolve_all_with_progress preserves public library API name"
-)]
 #[must_use]
 pub fn evolve_all_with_progress(
     config: &Config,
@@ -208,7 +200,7 @@ pub fn evolve_all_with_progress(
     evolve_inner(config, positive_path, negative_path, true)
 }
 
-pub(crate) fn read_smiles_lines(path: &Path) -> io::Result<Vec<String>> {
+fn read_smiles_lines(path: &Path) -> io::Result<Vec<String>> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut out = Vec::new();

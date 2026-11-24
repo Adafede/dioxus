@@ -23,13 +23,13 @@ use std::collections::HashMap;
 
 /// One record extracted from an SDF file — a map of property name → value.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Record {
-    pub properties: HashMap<String, String>,
+struct Record {
+    properties: HashMap<String, String>,
 }
 
 impl Record {
     #[must_use]
-    pub fn get(&self, key: &str) -> Option<&str> {
+    fn get(&self, key: &str) -> Option<&str> {
         self.properties.get(key).map(String::as_str)
     }
 }
@@ -40,14 +40,14 @@ impl Record {
 /// pre-allocating a `Vec` of all records. This keeps memory bounded for
 /// large files (the LMSD SDF is ~46 MB uncompressed).
 #[derive(Debug)]
-pub struct Parser<'a> {
+struct Parser<'a> {
     text: &'a str,
     pos: usize,
 }
 
 impl<'a> Parser<'a> {
     #[must_use]
-    pub const fn new(text: &'a str) -> Self {
+    const fn new(text: &'a str) -> Self {
         Self { text, pos: 0 }
     }
 }
@@ -159,74 +159,68 @@ fn parse_one_record(text: &str) -> Option<ParsedRecord> {
 }
 
 /// `LipidMaps` LMSD-specific column definitions and TSV conversion.
-pub mod lipidmaps {
-    use super::Parser;
+const COLUMNS: &[&str] = &[
+    "LM_ID",
+    "NAME",
+    "SYSTEMATIC_NAME",
+    "SYNONYMS",
+    "CATEGORY",
+    "MAIN_CLASS",
+    "SUB_CLASS",
+    "EXACT_MASS",
+    "FORMULA",
+    "INCHI_KEY",
+    "INCHI",
+    "SMILES",
+    "PUBCHEM_CID",
+    "CHEBI_ID",
+    "KEGG_ID",
+    "HMDB_ID",
+    "SWISSLIPIDS_ID",
+    "LIPIDBANK_ID",
+    "PLANTFA_ID",
+];
 
-    /// The 19 columns the user requested, in order, matching the LMSD SDF
-    /// property names exactly.
-    pub const COLUMNS: &[&str] = &[
-        "LM_ID",
-        "NAME",
-        "SYSTEMATIC_NAME",
-        "SYNONYMS",
-        "CATEGORY",
-        "MAIN_CLASS",
-        "SUB_CLASS",
-        "EXACT_MASS",
-        "FORMULA",
-        "INCHI_KEY",
-        "INCHI",
-        "SMILES",
-        "PUBCHEM_CID",
-        "CHEBI_ID",
-        "KEGG_ID",
-        "HMDB_ID",
-        "SWISSLIPIDS_ID",
-        "LIPIDBANK_ID",
-        "PLANTFA_ID",
-    ];
+/// Read an SDF text blob and emit a TSV string with the LMSD columns.
+///
+/// Only records that have at least a non-empty `SMILES` and `LM_ID` are
+/// included. Empty property values become empty TSV fields. Missing
+/// properties also become empty fields (the column still appears).
+/// Multi-line property values have newlines replaced with `"; "` to
+/// preserve TSV row boundaries.
+///
+/// Returns `(tsv_text, record_count)`.
+#[must_use]
+pub(super) fn to_lmsd_tsv(sdf_text: &str) -> (String, usize) {
+    let mut out = String::new();
+    out.push_str(&COLUMNS.join("\t"));
+    out.push('\n');
 
-    /// Read an SDF text blob and emit a TSV string with the LMSD columns.
-    ///
-    /// Only records that have at least a non-empty `SMILES` and `LM_ID` are
-    /// included. Empty property values become empty TSV fields. Missing
-    /// properties also become empty fields (the column still appears).
-    /// Multi-line property values have newlines replaced with `"; "` to
-    /// preserve TSV row boundaries.
-    ///
-    /// Returns `(tsv_text, record_count)`.
-    #[must_use]
-    pub fn to_lmsd_tsv(sdf_text: &str) -> (String, usize) {
-        let mut out = String::new();
-        out.push_str(&COLUMNS.join("\t"));
-        out.push('\n');
-
-        let mut count = 0;
-        for record in Parser::new(sdf_text) {
-            let smiles = record.get("SMILES").unwrap_or("");
-            let lm_id = record.get("LM_ID").unwrap_or("");
-            if smiles.is_empty() || lm_id.is_empty() {
-                continue;
-            }
-            for (i, col) in COLUMNS.iter().enumerate() {
-                if i > 0 {
-                    out.push('\t');
-                }
-                // Replace line breaks with "; " and tabs with spaces so
-                // multi-line or tabbed SDF values don't break TSV boundaries.
-                let val = record.get(col).unwrap_or("");
-                let sanitized = val
-                    .replace("\r\n", "\n")
-                    .replace(['\n', '\r'], "; ")
-                    .replace('\t', " ");
-                out.push_str(&sanitized);
-            }
-            out.push('\n');
-            count += 1;
+    let mut count = 0;
+    for record in Parser::new(sdf_text) {
+        let smiles = record.get("SMILES").unwrap_or("");
+        let lm_id = record.get("LM_ID").unwrap_or("");
+        if smiles.is_empty() || lm_id.is_empty() {
+            continue;
         }
-
-        (out, count)
+        for (i, col) in COLUMNS.iter().enumerate() {
+            if i > 0 {
+                out.push('\t');
+            }
+            // Replace line breaks with "; " and tabs with spaces so
+            // multi-line or tabbed SDF values don't break TSV boundaries.
+            let val = record.get(col).unwrap_or("");
+            let sanitized = val
+                .replace("\r\n", "\n")
+                .replace(['\n', '\r'], "; ")
+                .replace('\t', " ");
+            out.push_str(&sanitized);
+        }
+        out.push('\n');
+        count += 1;
     }
+
+    (out, count)
 }
 
 #[cfg(test)]
