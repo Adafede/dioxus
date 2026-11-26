@@ -16,19 +16,18 @@ fn top_level_scalars_and_containers_match_expected_counts() {
         ("null", 0),
         (r#""""#, 0),
         (r#""hello""#, 1),
-        (r#"{"a":1,"b":null}"#, 3),
-        (r#"{"a":null,"b":null}"#, 2),
-        (r#"{"a":"hello"}"#, 2),
-        (r#"{"a":""}"#, 1),
-        (r#"{"a":true,"b":42,"c":false}"#, 6),
-        (r#"{"a":1,"e":{"f":42}}"#, 5),
-        (r#"{"items":[1,2,3]}"#, 4),
-        (r#"{"a":[1,2,"b":3]}"#, 5),
-        (r#"{"a":{"b":{"c":[1,null]}},"d":true}"#, 6),
-        (r#"{"a":"hello\nworld"}"#, 2),
-        (r#"{ "a" : 1 , "b" : null , "c" : true }"#, 5),
-        (r#"{"a":1}  "#, 2),
-        (r#"{"a":[[1]]}"#, 2),
+        (r#"{"a":1,"b":null}"#, 1),
+        (r#"{"a":null,"b":null}"#, 0),
+        (r#"{"a":"hello"}"#, 1),
+        (r#"{"a":""}"#, 0),
+        (r#"{"a":true,"b":42,"c":false}"#, 3),
+        (r#"{"a":1,"e":{"f":42}}"#, 2),
+        (r#"{"items":[1,2,3]}"#, 3),
+        (r#"{"a":{"b":{"c":[1,null]}},"d":true}"#, 2),
+        (r#"{"a":"hello\nworld"}"#, 1),
+        (r#"{ "a" : 1 , "b" : null , "c" : true }"#, 2),
+        (r#"{"a":1}  "#, 1),
+        (r#"{"a":[[1]]}"#, 1),
     ] {
         assert_eq!(count_str(input), Ok(expected), "count failed for {input}");
     }
@@ -54,8 +53,8 @@ fn column_object_and_empty_string_rules() {
     );
     assert_eq!(
         columns(r#"{"x":[1,null,2,{"y":3},null]}"#, 64),
-        Ok(vec![("x".to_string(), 4)]),
-        "nested key counts as leaf"
+        Ok(vec![("x".to_string(), 3)]),
+        "nested keys do not count; only non-null leaves count"
     );
     assert_eq!(
         columns("   \t\n ", 4),
@@ -170,12 +169,39 @@ fn malformed_json_and_limits_are_rejected() {
         r#"{"k":"a\"#,
         r#"{"k":"abc"#,
         r#"{"k":1"#,
+        r#"{"a":[1,2,"b":3]}"#,
+        r#"{"a":{"b"}}"#,
+        r#"{"a":{"b":1,}}"#,
+        r#"{"a":[1,]}"#,
+        r#"{"a":[1 2]}"#,
+        r#"{"a":{"x" "y":1}}"#,
+        r#"{"a":{"x":1 "y":2}}"#,
+        "{\"k\":\"bad\nchar\"}",
+        r#"{"k":"bad\qescape"}"#,
+        r#"{"k":"\u+041"}"#,
+        r#"{"k":{"nested":"\u00zz"}}"#,
     ] {
         assert!(
             columns(input, 4).is_err(),
             "expected syntax error for {input}"
         );
     }
+
+    let bad_utf8 = b"{\"k\":\"\xff\"}";
+    assert_eq!(
+        futures_executor::block_on(crate::scan_source_with_progress(
+            stream_io::SliceSource::new(bad_utf8),
+            bad_utf8.len() as u64,
+            |_, _| {}
+        )),
+        Err(JsonCountError::InvalidUtf8),
+        "invalid UTF-8 inside string value rejected"
+    );
+    assert_eq!(
+        columns(r#"{"a":{"b":{"c":[1,{"k":"v"},null,false]}}}"#, 2),
+        Ok(vec![("a".to_string(), 3)]),
+        "deep nested objects/arrays count only non-null leaves (1, \"v\", and false)"
+    );
 
     let max_scalar = "1".repeat(65_536);
     assert_eq!(

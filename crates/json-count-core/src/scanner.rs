@@ -16,7 +16,7 @@ use crate::strings::{read_json_key_into, skip_string_nonempty};
 ///
 /// # Errors
 ///
-/// Returns [`JsonCountError`] on malformed JSON syntax or underlying stream failures.
+/// Returns [`JsonCountError`] on malformed RFC 8259 JSON, invalid escapes/UTF-8, or stream failures.
 #[cfg(test)]
 pub(crate) async fn count_value<F: FnMut(u64, u64), S: ChunkSource>(
     cursor: &mut BlobCursor<F, S>,
@@ -156,7 +156,7 @@ async fn scan_row_array<F: FnMut(u64, u64), S: ChunkSource>(
 ///
 /// # Errors
 ///
-/// Returns [`JsonCountError`] when the input is malformed or reading fails.
+/// Returns [`JsonCountError`] on malformed RFC 8259 JSON, invalid string escapes/UTF-8, or I/O errors.
 pub(crate) async fn scan_columns<F: FnMut(u64, u64), S: ChunkSource>(
     cur: &mut BlobCursor<F, S>,
 ) -> Result<Vec<ColumnResult>, JsonCountError> {
@@ -186,7 +186,7 @@ pub(crate) async fn scan_columns<F: FnMut(u64, u64), S: ChunkSource>(
 ///
 /// # Errors
 ///
-/// Returns [`JsonCountError`] when JSON parsing or chunk reading fails.
+/// Returns [`JsonCountError`] on malformed RFC 8259 JSON, invalid string escapes/UTF-8, or read errors.
 pub async fn scan_source_with_progress<F: FnMut(u64, u64), S: ChunkSource>(
     source: S,
     total_bytes: u64,

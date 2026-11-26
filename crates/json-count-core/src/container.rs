@@ -9,7 +9,19 @@ use stream_io::{BlobCursor, ChunkSource};
 
 use crate::error::JsonCountError;
 use crate::number::{push_scalar_byte, validate_bare_scalar};
-use crate::strings::pass_bound;
+use crate::unescape::StringValidator;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ContainerFrame {
+    ObjectExpectKeyOrEnd,
+    ObjectExpectKey,
+    ObjectExpectColon,
+    ObjectExpectValue,
+    ObjectExpectCommaOrEnd,
+    ArrayExpectValueOrEnd,
+    ArrayExpectValue,
+    ArrayExpectCommaOrEnd,
+}
 
 /// Reusable scratch buffers carried across rows of a streamed JSON document.
 #[derive(Debug, Default)]
@@ -17,86 +29,158 @@ pub(crate) struct ScanBuffers {
     pub(crate) raw_key: Vec<u8>,
     pub(crate) key: String,
     pub(crate) scalar: Vec<u8>,
-    pub(crate) stack: Vec<u8>,
+    pub(crate) stack: Vec<ContainerFrame>,
     pub(crate) counted_in_row: HashSet<usize>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ContainerState {
-    ExpectValue,
-    InString { has_content: bool, escaped: bool },
-    InToken,
+    Container,
+    String {
+        is_key: bool,
+        has_content: bool,
+        validator: StringValidator,
+    },
+    Token,
 }
 
-const fn step_string(
+const fn is_scalar_delimiter(byte: u8) -> bool {
+    matches!(byte, b' ' | b'\t' | b'\n' | b'\r' | b',' | b'}' | b']')
+}
+
+const fn is_json_ws(byte: u8) -> bool {
+    matches!(byte, b' ' | b'\t' | b'\n' | b'\r')
+}
+
+const fn mark_value_complete(stack: &mut [ContainerFrame]) {
+    if let Some(frame) = stack.last_mut() {
+        *frame = match *frame {
+            ContainerFrame::ObjectExpectValue => ContainerFrame::ObjectExpectCommaOrEnd,
+            ContainerFrame::ArrayExpectValueOrEnd | ContainerFrame::ArrayExpectValue => {
+                ContainerFrame::ArrayExpectCommaOrEnd
+            }
+            other => other,
+        };
+    }
+}
+
+fn start_value(
     byte: u8,
-    has_content: bool,
-    escaped: bool,
-    count: &mut u64,
-) -> ContainerState {
-    if escaped {
-        ContainerState::InString {
-            has_content: true,
-            escaped: false,
+    stack: &mut Vec<ContainerFrame>,
+    scalar: &mut Vec<u8>,
+) -> Result<ContainerState, JsonCountError> {
+    match byte {
+        b'"' => Ok(ContainerState::String {
+            is_key: false,
+            has_content: false,
+            validator: StringValidator::default(),
+        }),
+        b'{' => {
+            stack.push(ContainerFrame::ObjectExpectKeyOrEnd);
+            Ok(ContainerState::Container)
         }
-    } else if byte == b'\\' {
-        ContainerState::InString {
-            has_content: true,
-            escaped: true,
+        b'[' => {
+            stack.push(ContainerFrame::ArrayExpectValueOrEnd);
+            Ok(ContainerState::Container)
         }
-    } else if byte == b'"' {
-        if has_content {
-            *count += 1;
-        }
-        ContainerState::ExpectValue
-    } else {
-        ContainerState::InString {
-            has_content: true,
-            escaped: false,
+        b'}' | b']' => Err(JsonCountError::MismatchedClosingDelimiter),
+        b',' | b':' => Err(JsonCountError::InvalidBareScalar),
+        _ => {
+            scalar.clear();
+            push_scalar_byte(scalar, byte)?;
+            Ok(ContainerState::Token)
         }
     }
 }
 
-const fn is_scalar_delimiter(byte: u8) -> bool {
-    matches!(
-        byte,
-        b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']'
-    )
+fn close_top_frame(stack: &mut Vec<ContainerFrame>) -> (ContainerState, bool) {
+    stack.pop();
+    if stack.is_empty() {
+        return (ContainerState::Container, true);
+    }
+    mark_value_complete(stack);
+    (ContainerState::Container, false)
 }
 
-fn step_expect_value(
+fn step_in_container(
     byte: u8,
-    stack: &mut Vec<u8>,
+    stack: &mut Vec<ContainerFrame>,
     scalar: &mut Vec<u8>,
 ) -> Result<(ContainerState, bool), JsonCountError> {
-    match byte {
-        b'"' => Ok((
-            ContainerState::InString {
-                has_content: false,
-                escaped: false,
-            },
-            false,
-        )),
-        b'{' => {
-            stack.push(b'}');
-            Ok((ContainerState::ExpectValue, false))
-        }
-        b'[' => {
-            stack.push(b']');
-            Ok((ContainerState::ExpectValue, false))
-        }
-        b'}' | b']' => {
-            if stack.pop() != Some(byte) {
-                return Err(JsonCountError::MismatchedClosingDelimiter);
+    if is_json_ws(byte) {
+        return Ok((ContainerState::Container, false));
+    }
+    let Some(&top) = stack.last() else {
+        return Err(JsonCountError::MismatchedClosingDelimiter);
+    };
+    match top {
+        ContainerFrame::ObjectExpectKeyOrEnd => match byte {
+            b'"' => Ok((
+                ContainerState::String {
+                    is_key: true,
+                    has_content: false,
+                    validator: StringValidator::default(),
+                },
+                false,
+            )),
+            b'}' => Ok(close_top_frame(stack)),
+            _ => Err(JsonCountError::ExpectedOpeningQuote),
+        },
+        ContainerFrame::ObjectExpectKey => match byte {
+            b'"' => Ok((
+                ContainerState::String {
+                    is_key: true,
+                    has_content: false,
+                    validator: StringValidator::default(),
+                },
+                false,
+            )),
+            b'}' => Err(JsonCountError::TrailingCommaInObject),
+            _ => Err(JsonCountError::ExpectedOpeningQuote),
+        },
+        ContainerFrame::ObjectExpectColon => {
+            if byte != b':' {
+                return Err(JsonCountError::ExpectedColon);
             }
-            Ok((ContainerState::ExpectValue, stack.is_empty()))
+            if let Some(frame) = stack.last_mut() {
+                *frame = ContainerFrame::ObjectExpectValue;
+            }
+            Ok((ContainerState::Container, false))
         }
-        b':' | b',' | b' ' | b'\t' | b'\n' | b'\r' => Ok((ContainerState::ExpectValue, false)),
-        _ => {
-            scalar.clear();
-            push_scalar_byte(scalar, byte)?;
-            Ok((ContainerState::InToken, false))
+        ContainerFrame::ObjectExpectValue | ContainerFrame::ArrayExpectValue => {
+            if byte == b']' && matches!(top, ContainerFrame::ArrayExpectValue) {
+                return Err(JsonCountError::TrailingCommaInArray);
+            }
+            Ok((start_value(byte, stack, scalar)?, false))
         }
+        ContainerFrame::ArrayExpectValueOrEnd => {
+            if byte == b']' {
+                return Ok(close_top_frame(stack));
+            }
+            Ok((start_value(byte, stack, scalar)?, false))
+        }
+        ContainerFrame::ObjectExpectCommaOrEnd => match byte {
+            b',' => {
+                if let Some(frame) = stack.last_mut() {
+                    *frame = ContainerFrame::ObjectExpectKey;
+                }
+                Ok((ContainerState::Container, false))
+            }
+            b'}' => Ok(close_top_frame(stack)),
+            b']' => Err(JsonCountError::MismatchedClosingDelimiter),
+            _ => Err(JsonCountError::ExpectedCommaOrBrace),
+        },
+        ContainerFrame::ArrayExpectCommaOrEnd => match byte {
+            b',' => {
+                if let Some(frame) = stack.last_mut() {
+                    *frame = ContainerFrame::ArrayExpectValue;
+                }
+                Ok((ContainerState::Container, false))
+            }
+            b']' => Ok(close_top_frame(stack)),
+            b'}' => Err(JsonCountError::MismatchedClosingDelimiter),
+            _ => Err(JsonCountError::ExpectedCommaOrBracket),
+        },
     }
 }
 
@@ -110,18 +194,38 @@ fn scan_container_chunk(
     for (i, &byte) in tail.iter().enumerate() {
         consumed = i + 1;
         match *state {
-            ContainerState::InString {
+            ContainerState::String {
+                is_key,
                 has_content,
-                escaped,
+                mut validator,
             } => {
-                *state = step_string(byte, has_content, escaped, count);
+                if validator.step(byte)? {
+                    if is_key {
+                        if let Some(frame) = bufs.stack.last_mut() {
+                            *frame = ContainerFrame::ObjectExpectColon;
+                        }
+                    } else {
+                        if has_content {
+                            *count += 1;
+                        }
+                        mark_value_complete(&mut bufs.stack);
+                    }
+                    *state = ContainerState::Container;
+                } else {
+                    *state = ContainerState::String {
+                        is_key,
+                        has_content: true,
+                        validator,
+                    };
+                }
             }
-            ContainerState::InToken => {
+            ContainerState::Token => {
                 if is_scalar_delimiter(byte) {
                     *count += validate_bare_scalar(&bufs.scalar)?;
                     bufs.scalar.clear();
+                    mark_value_complete(&mut bufs.stack);
                     let (next_state, closed) =
-                        step_expect_value(byte, &mut bufs.stack, &mut bufs.scalar)?;
+                        step_in_container(byte, &mut bufs.stack, &mut bufs.scalar)?;
                     *state = next_state;
                     if closed {
                         return Ok((consumed, true));
@@ -130,9 +234,9 @@ fn scan_container_chunk(
                     push_scalar_byte(&mut bufs.scalar, byte)?;
                 }
             }
-            ContainerState::ExpectValue => {
+            ContainerState::Container => {
                 let (next_state, closed) =
-                    step_expect_value(byte, &mut bufs.stack, &mut bufs.scalar)?;
+                    step_in_container(byte, &mut bufs.stack, &mut bufs.scalar)?;
                 *state = next_state;
                 if closed {
                     return Ok((consumed, true));
@@ -151,19 +255,21 @@ pub(crate) async fn scan_container<F: FnMut(u64, u64), S: ChunkSource>(
     let open = cursor
         .current_byte()
         .ok_or(JsonCountError::ExpectedTopLevelObject)?;
-    let initial_close = if open == b'{' { b'}' } else { b']' };
+    let initial_frame = if open == b'{' {
+        ContainerFrame::ObjectExpectKeyOrEnd
+    } else {
+        ContainerFrame::ArrayExpectValueOrEnd
+    };
     cursor.advance(1);
 
     bufs.stack.clear();
-    bufs.stack.push(initial_close);
+    bufs.stack.push(initial_frame);
     bufs.scalar.clear();
-    let mut state = ContainerState::ExpectValue;
+    let mut state = ContainerState::Container;
     let mut count = 0u64;
 
-    for _ in 0..pass_bound(cursor) {
-        let Some(tail) = cursor.buffer().get(cursor.pos()..) else {
-            break;
-        };
+    loop {
+        let tail = cursor.buffer().get(cursor.pos()..).unwrap_or_default();
         let (consumed, closed) = scan_container_chunk(tail, &mut state, bufs, &mut count)?;
         cursor.advance(consumed);
         if closed {
@@ -175,8 +281,6 @@ pub(crate) async fn scan_container<F: FnMut(u64, u64), S: ChunkSource>(
             ));
         }
     }
-
-    Err(JsonCountError::Unterminated("Nested JSON value"))
 }
 
 /// Scans a top-level bare scalar token starting with `first`.
@@ -189,10 +293,8 @@ pub(crate) async fn scan_bare_scalar<F: FnMut(u64, u64), S: ChunkSource>(
     push_scalar_byte(&mut bufs.scalar, first)?;
     cursor.advance(1);
 
-    for _ in 0..pass_bound(cursor) {
-        let Some(tail) = cursor.buffer().get(cursor.pos()..) else {
-            break;
-        };
+    loop {
+        let tail = cursor.buffer().get(cursor.pos()..).unwrap_or_default();
         let mut consumed = 0usize;
         let mut at_delimiter = false;
         for &byte in tail {
@@ -208,6 +310,4 @@ pub(crate) async fn scan_bare_scalar<F: FnMut(u64, u64), S: ChunkSource>(
             return validate_bare_scalar(&bufs.scalar);
         }
     }
-
-    Err(JsonCountError::Unterminated("Scalar"))
 }

@@ -128,8 +128,10 @@ pub fn sorted_results(rows: &[ColumnResult], current: Option<SortSpec>) -> Vec<C
 /// Formats a clamped byte-progress line for UI display.
 #[must_use]
 pub fn progress_message(processed: u64, total: u64) -> String {
-    let safe_total = total.max(1);
-    let displayed = processed.min(safe_total);
-    let percent = (displayed * 100 / safe_total).min(100);
-    format!("Scanning {displayed}/{safe_total} bytes ({percent}%)...")
+    if total == 0 {
+        return "Scanning 0/0 bytes (0%)...".to_string();
+    }
+    let displayed = processed.min(total);
+    let percent = (u128::from(displayed) * 100 / u128::from(total)).min(100);
+    format!("Scanning {displayed}/{total} bytes ({percent}%)...")
 }

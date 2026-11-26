@@ -57,12 +57,12 @@ const fn page_head() -> WebMcpConfig {
             ],
             operations: &[
                 EdamTerm {
-                    id: "operation_3438",
-                    label: "Calculating",
+                    id: "operation_2238",
+                    label: "Statistical calculation",
                 },
                 EdamTerm {
                     id: "operation_0336",
-                    label: "File validation",
+                    label: "Format validation",
                 },
             ],
             input_data: &[EdamTerm {
@@ -94,6 +94,8 @@ fn app() -> Element {
     let status = use_signal(|| "Choose a JSON file to begin.".to_string());
     let busy = use_signal(|| false);
     let drag_active = use_signal(|| false);
+    #[cfg(target_arch = "wasm32")]
+    let generation = use_signal(|| 0u64);
 
     let ctx = JsonCountCtx {
         file_name,
@@ -104,6 +106,8 @@ fn app() -> Element {
         busy,
         #[cfg(target_arch = "wasm32")]
         drag_active,
+        #[cfg(target_arch = "wasm32")]
+        generation,
     };
 
     let on_file_change = move |evt: Event<FormData>| {

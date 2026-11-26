@@ -28,6 +28,8 @@ pub(crate) struct JsonCountCtx {
     pub(crate) busy: Signal<bool>,
     #[cfg(target_arch = "wasm32")]
     pub(crate) drag_active: Signal<bool>,
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) generation: Signal<u64>,
 }
 
 /// Dispatches an extracted browser file (or reports missing/error status).
@@ -146,6 +148,7 @@ pub(crate) fn ResultsTable(
             tbody {
                 for col in rows.iter() {
                     tr {
+                        key: "{col.key}",
                         td { style: "{key_cell_style}", "{col.key}" }
                         td { style: "{count_cell_style}", "{col.count}" }
                     }

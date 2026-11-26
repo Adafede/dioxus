@@ -38,6 +38,18 @@ pub enum JsonCountError {
     #[error("Invalid JSON literal or number")]
     InvalidBareScalar,
 
+    /// Escape sequence inside a JSON string was invalid or incomplete.
+    #[error("Invalid escape sequence in JSON string")]
+    InvalidEscape,
+
+    /// Unescaped ASCII control character (`< 0x20`) inside a JSON string.
+    #[error("Unescaped control character in JSON string")]
+    UnescapedControlChar,
+
+    /// Byte sequence inside a JSON string was not valid UTF-8.
+    #[error("Invalid UTF-8 sequence in JSON string")]
+    InvalidUtf8,
+
     /// Closing bracket/brace did not match the active container.
     #[error("Mismatched closing delimiter in JSON")]
     MismatchedClosingDelimiter,

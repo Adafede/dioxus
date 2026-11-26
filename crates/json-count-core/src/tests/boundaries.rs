@@ -108,8 +108,13 @@ fn progress_message_and_callback_invocation() {
     );
     assert_eq!(
         progress_message(0, 0),
-        "Scanning 0/1 bytes (0%)...",
+        "Scanning 0/0 bytes (0%)...",
         "zero-byte upload guard"
+    );
+    assert_eq!(
+        progress_message(1_u64 << 62, 1_u64 << 63),
+        format!("Scanning {}/{} bytes (50%)...", 1_u64 << 62, 1_u64 << 63),
+        "large byte counts do not overflow percentage math"
     );
 
     let events = Rc::new(RefCell::new(Vec::<(u64, u64)>::new()));
