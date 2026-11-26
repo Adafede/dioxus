@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-//! Recalibration diagnostic SVG renderers: downsampled error scatter, histogram, and `m/z` comparison.
+//! Recalibration diagnostic scatter plot over sampled precursor errors.
 
 use mgf_analysis_core::usize_to_f64;
 
@@ -47,7 +47,8 @@ pub fn render_recalibration_diagnostic_ppm(
     let Some((error_min, error_max)) = combined_finite_bounds(errors_before, errors_after) else {
         return Ok(buffer);
     };
-    let error_span = (error_max - error_min).max(1.0);
+    let half_span = error_max / 2.0 - error_min / 2.0;
+    let error_span = (half_span * 2.0).max(1.0);
     let error_min = error_min - error_span * 0.1;
     let error_max = error_max + error_span * 0.1;
 
@@ -73,28 +74,28 @@ pub fn render_recalibration_diagnostic_ppm(
 
         chart
             .configure_mesh()
-            .x_desc("Scan Index")
+            .x_desc("Sample Index")
             .y_desc("Error (ppm)")
             .draw()?;
 
+        let before_style = ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled();
         chart
-            .draw_series(before_pts.into_iter().map(|pt| {
-                Circle::new(
-                    pt,
-                    3,
-                    ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
-                )
-            }))?
-            .label("Before");
+            .draw_series(
+                before_pts
+                    .into_iter()
+                    .map(|pt| Circle::new(pt, 3, before_style)),
+            )?
+            .label("Before")
+            .legend(move |(x, y)| Circle::new((x + 8, y), 4, before_style));
+        let after_style = ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled();
         chart
-            .draw_series(after_pts.into_iter().map(|pt| {
-                Circle::new(
-                    pt,
-                    2,
-                    ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
-                )
-            }))?
-            .label("After");
+            .draw_series(
+                after_pts
+                    .into_iter()
+                    .map(|pt| Circle::new(pt, 2, after_style)),
+            )?
+            .label("After")
+            .legend(move |(x, y)| Circle::new((x + 8, y), 4, after_style));
 
         chart
             .configure_series_labels()

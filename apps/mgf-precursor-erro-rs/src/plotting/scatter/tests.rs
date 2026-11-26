@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-// The `tests` tests, extracted from `scatter.rs`.
-//
-// They were inline, and together they were several times the size of the
-// code they cover. `super` is still the `scatter` module, so
-// `use super::*` below reaches exactly what it did before the move.
 use super::*;
-use crate::errors::PlotError;
 use mgf_analysis_core::{AdductFamily, PlotPoint};
 
 fn sample_point(err_da: f64, err_ppm: f64) -> PlotPoint {
@@ -38,13 +32,21 @@ fn render_ecdf_svg_nan_and_inf_values_returns_ok() {
     let points = super::super::data::build_ecdf_points(&values, 1e-6, 10.0);
     assert_eq!(
         points,
-        vec![(1e-6, 0.0), (10.0, 1.0)],
-        "non-finite values must be filtered before ECDF construction"
+        Vec::<(f64, f64)>::new(),
+        "empty or all-non-finite values must not emit a fake diagonal"
     );
     let result = render_ecdf_svg("test", &values, &[1.0, 5.0, 10.0], "ppm");
     assert!(
         result.is_ok(),
         "NaN/inf values should be filtered, not panic, got {result:?}"
+    );
+
+    let small_a = 1e-20;
+    let small_b = 1e-17;
+    let small_pts = super::super::data::build_ecdf_points(&[small_a, small_b], 1e-22, 1.0);
+    assert!(
+        small_pts.len() >= 6,
+        "distinct small log-scale values must not be merged by f64::EPSILON: {small_pts:?}"
     );
 }
 
@@ -57,32 +59,28 @@ fn render_ecdf_svg_single_value_returns_ok() {
 // ── render_absolute_mass_bias_svg ─────────────────────────────────
 
 #[test]
-fn render_absolute_mass_bias_svg_empty_points_returns_ok_or_err() {
-    let result = render_absolute_mass_bias_svg("test", &[], "ppm", &[]);
-    match &result {
-        Ok(svg) => assert!(
-            svg.contains("<svg"),
-            "empty input should still produce SVG canvas"
-        ),
-        Err(PlotError::Drawing(_)) => {}
-    }
+fn render_absolute_mass_bias_svg_empty_points_returns_ok() -> Result<(), crate::errors::PlotError> {
+    let svg = render_absolute_mass_bias_svg("test", &[], "ppm", &[])?;
+    assert!(
+        svg.contains("<svg"),
+        "empty input should produce SVG canvas"
+    );
+    Ok(())
 }
 
 #[test]
-fn render_absolute_mass_bias_svg_all_non_finite_y_does_not_panic() {
-    // All points have non-finite errors, producing a zero-width y-range.
+fn render_absolute_mass_bias_svg_all_non_finite_y_returns_ok()
+-> Result<(), crate::errors::PlotError> {
     let points = vec![
         sample_point(f64::NAN, f64::NAN),
         sample_point(f64::INFINITY, f64::INFINITY),
     ];
-    let result = render_absolute_mass_bias_svg("test", &points, "ppm", &[1.0, 5.0]);
-    match &result {
-        Ok(svg) => assert!(
-            svg.contains("<svg"),
-            "degenerate range should still produce SVG canvas"
-        ),
-        Err(PlotError::Drawing(_)) => {}
-    }
+    let svg = render_absolute_mass_bias_svg("test", &points, "ppm", &[1.0, 5.0])?;
+    assert!(
+        svg.contains("<svg"),
+        "all-non-finite input should produce SVG canvas"
+    );
+    Ok(())
 }
 
 #[test]

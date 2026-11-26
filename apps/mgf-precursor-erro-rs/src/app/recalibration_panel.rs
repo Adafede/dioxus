@@ -13,22 +13,34 @@ use super::browser::download_recalibrated_mgf;
 use super::plots::{format_recalibrated_compliance, format_value, tolerance_card_style};
 
 pub(super) fn improvement_color(improvement: f64) -> &'static str {
-    if improvement > 0.0 { "green" } else { "red" }
+    if !improvement.is_finite() || improvement < 0.0 {
+        "red"
+    } else if improvement > 0.0 {
+        "green"
+    } else {
+        "#475569"
+    }
 }
 
-/// Typed RSX summary table replacing HTML string construction.
 #[component]
 pub(super) fn RecalibrationSummaryTable(diag: RecalibrationStats) -> Element {
     let mean_imp = diag.mean_error_ppm_before.abs() - diag.mean_error_ppm_after.abs();
+    let mae_imp = diag.mean_error_improvement_ppm();
     let rms_imp = diag.rms_error_ppm_before - diag.rms_error_ppm_after;
     let max_imp = diag.max_abs_error_ppm_before - diag.max_abs_error_ppm_after;
 
     let rows = [
         (
-            "Mean Error (ppm)",
+            "Mean Signed Bias (ppm)",
             diag.mean_error_ppm_before,
             diag.mean_error_ppm_after,
             mean_imp,
+        ),
+        (
+            "MAE (ppm)",
+            diag.mae_error_ppm_before,
+            diag.mae_error_ppm_after,
+            mae_imp,
         ),
         (
             "RMS Error (ppm)",
@@ -93,7 +105,7 @@ pub(super) fn RecalibrationPanel(
     rsx! {
         div {
             style: StyleBuilder::new().property("margin-top", "1.5rem").padding("1.2rem").border("2px solid #3b82f6").border_radius("16px").property("background", "linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%)").build(),
-            h2 { style: StyleBuilder::new().margin("0 0 0.8rem").font_size("1.1rem").color("#1e40af").build(), "🔬 MS2 Fragment Recalibration" }
+            h2 { style: StyleBuilder::new().margin("0 0 0.8rem").font_size("1.1rem").color("#1e40af").build(), "MS2 Fragment Recalibration" }
             p { style: StyleBuilder::new().margin("0 0 1rem").color("#1e40af").font_size("0.95rem").build(), "Apply precursor-driven recalibration to MS2 fragments using the discrepancy between MS1 and MS2 precursor m/z." }
 
             div {
@@ -152,7 +164,7 @@ pub(super) fn RecalibrationPanel(
             div {
                 style: StyleBuilder::new().property("margin-top", "1rem").padding("0.95rem 1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
                 h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "Tolerance-band compliance (Recalibrated)" }
-                p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Estimated compliance after MS2 fragment recalibration (preview)" }
+                p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Estimated compliance after MS2 fragment recalibration (preview over n = {diag.sample_count} sampled spectra)" }
                 div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
                     for bucket in ErrorBucket::ALL {
                         div { style: tolerance_card_style(bucket.severity_level()),
@@ -194,9 +206,9 @@ mod tests {
     use super::improvement_color;
 
     #[test]
-    fn improvement_color_distinguishes_positive_and_regression_or_nan() {
+    fn improvement_color_distinguishes_positive_neutral_regression_and_nan() {
         assert_eq!(improvement_color(3.0), "green");
-        assert_eq!(improvement_color(0.0), "red");
+        assert_eq!(improvement_color(0.0), "#475569");
         assert_eq!(improvement_color(-3.0), "red");
         assert_eq!(improvement_color(f64::NAN), "red");
     }

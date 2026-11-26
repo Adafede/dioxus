@@ -6,7 +6,7 @@
 use dioxus::html::FileData;
 use dioxus::prelude::WritableExt;
 #[cfg(target_arch = "wasm32")]
-use dioxus::prelude::spawn;
+use dioxus::prelude::{ReadableExt, spawn};
 
 use super::UploadSignals;
 
@@ -145,23 +145,31 @@ async fn scan_blob_with_progress(
 }
 
 #[cfg(target_arch = "wasm32")]
-fn start_analysis(blob: Blob, mut signals: UploadSignals) {
+fn start_analysis(blob: Blob, mut signals: UploadSignals, generation: u64) {
     spawn(async move {
         let total_bytes = BlobSource::new(&blob).total_bytes();
+        if *signals.analysis_generation.read() != generation {
+            return;
+        }
         signals
             .status
             .set(format!("Scanning {total_bytes} bytes..."));
 
         match scan_blob_with_progress(&blob, |processed, total| {
-            signals.status.set(format!(
-                "Scanning... {}/{} bytes",
-                processed.min(total),
-                total
-            ));
+            if *signals.analysis_generation.read() == generation {
+                signals.status.set(format!(
+                    "Scanning... {}/{} bytes",
+                    processed.min(total),
+                    total
+                ));
+            }
         })
         .await
         {
             Ok((result, raw_content)) => {
+                if *signals.analysis_generation.read() != generation {
+                    return;
+                }
                 signals
                     .status
                     .set(format!("Processed {} spectra.", result.total_spectra));
@@ -169,22 +177,31 @@ fn start_analysis(blob: Blob, mut signals: UploadSignals) {
                 signals.metrics.set(Some(result));
             }
             Err(error) => {
+                if *signals.analysis_generation.read() != generation {
+                    return;
+                }
                 signals.status.set(format!("Error scanning MGF: {error}"));
-                signals.metrics.set(Some(PrecursorStats::default()));
+                signals.original_mgf_content.set(String::new());
+                signals.metrics.set(None);
             }
         }
-        signals.busy.set(false);
+        if *signals.analysis_generation.read() == generation {
+            signals.busy.set(false);
+        }
     });
 }
 
 #[cfg(target_arch = "wasm32")]
 fn begin_analysis_from_blob(blob: Blob, file_name: String, mut signals: UploadSignals) {
+    let generation = signals.analysis_generation.read().wrapping_add(1);
+    signals.analysis_generation.set(generation);
     signals.file_name.set(file_name);
     signals.busy.set(true);
     signals.drag_active.set(false);
     signals.status.set("Reading MGF...".to_string());
+    signals.original_mgf_content.set(String::new());
     signals.metrics.set(None);
-    start_analysis(blob, signals);
+    start_analysis(blob, signals, generation);
 }
 
 /// Dispatches uploaded file data on `wasm32` or displays browser-only notice on host.
@@ -213,6 +230,9 @@ pub(super) fn attempt_analysis_from_files(files: &[FileData], mut signals: Uploa
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn load_example_mgf(mut signals: UploadSignals) {
+    let generation = signals.analysis_generation.read().wrapping_add(1);
+    signals.analysis_generation.set(generation);
+    signals.original_mgf_content.set(String::new());
     spawn(async move {
         signals.status.set("Loading example MGF...".to_string());
         signals.busy.set(true);
@@ -220,10 +240,16 @@ pub(crate) fn load_example_mgf(mut signals: UploadSignals) {
 
         match fetch_remote_blob(EXAMPLE_MGF_URL).await {
             Ok(blob) => {
+                if *signals.analysis_generation.read() != generation {
+                    return;
+                }
                 signals.file_name.set("multims2_spectra.mgf".to_string());
-                start_analysis(blob, signals);
+                start_analysis(blob, signals, generation);
             }
             Err(error) => {
+                if *signals.analysis_generation.read() != generation {
+                    return;
+                }
                 signals.status.set(error);
                 signals.busy.set(false);
             }

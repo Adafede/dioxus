@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-// The `tests` tests, extracted from `diagnostics.rs`.
-//
-// They were inline, and together they were several times the size of the
-// code they cover. `super` is still the `diagnostics` module, so
-// `use super::*` below reaches exactly what it did before the move.
 use super::*;
 
 // ── render_recalibration_diagnostic_ppm ─────────────────────────
@@ -114,4 +109,19 @@ fn render_histogram_uniform_dataset_produces_non_degenerate_bars() {
         "uniform histogram bars must have non-zero width: {svg}"
     );
     assert!(!svg.contains("NaN"), "histogram SVG must not contain NaN");
+}
+
+#[test]
+fn render_histogram_equal_width_bars_and_legend_xml_escape() {
+    let svg = render_recalibration_diagnostic_histogram(&[1.0, 2.0], &[1.0, 2.0], 2).unwrap();
+    assert!(svg.contains("<svg"), "expected SVG root");
+    let escaped = crate::plotting::svg::embed_svg_legend(
+        "<svg width=\"900\" height=\"520\"></svg>".to_string(),
+        &[("A & <B>", "#000")],
+        "T<1>",
+        900.0,
+        520.0,
+    );
+    assert!(escaped.contains("A &amp; &lt;B&gt;"), "got: {escaped}");
+    assert!(escaped.contains("T&lt;1&gt;"), "got: {escaped}");
 }

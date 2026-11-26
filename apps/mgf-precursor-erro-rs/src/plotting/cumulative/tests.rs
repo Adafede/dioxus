@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-// The `tests` tests, extracted from `cumulative.rs`.
-//
-// They were inline, and together they were several times the size of the
-// code they cover. `super` is still the `cumulative` module, so
-// `use super::*` below reaches exactly what it did before the move.
 use super::*;
 
 #[test]
@@ -48,9 +43,15 @@ fn cumulative_points_empty_returns_empty_vec() {
 }
 
 #[test]
-fn cumulative_points_filters_non_finite() {
-    let result = cumulative_points(&[-2.0, f64::NAN, 1.0, f64::INFINITY]);
-    assert_eq!(result, vec![(1.0, 50.0), (2.0, 100.0)]);
+fn cumulative_points_filters_non_finite_and_coalesces_ties() {
+    let result = cumulative_points(&[-2.0, f64::NAN, 1.0, 1.0, f64::INFINITY]);
+    assert_eq!(result, vec![(1.0, 2.0 / 3.0 * 100.0), (2.0, 100.0)]);
+    let stepped = step_series(&[(1.0, 100.0)], 0.0, 2.0);
+    assert_eq!(
+        stepped,
+        vec![(0.0, 0.0), (1.0, 0.0), (1.0, 100.0), (2.0, 100.0)],
+        "single point must produce vertical step from 0 to 100%"
+    );
 }
 
 #[test]

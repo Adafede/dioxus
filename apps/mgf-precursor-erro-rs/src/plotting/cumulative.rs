@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-//! Cumulative-distribution and four-stage error-analysis renderers.
+//! Three-curve cumulative error-distribution renderer.
 
 use std::fmt::Write as _;
 
 use mgf_analysis_core::usize_to_f64;
 
+use super::color::tolerance_step_rgb;
 use crate::errors::PlotError;
 
 fn cumulative_points(values: &[f64]) -> Vec<(f64, f64)> {
@@ -22,11 +23,36 @@ fn cumulative_points(values: &[f64]) -> Vec<(f64, f64)> {
     }
 
     let total = usize_to_f64(sorted.len());
-    sorted
-        .iter()
-        .enumerate()
-        .map(|(index, &value)| (value, usize_to_f64(index.saturating_add(1)) / total * 100.0))
-        .collect()
+    let mut out = Vec::with_capacity(sorted.len());
+    let mut idx = 0usize;
+    while let Some(&value) = sorted.get(idx) {
+        let mut next = idx + 1;
+        while sorted
+            .get(next)
+            .is_some_and(|&v| v.total_cmp(&value).is_eq())
+        {
+            next += 1;
+        }
+        out.push((value, usize_to_f64(next) / total * 100.0));
+        idx = next;
+    }
+    out
+}
+
+fn step_series(points: &[(f64, f64)], x_min: f64, x_max: f64) -> Vec<(f64, f64)> {
+    if points.is_empty() {
+        return Vec::new();
+    }
+    let mut stepped = Vec::with_capacity(points.len().saturating_mul(2) + 2);
+    stepped.push((x_min, 0.0));
+    let mut prev_y = 0.0;
+    for &(x, y) in points {
+        stepped.push((x, prev_y));
+        stepped.push((x, y));
+        prev_y = y;
+    }
+    stepped.push((x_max, prev_y));
+    stepped
 }
 
 fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
@@ -89,6 +115,7 @@ fn render_cumulative_chart(
     title: &str,
     x_desc: &str,
     curves: &[(&[f64], plotters::prelude::RGBColor)],
+    thresholds: &[f64],
 ) -> Result<Option<String>, PlotError> {
     use plotters::prelude::*;
 
@@ -97,15 +124,20 @@ fn render_cumulative_chart(
     let mut max_error = f64::NEG_INFINITY;
     for &(values, color) in curves {
         let pts = cumulative_points(values);
-        let (Some(&(lo, _)), Some(&(hi, _))) = (pts.first(), pts.last()) else {
-            return Ok(None);
-        };
-        min_error = min_error.min(lo);
-        max_error = max_error.max(hi);
-        prepared.push((pts, color));
+        if let (Some(&(lo, _)), Some(&(hi, _))) = (pts.first(), pts.last()) {
+            min_error = min_error.min(lo);
+            max_error = max_error.max(hi);
+            prepared.push((pts, color));
+        }
+    }
+    if prepared.is_empty() {
+        return Ok(None);
     }
 
-    let margin = (max_error - min_error).abs().max(1.0) * 0.1;
+    let half_span = max_error / 2.0 - min_error / 2.0;
+    let margin = (half_span * 2.0).abs().max(1.0) * 0.1;
+    let x_min = (min_error - margin).max(0.0);
+    let x_max = max_error + margin;
     let mut buffer = String::new();
     {
         let root = SVGBackend::with_string(&mut buffer, (1200, 600)).into_drawing_area();
@@ -116,7 +148,7 @@ fn render_cumulative_chart(
             .margin(15)
             .x_label_area_size(60)
             .y_label_area_size(70)
-            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)?;
+            .build_cartesian_2d(x_min..x_max, 0f64..100f64)?;
 
         chart
             .configure_mesh()
@@ -124,8 +156,18 @@ fn render_cumulative_chart(
             .y_desc("Cumulative Percentage (%)")
             .draw()?;
 
+        for (idx, &threshold) in thresholds.iter().enumerate() {
+            if threshold >= x_min && threshold <= x_max {
+                let color = tolerance_step_rgb(idx, 5);
+                chart.draw_series(LineSeries::new(
+                    [(threshold, 0.0), (threshold, 100.0)],
+                    ShapeStyle::from(&color).stroke_width(1),
+                ))?;
+            }
+        }
+
         for (pts, color) in prepared {
-            draw_cumulative_curve(&mut chart, pts, color, 1)?;
+            draw_cumulative_curve(&mut chart, step_series(&pts, x_min, x_max), color, 1)?;
         }
 
         root.present()?;
@@ -144,17 +186,18 @@ pub(crate) fn render_cumulative_error_three_curves(
     error_before: &[f64],
     error_after: &[f64],
     unit: &str,
-    _thresholds: &[f64],
+    thresholds: &[f64],
 ) -> Result<String, PlotError> {
     use plotters::style::RGBColor;
     Ok(render_cumulative_chart(
         &format!("Cumulative Error Distribution ({unit})"),
-        &format!("Error ({unit})"),
+        &format!("Absolute Error ({unit})"),
         &[
             (error_ms1, RGBColor(68, 119, 170)),
             (error_before, RGBColor(255, 140, 0)),
             (error_after, RGBColor(51, 153, 51)),
         ],
+        thresholds,
     )?
     .map_or_else(String::new, append_cumulative_legend))
 }

@@ -40,30 +40,32 @@ pub fn ResultsPanel(
         return rsx! {};
     };
 
+    let has_data = m.spectra > 0;
+    let or_na = |val: f64| if has_data { val } else { f64::NAN };
     let dist_cards = [
         (
             "Observed precursor 𝑚/𝑧 distribution",
             "Range, mean, and median of the observed precursor 𝑚/𝑧 values",
-            m.observed_precursor_median,
-            m.observed_precursor_mean,
+            or_na(m.observed_precursor_median),
+            or_na(m.observed_precursor_mean),
             "range",
-            m.observed_precursor_max - m.observed_precursor_min,
+            or_na(m.observed_precursor_max - m.observed_precursor_min),
         ),
         (
             "Absolute precursor error (Da)",
-            "Median absolute deviation, mean absolute deviation, and RMS in daltons",
-            m.abs_error_da_median,
-            m.abs_error_da_mean,
+            "Median absolute error, mean absolute error, and RMS in daltons",
+            or_na(m.abs_error_da_median),
+            or_na(m.abs_error_da_mean),
             "RMS",
-            m.abs_error_da_rms,
+            or_na(m.abs_error_da_rms),
         ),
         (
             "Relative precursor error (ppm)",
-            "Median relative deviation, mean relative deviation, and RMS of the ppm error",
-            m.abs_error_ppm_median,
-            m.abs_error_ppm_mean,
+            "Median absolute error, mean absolute error, and RMS in ppm",
+            or_na(m.abs_error_ppm_median),
+            or_na(m.abs_error_ppm_mean),
             "RMS",
-            m.abs_error_ppm_rms,
+            or_na(m.abs_error_ppm_rms),
         ),
     ];
 
@@ -72,7 +74,6 @@ pub fn ResultsPanel(
             style: StyleBuilder::new().property("margin-top", "1rem").padding("1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").build(),
             h2 { style: StyleBuilder::new().margin("0 0 0.4rem").font_size("1rem").build(), "Summary" }
             p { style: StyleBuilder::new().margin("0.35rem 0").color("#475569").build(), "Processed {m.total_spectra} spectra; compared {m.spectra} with usable reference masses." }
-            p { style: StyleBuilder::new().margin("0.35rem 0").color("#475569").build(), "{m.spectra_with_reference_mass} spectra had a usable reference mass." }
 
             WarningsPanel { metrics }
 

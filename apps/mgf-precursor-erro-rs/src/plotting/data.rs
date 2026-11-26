@@ -70,7 +70,13 @@ where
     let x_span = (x_max - x_min).max(1.0);
     let x_min = x_min - x_span * 0.05;
     let x_max = x_max + x_span * 0.05;
-    let y_limit = if fallback_y_limit > 0.0 {
+    let y_limit = if data_max <= 0.0 {
+        if fallback_y_limit > 0.0 {
+            fallback_y_limit
+        } else {
+            1.0
+        }
+    } else if fallback_y_limit > 0.0 {
         data_max.min(fallback_y_limit)
     } else {
         data_max
@@ -135,28 +141,47 @@ pub(super) fn fallback_y_limit_for_unit(unit: &str) -> f64 {
 /// Builds step-function `(x, fraction)` points for an ECDF chart.
 #[must_use]
 pub(crate) fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f64)> {
+    const MAX_ECDF_RAW: usize = 50_000;
     let mut sorted: Vec<f64> = values
         .iter()
         .copied()
         .filter(|value| value.is_finite())
-        .take(50_000)
         .collect();
     if sorted.is_empty() {
-        return vec![(x_min, 0.0), (x_max, 1.0)];
+        return Vec::new();
     }
 
     sorted.sort_by(f64::total_cmp);
+    if sorted.len() > MAX_ECDF_RAW {
+        let len_u64 = u64::try_from(sorted.len() - 1).unwrap_or(u64::MAX);
+        let target_denom = u64::try_from(MAX_ECDF_RAW - 1).unwrap_or(1);
+        sorted = (0..MAX_ECDF_RAW)
+            .filter_map(|slot| {
+                let idx_u64 =
+                    u64::try_from(slot).unwrap_or(0).saturating_mul(len_u64) / target_denom;
+                let idx = usize::try_from(idx_u64).unwrap_or(usize::MAX);
+                sorted.get(idx).copied()
+            })
+            .collect();
+    }
+
     let total = sorted.len();
     let mut points = Vec::with_capacity(sorted.len().saturating_mul(2) + 2);
     points.push((x_min, 0.0));
 
     let mut index = 0usize;
     let mut previous_y = 0.0f64;
+    let mut last_x = x_min;
     while let Some(&value) = sorted.get(index) {
+        if value > x_max {
+            points.push((x_max, previous_y));
+            last_x = x_max;
+            break;
+        }
         let mut next_index = index + 1;
         while sorted
             .get(next_index)
-            .is_some_and(|&next| (next - value).abs() <= f64::EPSILON)
+            .is_some_and(|&next| next.total_cmp(&value).is_eq())
         {
             next_index += 1;
         }
@@ -167,31 +192,38 @@ pub(crate) fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(
         points.push((x, previous_y));
         points.push((x, y));
         previous_y = y;
+        last_x = x;
         index = next_index;
     }
 
-    points.push((x_max, 1.0));
+    if last_x < x_max {
+        points.push((x_max, previous_y));
+    }
     points
 }
 
 /// Uniformly downsamples `points` to at most `max_points` (keeping first/last).
 #[must_use]
 pub(crate) fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<(f64, f64)> {
-    if points.len() <= max_points.max(1) {
+    let target = max_points.max(1);
+    if points.len() <= target {
         return points;
     }
-    let target = max_points.max(1);
+    if target == 1 {
+        return points.first().copied().into_iter().collect();
+    }
+    let len_minus_one = u64::try_from(points.len() - 1).unwrap_or(u64::MAX);
+    let target_minus_one = u64::try_from(target - 1).unwrap_or(1);
     let mut sampled = Vec::with_capacity(target);
     for slot in 0..target {
-        let point_index = (slot * points.len()) / target;
+        let idx_u64 = u64::try_from(slot)
+            .unwrap_or(0)
+            .saturating_mul(len_minus_one)
+            / target_minus_one;
+        let point_index = usize::try_from(idx_u64).unwrap_or(usize::MAX);
         if let Some(point) = points.get(point_index) {
             sampled.push(*point);
         }
-    }
-    if sampled.last() != points.last()
-        && let Some(last) = points.last()
-    {
-        sampled.push(*last);
     }
     sampled
 }

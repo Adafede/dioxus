@@ -86,12 +86,13 @@ fn run_diagnostics_example() -> RecalibrationStats {
     println!("\n=== Example 4: Diagnostic Metrics Tracking ===");
 
     let mut diagnostics = RecalibrationStats::new();
+    // Consistent errors at m/z = 500: error_da = error_ppm * 500e-6.
     let errors = [
-        (10.5, 5.0, 0.1050, 0.0500, "protonated"),
-        (12.0, 6.0, 0.1200, 0.0600, "protonated"),
-        (-8.5, -4.0, -0.0850, -0.0400, "deprotonated"),
-        (9.5, 4.5, 0.0950, 0.0450, "protonated"),
-        (11.0, 5.5, 0.1100, 0.0550, "deprotonated"),
+        (10.5, 5.0, 0.005_25, 0.002_50, "protonated"),
+        (12.0, 6.0, 0.006_00, 0.003_00, "protonated"),
+        (-8.5, -4.0, -0.004_25, -0.002_00, "deprotonated"),
+        (9.5, 4.5, 0.004_75, 0.002_25, "protonated"),
+        (11.0, 5.5, 0.005_50, 0.002_75, "deprotonated"),
     ];
 
     for (error_ppm_before, error_ppm_after, error_da_before, error_da_after, family) in errors {
@@ -112,19 +113,21 @@ fn run_diagnostics_example() -> RecalibrationStats {
     println!("  Sampled: {}", diagnostics.sample_count);
     println!("\n  Error (ppm):");
     println!(
-        "    Before: mean = {:.4}, rms = {:.4}, max = {:.4}",
+        "    Before: mean = {:.4}, mae = {:.4}, rms = {:.4}, max = {:.4}",
         diagnostics.mean_error_ppm_before,
+        diagnostics.mae_error_ppm_before,
         diagnostics.rms_error_ppm_before,
         diagnostics.max_abs_error_ppm_before,
     );
     println!(
-        "    After:  mean = {:.4}, rms = {:.4}, max = {:.4}",
+        "    After:  mean = {:.4}, mae = {:.4}, rms = {:.4}, max = {:.4}",
         diagnostics.mean_error_ppm_after,
+        diagnostics.mae_error_ppm_after,
         diagnostics.rms_error_ppm_after,
         diagnostics.max_abs_error_ppm_after,
     );
     println!(
-        "    Improvement: {:.4} ppm (mean), {:.4} ppm (rms)",
+        "    Improvement: {:.4} ppm (MAE), {:.4} ppm (RMS)",
         diagnostics.mean_error_improvement_ppm(),
         diagnostics.rms_error_improvement_ppm(),
     );
@@ -140,18 +143,22 @@ fn run_diagnostics_example() -> RecalibrationStats {
 fn run_visualization_example(diagnostics: &RecalibrationStats) {
     println!("\n=== Example 5: Diagnostic Visualization ===");
 
-    let errors_before = vec![10.0, 12.0, -8.5, 9.5, 11.0];
-    let errors_after = vec![5.0, 6.0, -4.0, 4.5, 5.5];
-
-    let scatter_plot =
-        render_recalibration_diagnostic_ppm(&errors_before, &errors_after).unwrap_or_default();
+    let scatter_plot = render_recalibration_diagnostic_ppm(
+        &diagnostics.error_ppm_before,
+        &diagnostics.error_ppm_after,
+    )
+    .unwrap_or_default();
     println!("Generated scatter plot: {} bytes SVG", scatter_plot.len());
 
-    let histogram = render_recalibration_diagnostic_histogram(&errors_before, &errors_after, 10)
-        .unwrap_or_default();
+    let histogram = render_recalibration_diagnostic_histogram(
+        &diagnostics.error_ppm_before,
+        &diagnostics.error_ppm_after,
+        10,
+    )
+    .unwrap_or_default();
     println!("Generated histogram: {} bytes SVG", histogram.len());
     println!(
-        "Mean improvement: {:.4} ppm",
+        "MAE improvement: {:.4} ppm",
         diagnostics.mean_error_improvement_ppm()
     );
 }

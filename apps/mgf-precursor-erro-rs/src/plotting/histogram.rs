@@ -18,15 +18,15 @@ pub(super) fn fill_histogram(
     if bin_count == 0 {
         return;
     }
-    let span = max - min;
+    let half_span = max / 2.0 - min / 2.0;
     for &error in values {
         if !error.is_finite() {
             continue;
         }
-        let bin = if span <= 0.0 {
+        let bin = if !half_span.is_finite() || half_span <= 0.0 {
             0
         } else {
-            let normalized = ((error - min) / span).clamp(0.0, 1.0);
+            let normalized = ((error / 2.0 - min / 2.0) / half_span).clamp(0.0, 1.0);
             floor_to_usize((normalized * usize_to_f64(bin_count)).floor()).min(bin_count - 1)
         };
         if let Some(count) = bins.get_mut(bin) {
@@ -54,7 +54,8 @@ pub fn render_recalibration_diagnostic_histogram(
     let Some((raw_min, raw_max)) = combined_finite_bounds(errors_before, errors_after) else {
         return Ok(buffer);
     };
-    let (error_min, error_max) = if (raw_max - raw_min).abs() <= f64::EPSILON {
+    let half_raw_span = raw_max / 2.0 - raw_min / 2.0;
+    let (error_min, error_max) = if half_raw_span.abs() <= f64::EPSILON {
         (raw_min - 0.5, raw_max + 0.5)
     } else {
         (raw_min, raw_max)
@@ -84,7 +85,9 @@ pub fn render_recalibration_diagnostic_histogram(
         .max()
         .unwrap_or(1)
         .max(1);
-    let bin_width = (error_max - error_min) / usize_to_f64(bin_count);
+    let y_max = max_count.saturating_add(max_count.div_ceil(10));
+    let half_span = error_max / 2.0 - error_min / 2.0;
+    let bin_width = (half_span / usize_to_f64(bin_count)) * 2.0;
 
     {
         let root = SVGBackend::with_string(&mut buffer, (1200, 400)).into_drawing_area();
@@ -97,7 +100,7 @@ pub fn render_recalibration_diagnostic_histogram(
             .margin(15)
             .x_label_area_size(40)
             .y_label_area_size(50)
-            .build_cartesian_2d(error_min..error_max, 0usize..max_count)?;
+            .build_cartesian_2d(error_min..error_max, 0usize..y_max)?;
 
         chart
             .configure_mesh()
@@ -105,10 +108,10 @@ pub fn render_recalibration_diagnostic_histogram(
             .y_desc("Count")
             .draw()?;
 
-        let before_style = ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled();
+        let before_style = ShapeStyle::from(&RGBAColor(68, 119, 170, 0.5)).filled();
         chart.draw_series(hist_before.iter().enumerate().map(|(i, &count)| {
             let x = usize_to_f64(i).mul_add(bin_width, error_min);
-            Rectangle::new([(x, 0), (bin_width.mul_add(0.9, x), count)], before_style)
+            Rectangle::new([(x, 0), (bin_width.mul_add(0.45, x), count)], before_style)
         }))?;
 
         let after_style = ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled();

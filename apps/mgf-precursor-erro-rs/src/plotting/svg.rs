@@ -7,6 +7,21 @@ use std::fmt::Write as _;
 
 use mgf_analysis_core::{floor_to_usize, usize_to_f64};
 
+fn escape_xml(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    for ch in input.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&#39;"),
+            other => out.push(other),
+        }
+    }
+    out
+}
+
 pub(super) fn embed_svg_legend<L: AsRef<str>, C: AsRef<str>>(
     mut svg_markup: String,
     legend_items: &[(L, C)],
@@ -40,8 +55,9 @@ pub(super) fn embed_svg_legend<L: AsRef<str>, C: AsRef<str>>(
     let items_per_row = floor_to_usize((max_row_width / entry_width).floor().max(1.0));
     let num_rows = legend_items.len().div_ceil(items_per_row);
 
-    let box_width =
-        usize_to_f64(items_per_row.min(legend_items.len())).mul_add(entry_width, padding_x * 2.0);
+    let box_width = usize_to_f64(items_per_row.min(legend_items.len()))
+        .mul_add(entry_width, padding_x * 2.0 + title_width + 10.0)
+        .min(width - inset * 2.0);
     let box_height = usize_to_f64(num_rows).mul_add(item_height, padding_y * 2.0) + 12.0;
     let legend_x = ((width - box_width) / 2.0)
         .max(inset)
@@ -54,15 +70,16 @@ pub(super) fn embed_svg_legend<L: AsRef<str>, C: AsRef<str>>(
     let rect_x = legend_x;
     let rect_y = legend_y - 2.0;
 
+    let title_escaped = escape_xml(title);
     let tail = svg_markup.split_off(position);
     let _ = write!(
         svg_markup,
-        "\n<g>\n            <rect x=\"{rect_x}\" y=\"{rect_y}\" width=\"{box_width}\" height=\"{box_height}\" rx=\"8\" ry=\"8\" fill=\"#f8fafc\" fill-opacity=\"0.97\" stroke=\"#cbd5e1\" stroke-width=\"0.8\" />\n            <text x=\"{title_x}\" y=\"{title_y}\" font-family=\"Inter, sans-serif\" font-size=\"10.5\" font-weight=\"600\" fill=\"#0f172a\">{title}</text>\n            "
+        "\n<g>\n            <rect x=\"{rect_x}\" y=\"{rect_y}\" width=\"{box_width}\" height=\"{box_height}\" rx=\"8\" ry=\"8\" fill=\"#f8fafc\" fill-opacity=\"0.97\" stroke=\"#cbd5e1\" stroke-width=\"0.8\" />\n            <text x=\"{title_x}\" y=\"{title_y}\" font-family=\"Inter, sans-serif\" font-size=\"10.5\" font-weight=\"600\" fill=\"#0f172a\">{title_escaped}</text>\n            "
     );
 
     for (index, (family, color)) in legend_items.iter().enumerate() {
-        let family = family.as_ref();
-        let color = color.as_ref();
+        let family = escape_xml(family.as_ref());
+        let color = escape_xml(color.as_ref());
         let row = index / items_per_row;
         let col = index % items_per_row;
         let item_x = usize_to_f64(col).mul_add(entry_width, items_start_x);

@@ -53,18 +53,19 @@ pub(super) fn tolerance_card_style(index: usize) -> String {
 }
 
 fn format_threshold_compliance(errors: &[f64], threshold: f64, above: bool) -> String {
-    let count = errors
-        .iter()
-        .filter(|e| {
-            let abs = e.abs();
-            if above {
-                abs > threshold
-            } else {
-                abs <= threshold
-            }
-        })
-        .count();
-    format_count_with_percentage(count, errors.len())
+    let mut total = 0usize;
+    let mut count = 0usize;
+    for &e in errors {
+        if !e.is_finite() {
+            continue;
+        }
+        total += 1;
+        let abs = e.abs();
+        if (above && abs > threshold) || (!above && abs <= threshold) {
+            count += 1;
+        }
+    }
+    format_count_with_percentage(count, total)
 }
 
 pub(super) fn format_recalibrated_compliance(
@@ -168,7 +169,12 @@ pub(super) fn EcdfPlot(
             ),
         }
     });
-    plot_shell(title, subtitle, svg_markup)
+    let effective_subtitle = if diagnostics.read().is_some() {
+        "Cumulative fraction after active MS2 recalibration (log10 scale)"
+    } else {
+        subtitle
+    };
+    plot_shell(title, effective_subtitle, svg_markup)
 }
 
 #[component]

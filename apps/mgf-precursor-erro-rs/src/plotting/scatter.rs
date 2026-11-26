@@ -39,7 +39,7 @@ pub(crate) fn render_ecdf_svg(
         .enumerate()
         .map(|(index, threshold)| {
             let label = format!("≤ {} {unit}", format_threshold_value(*threshold));
-            (label, tolerance_step_color(index, thresholds.len()))
+            (label, tolerance_step_color(index, 5))
         })
         .collect::<Vec<_>>();
 
@@ -63,8 +63,7 @@ pub(crate) fn render_ecdf_svg(
     } else {
         x_max.max(10.0)
     };
-    let y_floor = 1e-6f64;
-    let y_min = y_floor;
+    let y_min = 0.0f64;
     let y_max = 1.0f64;
 
     {
@@ -99,16 +98,20 @@ pub(crate) fn render_ecdf_svg(
         ))?;
 
         let plot_points = build_ecdf_points(values, x_min, x_max);
-        chart.draw_series(LineSeries::new(
-            plot_points,
-            ShapeStyle::from(&RGBColor(37, 99, 235)).stroke_width(2),
-        ))?;
-
-        for (index, threshold) in thresholds.iter().enumerate() {
-            let x = threshold.clamp(x_min, x_max);
-            let color = tolerance_step_rgb(index, thresholds.len());
+        if !plot_points.is_empty() {
             chart.draw_series(LineSeries::new(
-                [(x, y_min), (x, y_max)],
+                plot_points,
+                ShapeStyle::from(&RGBColor(37, 99, 235)).stroke_width(2),
+            ))?;
+        }
+
+        for (index, &threshold) in thresholds.iter().enumerate() {
+            if threshold < x_min || threshold > x_max {
+                continue;
+            }
+            let color = tolerance_step_rgb(index, 5);
+            chart.draw_series(LineSeries::new(
+                [(threshold, y_min), (threshold, y_max)],
                 ShapeStyle::from(&color).stroke_width(1),
             ))?;
         }
@@ -178,14 +181,10 @@ fn render_scatter_svg(
         ))?;
 
         for &tick in ticks {
-            if tick <= 0.0 {
+            if tick <= 0.0 || tick > y_limit {
                 continue;
             }
-            let positive_tick = tick.min(y_limit);
-            if !(y_min..=y_max).contains(&positive_tick) {
-                continue;
-            }
-            for y in [positive_tick, -positive_tick] {
+            for y in [tick, -tick] {
                 chart.draw_series(LineSeries::new(
                     [(x_min, y), (x_max, y)],
                     ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),

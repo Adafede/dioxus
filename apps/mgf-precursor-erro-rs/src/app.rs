@@ -45,7 +45,7 @@ const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
         ],
         operations: &[
             EdamTerm {
-                id: "operation_3628",
+                id: "operation_3627",
                 label: "Mass spectra calibration",
             },
             EdamTerm {
@@ -59,7 +59,7 @@ const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
         ],
         input_data: &[EdamTerm {
             id: "data_0943",
-            label: "Mass spectrometry spectra",
+            label: "Mass spectrum",
         }],
         input_formats: &[EdamTerm {
             id: "format_3651",
@@ -68,7 +68,7 @@ const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
         output_data: &[
             EdamTerm {
                 id: "data_0943",
-                label: "Mass spectrometry spectra",
+                label: "Mass spectrum",
             },
             EdamTerm {
                 id: "data_2884",
@@ -97,6 +97,7 @@ pub(super) struct UploadSignals {
     pub(super) busy: Signal<bool>,
     pub(super) drag_active: Signal<bool>,
     pub(super) original_mgf_content: Signal<String>,
+    pub(super) analysis_generation: Signal<u64>,
 }
 
 /// Renders the MGF precursor-error analysis UI.
@@ -112,6 +113,7 @@ pub fn app() -> Element {
         busy: use_signal(|| false),
         drag_active: use_signal(|| false),
         original_mgf_content: use_signal(String::new),
+        analysis_generation: use_signal(|| 0u64),
     };
     let calibration_model = use_signal(|| CalibrationModel::None);
     let preferred_lambda = use_signal(ShrinkageLambda::default);
