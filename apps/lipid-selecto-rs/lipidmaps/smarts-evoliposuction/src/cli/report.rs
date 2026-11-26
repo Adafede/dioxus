@@ -51,13 +51,12 @@ fn empty_row_fields(counts: ParseCounts, status: &'static str) -> ResultRowField
     }
 }
 
-pub(crate) fn write_evolution_row(
+pub(crate) fn write_evolution_fields(
     writer: &mut csv::Writer<fs::File>,
-    outcome: &EvolutionOutcome<'_>,
-    tested_smarts_dir: &Path,
+    row: &ManifestRow,
+    elapsed: f64,
+    fields: &ResultRowFields,
 ) -> Result<(), CliError> {
-    let fields = process_evolution_result(outcome.result, outcome.row, tested_smarts_dir)?;
-    let row = outcome.row;
     writer.write_record([
         &row.level,
         &row.label,
@@ -74,13 +73,22 @@ pub(crate) fn write_evolution_row(
         &fields.coverage_score,
         &fields.smarts_len,
         &fields.generations,
-        &format!("{:.3}", outcome.elapsed),
+        &format!("{elapsed:.3}"),
         fields.status,
         &fields.tested_smarts_count,
         &fields.tested_smarts_path,
     ])?;
     writer.flush()?;
     Ok(())
+}
+
+pub(crate) fn write_evolution_row(
+    writer: &mut csv::Writer<fs::File>,
+    outcome: &EvolutionOutcome<'_>,
+    tested_smarts_dir: &Path,
+) -> Result<(), CliError> {
+    let fields = process_evolution_result(outcome.result, outcome.row, tested_smarts_dir)?;
+    write_evolution_fields(writer, outcome.row, outcome.elapsed, &fields)
 }
 
 /// Extract CSV fields from an [`EvolutionResult`], writing the tested-SMARTS CSV

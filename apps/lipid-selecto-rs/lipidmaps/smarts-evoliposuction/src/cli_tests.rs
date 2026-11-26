@@ -41,7 +41,7 @@ fn already_done_only_skips_ok_rows() {
     )
     .unwrap();
 
-    let done = already_done(&out);
+    let done = already_done(&out).unwrap();
     assert!(done.contains("fa01"));
     assert!(!done.contains("fa02"));
     assert!(!done.contains("fa03"));

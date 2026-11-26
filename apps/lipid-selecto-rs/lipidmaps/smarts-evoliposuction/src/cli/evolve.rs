@@ -7,16 +7,19 @@ use std::collections::HashSet;
 use std::fs;
 use std::io::Write as _;
 use std::path::Path;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use rayon::prelude::*;
 use smarts_evoliposuction::{
-    CliError, Config, EvolutionResult, ManifestRow, RESULTS_HEADERS, already_done, evolve_all,
+    CliError, Config, ManifestRow, RESULTS_HEADERS, already_done, evolve_all,
     evolve_all_with_progress, open_results_writer, read_manifest,
 };
 
 use super::ordering::order_rows_for_evolution;
-use super::report::{EvolutionOutcome, write_evolution_row};
+use super::report::{
+    EvolutionOutcome, process_evolution_result, write_evolution_fields, write_evolution_row,
+};
 
 /// Configuration for [`evolve_step`].
 pub(crate) struct EvolveOptions<'a> {
@@ -33,16 +36,10 @@ pub(crate) struct EvolveOptions<'a> {
     pub(crate) with_subclasses: bool,
 }
 
-struct TaskRecord {
-    row: ManifestRow,
-    result: EvolutionResult,
-    elapsed: f64,
-}
-
 pub(crate) fn evolve_step(opts: &EvolveOptions<'_>) -> Result<(), CliError> {
     let rows = load_filtered_rows(opts.manifest, opts.level, opts.with_subclasses)?;
     let done = if opts.resume {
-        already_done(opts.output)
+        already_done(opts.output)?
     } else {
         HashSet::new()
     };
@@ -137,11 +134,12 @@ fn run_parallel(
     eprintln!(" Running in parallel batch mode (no progress output).");
     let to_evolve: Vec<&ManifestRow> = rows.iter().filter(|r| !done.contains(&r.slug)).collect();
     let total = to_evolve.len();
+    let writer_mutex = Mutex::new(writer);
 
-    let records: Vec<TaskRecord> = to_evolve
+    to_evolve
         .par_iter()
         .enumerate()
-        .map(|(i, row)| {
+        .try_for_each(|(i, row)| -> Result<(), CliError> {
             let t0 = Instant::now();
             eprintln!("[{i}/{total}] {} evolving...", row.slug);
             let result = evolve_all(
@@ -151,21 +149,10 @@ fn run_parallel(
             );
             let elapsed = t0.elapsed().as_secs_f64();
             eprintln!("[{i}/{total}] {} done in {elapsed:.1}s", row.slug);
-            TaskRecord {
-                row: (*row).clone(),
-                result,
-                elapsed,
-            }
+            let fields = process_evolution_result(&result, row, tested_smarts_dir)?;
+            let mut guard = writer_mutex
+                .lock()
+                .map_err(|_| CliError::Io(std::io::Error::other("results writer lock poisoned")))?;
+            write_evolution_fields(&mut guard, row, elapsed, &fields)
         })
-        .collect();
-
-    for record in &records {
-        let outcome = EvolutionOutcome {
-            row: &record.row,
-            result: &record.result,
-            elapsed: record.elapsed,
-        };
-        write_evolution_row(writer, &outcome, tested_smarts_dir)?;
-    }
-    Ok(())
 }

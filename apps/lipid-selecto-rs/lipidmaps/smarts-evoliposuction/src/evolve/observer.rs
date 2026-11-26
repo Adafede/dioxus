@@ -19,12 +19,19 @@ pub struct TestedSmartsRecord {
 }
 
 impl TestedSmartsRecord {
-    /// Total ordering by `mcc` descending, `coverage_score` descending, then `generation` ascending.
+    /// Total ordering by finite `mcc` descending, finite `coverage_score` descending,
+    /// then `generation` ascending (with `NaN` values ranked last).
     #[must_use]
     pub fn cmp_priority(&self, other: &Self) -> std::cmp::Ordering {
-        other
-            .mcc
-            .total_cmp(&self.mcc)
+        self.mcc
+            .is_nan()
+            .cmp(&other.mcc.is_nan())
+            .then_with(|| other.mcc.total_cmp(&self.mcc))
+            .then_with(|| {
+                self.coverage_score
+                    .is_nan()
+                    .cmp(&other.coverage_score.is_nan())
+            })
             .then_with(|| other.coverage_score.total_cmp(&self.coverage_score))
             .then_with(|| self.generation.cmp(&other.generation))
     }

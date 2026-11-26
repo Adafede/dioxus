@@ -57,17 +57,23 @@ pub fn open_results_writer(
 }
 
 /// Collect slugs that already completed with `status == "ok"` in an existing results CSV.
-#[must_use]
-pub fn already_done(output: &Path) -> HashSet<String> {
+///
+/// # Errors
+///
+/// Returns an error if `output` exists and cannot be read or contains malformed CSV rows.
+pub fn already_done(output: &Path) -> Result<HashSet<String>, crate::CliError> {
+    if !output.exists() {
+        return Ok(HashSet::new());
+    }
     let mut done = HashSet::new();
-    if let Ok(mut reader) = csv::Reader::from_path(output) {
-        for record in reader.deserialize::<HashMap<String, String>>().flatten() {
-            if record.get("status").is_some_and(|s| s == "ok")
-                && let Some(slug) = record.get("slug")
-            {
-                done.insert(slug.clone());
-            }
+    let mut reader = csv::Reader::from_path(output)?;
+    for result in reader.deserialize::<HashMap<String, String>>() {
+        let record = result?;
+        if record.get("status").is_some_and(|s| s == "ok")
+            && let Some(slug) = record.get("slug")
+        {
+            done.insert(slug.clone());
         }
     }
-    done
+    Ok(done)
 }

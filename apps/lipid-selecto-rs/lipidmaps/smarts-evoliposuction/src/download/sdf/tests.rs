@@ -115,3 +115,18 @@ fn parse_sdf_supports_extra_header_spaces_and_sanitizes_tabs_and_crlf() {
     let syn_idx = COLUMNS.iter().position(|&c| c == "SYNONYMS").unwrap();
     assert_eq!(cols[syn_idx], "a b; c");
 }
+
+#[test]
+fn parse_sdf_handles_eof_without_trailing_newline_and_dollar_in_value() {
+    let sdf = "> <LM_ID>\nLMFA01010002\n\n> <SYNONYMS>\nLiteral $$$$ token\n\n> <SMILES>\nCCC";
+    let (tsv, count) = to_lmsd_tsv(sdf);
+    assert_eq!(count, 1);
+    let lines: Vec<&str> = tsv.lines().collect();
+    assert_eq!(lines.len(), 2);
+    let cols: Vec<&str> = lines[1].split('\t').collect();
+    assert_eq!(cols[0], "LMFA01010002");
+    assert_eq!(
+        cols[COLUMNS.iter().position(|&c| c == "SMILES").unwrap()],
+        "CCC"
+    );
+}

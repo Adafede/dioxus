@@ -52,6 +52,17 @@ impl<'a> Parser<'a> {
     }
 }
 
+fn find_record_end(text: &str) -> Option<usize> {
+    let mut offset = 0usize;
+    for line in text.split_inclusive('\n') {
+        if line.trim() == "$$$$" {
+            return Some(offset);
+        }
+        offset += line.len();
+    }
+    None
+}
+
 impl Iterator for Parser<'_> {
     type Item = Record;
 
@@ -65,10 +76,10 @@ impl Iterator for Parser<'_> {
             let gap = self.text[self.pos..].find('>')?;
             let abs = self.pos + gap;
 
-            // If "$$$$" (record separator) appears before the next ">",
+            // If "$$$$" (record separator line) appears before the next ">",
             // skip past the separator.
             let before_gt = &self.text[self.pos..abs];
-            if before_gt.contains("$$$$") {
+            if before_gt.lines().any(|l| l.trim() == "$$$$") {
                 self.pos = abs;
                 continue;
             }
@@ -101,20 +112,17 @@ fn parse_property_header(text: &str, abs_gt: usize) -> Option<(String, usize)> {
 fn read_property_value(text: &str, value_start: usize) -> (String, usize) {
     let mut value_lines: Vec<&str> = Vec::new();
     let mut line_start = value_start;
-    loop {
+    while line_start < text.len() {
         let line_end = text[line_start..]
             .find('\n')
             .map_or(text.len(), |p| line_start + p);
-        let line = &text[line_start..line_end];
+        let line = text[line_start..line_end].trim_end_matches('\r');
 
-        if line.trim().is_empty() || line.starts_with('>') || line.starts_with("$$$$") {
+        if line.trim().is_empty() || line.starts_with('>') || line.trim() == "$$$$" {
             break;
         }
         value_lines.push(line.trim_end());
-        line_start = line_end + 1;
-        if line_start >= text.len() {
-            break;
-        }
+        line_start = (line_end + 1).min(text.len());
     }
     (value_lines.join("\n"), line_start)
 }
@@ -123,9 +131,9 @@ fn parse_one_record(text: &str) -> Option<ParsedRecord> {
     let mut pos = 0;
     let mut properties: HashMap<String, String> = HashMap::new();
 
-    loop {
+    while pos < text.len() {
         let rest = &text[pos..];
-        let dollar_pos = rest.find("$$$$");
+        let dollar_pos = find_record_end(rest);
         let Some(gt_idx) = (if rest.starts_with('>') {
             Some(0)
         } else {

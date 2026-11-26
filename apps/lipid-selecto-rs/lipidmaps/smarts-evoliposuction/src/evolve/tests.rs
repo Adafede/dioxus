@@ -107,13 +107,21 @@ mod cases {
         assert_eq!(
             top_six,
             vec![
-                "nan_mcc",
-                "filler_0",
-                "filler_5",
-                "filler_10",
-                "filler_15",
-                "best"
+                "best",
+                "cov_high",
+                "g_early",
+                "g_late",
+                "nan_cov",
+                "filler_17"
             ]
+        );
+        assert_eq!(records.last().map(|r| r.smarts.as_str()), Some("filler_15"));
+        let first_nan = records.iter().position(|r| r.mcc.is_nan()).unwrap();
+        assert!(records[..first_nan].iter().all(|r| !r.mcc.is_nan()));
+        assert!(records[first_nan..].iter().all(|r| r.mcc.is_nan()));
+        assert_eq!(
+            records.get(first_nan).map(|r| r.smarts.as_str()),
+            Some("nan_mcc")
         );
     }
 }

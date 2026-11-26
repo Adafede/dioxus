@@ -20,5 +20,5 @@ pub use manifest::{ManifestRow, read_manifest, write_manifest};
 pub use results_io::{RESULTS_HEADERS, already_done, open_results_writer};
 pub use splitting::{
     ClassSplit, Dataset, DatasetRow, Level, SkippedClass, SplitConfig, SplitResult,
-    SubclassNegatives, split_dataset,
+    SubclassNegatives, parse_lmsd_tsv, split_dataset,
 };

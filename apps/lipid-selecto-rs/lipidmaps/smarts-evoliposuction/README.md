@@ -16,21 +16,23 @@ smarts-evoliposuction/
 ├── Cargo.toml
 ├── Cargo.lock
 └── src/
+    ├── cli/           subcommand implementations (`download`, `split`, `evolve`, `ordering`, `report`)
+    ├── download/      streaming SDF-to-TSV converter (`sdf.rs`)
+    ├── download.rs    LMSD.sdf.zip conversion errors & zip extraction
+    ├── error.rs       typed CLI error enum
+    ├── evolve.rs      smarts-evolution wrapper with per-class error isolation
     ├── lib.rs         public API re-exports
     ├── main.rs        CLI binary (download / split / evolve / all)
-    ├── results_io.rs  verified CSV result readers, writers, and resume filter
-    ├── download.rs    LMSD.sdf.zip download + TSV conversion
-    ├── splitting.rs   TSV parsing + positive/negative SMILES splitting
-    ├── evolve.rs      smarts-evolution wrapper with per-class error isolation
     ├── manifest.rs    manifest CSV reading/writing
-    └── lipidsdl/      vendored SDF parser & async download module
+    ├── results_io.rs  verified CSV result readers, writers, and resume filter
+    └── splitting.rs   TSV parsing + positive/negative SMILES splitting
 ```
 
 Pipeline stages:
 
 1. **Download**: fetches `LMSD.sdf.zip` from LIPID MAPS and converts it to TSV
-   via `src/lipidsdl/`. Note that `download --dest LMSD.sdf.zip` writes the
-   converted TSV to `dest.with_extension("tsv")` (i.e. `LMSD.sdf.tsv`).
+   via `src/download/sdf.rs`. Note that `download --dest LMSD.sdf.zip` writes
+   the converted TSV to `dest.with_extension("tsv")` (i.e. `LMSD.sdf.tsv`).
 2. **Split**: parses the TSV (`--input` defaults to `LMSD.sdf.tsv`) and writes
    balanced positive/negative SMILES files per `category`, `main_class`, and
    optionally `subclass`.
@@ -100,7 +102,7 @@ cargo run --release --locked -- evolve \
   | `--resume`          | `false`                           | Evolve      | Skip classes with `status == "ok"` in `--output`              |
   | `--level`           | `None`                            | Evolve      | Filter to `category`, `main_class`, or `subclass`             |
   | `--match-timeout`   | `5`                               | All, Evolve | Per-SMARTS evaluation timeout in seconds                      |
-  | `--smiles-cap`      | `2000`                            | Split       | Max SMILES per positive/negative set                          |
+  | `--smiles-cap`      | `2000`                            | Split       | Max SMILES per positive set                                   |
   | `--max-negatives`   | `5000`                            | Split       | Cap on negative SMILES per class                              |
   | `--no-tui`          | `false`                           | All, Evolve | Disable stderr progress output; run classes in parallel       |
   | `--with-subclasses` | `false`                           | All, Evolve | Include `subclass` rows (`category` + `main_class` otherwise) |

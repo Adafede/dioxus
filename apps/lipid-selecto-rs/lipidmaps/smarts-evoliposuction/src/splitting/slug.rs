@@ -19,14 +19,18 @@ const LIPID_MAPS_CATEGORY_RANK: [(&str, usize); 8] = [
 ];
 
 pub(super) fn category_rank(category: &str) -> usize {
+    let trimmed = category.split(" [").next().unwrap_or(category).trim();
     LIPID_MAPS_CATEGORY_RANK
         .iter()
-        .find(|(name, _)| *name == category)
+        .find(|(name, _)| *name == trimmed)
         .map_or(99, |(_, rank)| *rank)
 }
 
 pub(super) fn category_of_main(main_class: &str) -> &'static str {
-    let abbr = &main_class[..main_class.floor_char_boundary(2)];
+    let code_source = main_class
+        .rsplit_once('[')
+        .map_or(main_class, |(_, rest)| rest);
+    let abbr = &code_source[..code_source.floor_char_boundary(2)];
     match abbr {
         "FA" => "Fatty Acyls",
         "GL" => "Glycerolipids",

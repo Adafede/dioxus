@@ -137,12 +137,11 @@ mod cases {
 
     #[test]
     fn split_dataset_subclass_siblings() {
+        use std::fmt::Write as _;
         let mut csv = "SMILES,MAIN_CLASS,SUB_CLASS\n".to_string();
-        for _ in 0..25 {
-            csv.push_str("CCCC,GP,SUB1\n");
-        }
-        for _ in 0..25 {
-            csv.push_str("CCCO,GP,SUB2\n");
+        for i in 1..=25 {
+            let _ = writeln!(csv, "{},GP,SUB1", "C".repeat(i));
+            let _ = writeln!(csv, "{}O,GP,SUB2", "C".repeat(i));
         }
 
         let dataset = parse_csv(&csv, &ColumnNames::default()).unwrap();
@@ -166,6 +165,11 @@ mod cases {
     #[test]
     fn category_and_slugify_handle_multibyte_utf8_safely() {
         assert_eq!(category_of_main("FA01"), "Fatty Acyls");
+        assert_eq!(
+            category_of_main("Fatty Acids and Conjugates [FA01]"),
+            "Fatty Acyls"
+        );
+        assert_eq!(category_rank("Fatty Acyls [FA]"), 0);
         assert_eq!(category_of_main("Aµ01"), "Other");
         assert_eq!(category_of_main("µA01"), "Other");
         assert_eq!(category_of_main(""), "Other");
@@ -179,5 +183,36 @@ mod cases {
 
         let short_cap = slugify_with_len("very_long_lipid_class_name", 5);
         assert!(short_cap.starts_with('_'), "unexpected slug: {short_cap}");
+    }
+
+    #[test]
+    fn split_dataset_deduplicates_duplicate_smiles_within_class() {
+        use std::fmt::Write as _;
+        let mut tsv = "SMILES\tCATEGORY\tMAIN_CLASS\tSUB_CLASS\n".to_string();
+        for _ in 0..30 {
+            tsv.push_str("CCCC\tFatty Acyls [FA]\tFatty Acids and Conjugates [FA01]\t\n");
+        }
+        for i in 0..25 {
+            let _ = writeln!(
+                tsv,
+                "C{}O\tGlycerolipids [GL]\tMonoradylglycerols [GL01]\t",
+                "C".repeat(i + 1)
+            );
+        }
+        let dataset = crate::parse_lmsd_tsv(&tsv).unwrap();
+        let result = split_dataset(&dataset, &SplitConfig::default());
+        assert!(
+            result
+                .classes
+                .iter()
+                .all(|c| c.main_class != "Fatty Acids and Conjugates [FA01]"),
+            "30 duplicates of 1 SMILES must not meet min_positive=20"
+        );
+        assert!(
+            result
+                .classes
+                .iter()
+                .any(|c| c.category == "Glycerolipids [GL]" && c.positive_count() == 25)
+        );
     }
 }

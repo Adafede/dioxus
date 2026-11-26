@@ -24,6 +24,47 @@ pub use self::types::{
 #[cfg(test)]
 use self::types::{ColumnNames, SplitError};
 
+/// Parse an LMSD TSV export containing `SMILES`, `MAIN_CLASS`, `SUB_CLASS`,
+/// and optional `CATEGORY` columns.
+///
+/// # Errors
+///
+/// Returns [`CliError::EmptyInput`] if the input has no header line, or
+/// [`CliError::MissingColumn`] if a required column is missing.
+pub fn parse_lmsd_tsv(tsv_text: &str) -> Result<Dataset, crate::CliError> {
+    let mut lines = tsv_text.lines();
+    let Some(header_line) = lines.next() else {
+        return Err(crate::CliError::EmptyInput);
+    };
+    let header: Vec<&str> = header_line.split('\t').collect();
+    let find = |name| header.iter().position(|&col| col == name);
+    let smiles_idx = find("SMILES").ok_or(crate::CliError::MissingColumn("SMILES"))?;
+    let category_idx = find("CATEGORY");
+    let main_idx = find("MAIN_CLASS").ok_or(crate::CliError::MissingColumn("MAIN_CLASS"))?;
+    let sub_idx = find("SUB_CLASS").ok_or(crate::CliError::MissingColumn("SUB_CLASS"))?;
+    let rows = lines
+        .filter_map(|line| {
+            let cols: Vec<&str> = line.split('\t').collect();
+            let smiles = cols.get(smiles_idx)?.trim();
+            let main_class = cols.get(main_idx)?.trim();
+            let subclass = cols.get(sub_idx)?.trim();
+            if smiles.is_empty() || main_class.is_empty() {
+                return None;
+            }
+            let category = category_idx
+                .and_then(|idx| cols.get(idx))
+                .map_or("", |val| val.trim());
+            Some(DatasetRow {
+                smiles: smiles.to_string(),
+                category: category.to_string(),
+                main_class: main_class.to_string(),
+                subclass: subclass.to_string(),
+            })
+        })
+        .collect();
+    Ok(Dataset { rows })
+}
+
 #[cfg(test)]
 fn parse_csv(csv_text: &str, columns: &ColumnNames) -> Result<Dataset, SplitError> {
     let mut reader = ReaderBuilder::new().from_reader(csv_text.as_bytes());
@@ -247,12 +288,26 @@ type SplitIndex<'a> = (
     HashMap<(&'a str, &'a str), Vec<&'a str>>,
 );
 
+fn push_unique<'a>(
+    buckets: &mut HashMap<&'a str, Vec<&'a str>>,
+    seen_map: &mut HashMap<&'a str, HashSet<&'a str>>,
+    key: &'a str,
+    smi: &'a str,
+) {
+    if seen_map.entry(key).or_default().insert(smi) {
+        buckets.entry(key).or_default().push(smi);
+    }
+}
+
 fn index_dataset(dataset: &Dataset) -> SplitIndex<'_> {
     let mut all_smiles: Vec<&str> = Vec::new();
     let mut seen: HashSet<&str> = HashSet::new();
     let mut by_cat: HashMap<&str, Vec<&str>> = HashMap::new();
     let mut by_main: HashMap<&str, Vec<&str>> = HashMap::new();
     let mut by_sub: HashMap<(&str, &str), Vec<&str>> = HashMap::new();
+    let mut seen_cat: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut seen_main: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut seen_sub: HashMap<(&str, &str), HashSet<&str>> = HashMap::new();
 
     for row in &dataset.rows {
         let smi = row.smiles.as_str();
@@ -260,17 +315,14 @@ fn index_dataset(dataset: &Dataset) -> SplitIndex<'_> {
             all_smiles.push(smi);
         }
         if !row.category.is_empty() {
-            by_cat.entry(row.category.as_str()).or_default().push(smi);
+            push_unique(&mut by_cat, &mut seen_cat, row.category.as_str(), smi);
         }
-        by_main
-            .entry(row.main_class.as_str())
-            .or_default()
-            .push(smi);
+        push_unique(&mut by_main, &mut seen_main, row.main_class.as_str(), smi);
         if !row.subclass.is_empty() {
-            by_sub
-                .entry((row.main_class.as_str(), row.subclass.as_str()))
-                .or_default()
-                .push(smi);
+            let key = (row.main_class.as_str(), row.subclass.as_str());
+            if seen_sub.entry(key).or_default().insert(smi) {
+                by_sub.entry(key).or_default().push(smi);
+            }
         }
     }
     (all_smiles, by_cat, by_main, by_sub)
