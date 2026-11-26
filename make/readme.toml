@@ -38,8 +38,9 @@ for template in crates/*/README.tpl apps/*/README.tpl; do
   dir=$(dirname "$template")
   found=1
   if ! ( cd "$dir" \\
-         && tmp_readme="$(mktemp)" \\
-         && trap 'rm -f "$tmp_readme"' EXIT \\
+         && tmp_dir="$(mktemp -d)" \\
+         && tmp_readme="$tmp_dir/README.md" \\
+         && trap 'rm -rf "$tmp_dir"' EXIT \\
          && cargo readme -t README.tpl -o "$tmp_readme" 2>/dev/null \\
          && panache format "$tmp_readme" > /dev/null \\
          && panache lint "$tmp_readme" \\
