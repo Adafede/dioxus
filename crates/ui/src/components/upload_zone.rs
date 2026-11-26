@@ -12,8 +12,12 @@ use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Theme, Typography
 use dioxus::events::{DragData, FormData};
 use dioxus::prelude::*;
 
-fn status_color(message: &str, colors: ColorScheme) -> &'static str {
-    if message.contains("Error") || message.contains("error") || message.contains("Unexpected") {
+fn status_color(message: &str, is_error: bool, colors: ColorScheme) -> &'static str {
+    if is_error
+        || message.contains("Error")
+        || message.contains("error")
+        || message.contains("Unexpected")
+    {
         colors.red
     } else {
         colors.text
@@ -43,6 +47,9 @@ pub struct UploadZoneProps {
     pub hint: &'static str,
     /// Leading glyph / badge.
     pub icon: &'static str,
+    /// Explicit error flag overriding substring detection on `status`.
+    #[props(default)]
+    pub is_error: bool,
     /// Unique DOM ID prefix preventing collisions when multiple zones appear on one page.
     #[props(default = "upload")]
     pub id_prefix: &'static str,
@@ -68,13 +75,14 @@ pub fn UploadZone(props: UploadZoneProps) -> Element {
     let colors = props.theme.colors();
     let mut drag_active = props.drag_active;
     let is_drag_active = *drag_active.read();
+    let is_busy = *props.busy.read();
     let status_text = props.status.read();
-    let tone_color = status_color(&status_text, colors);
+    let tone_color = status_color(&status_text, props.is_error, colors);
     let input_id = format!("{}-input", props.id_prefix);
     let status_id = format!("{}-status", props.id_prefix);
 
-    let zone_style = build_zone_style(colors, is_drag_active);
-    let hidden_input_style = build_hidden_input_style();
+    let zone_style = build_zone_style(colors, is_drag_active, is_busy);
+    let hidden_input_style = build_hidden_input_style(is_busy);
     let activate_drag = move |evt: Event<DragData>| {
         evt.prevent_default();
         drag_active.set(true);
@@ -83,6 +91,7 @@ pub fn UploadZone(props: UploadZoneProps) -> Element {
     rsx! {
         label {
             r#for: "{input_id}",
+            class: "ui-upload-zone",
             style: zone_style,
             ondragenter: activate_drag,
             ondragover: activate_drag,
@@ -130,8 +139,8 @@ pub fn UploadZone(props: UploadZoneProps) -> Element {
     }
 }
 
-fn build_zone_style(colors: ColorScheme, drag_active: bool) -> String {
-    StyleBuilder::with_capacity(320)
+fn build_zone_style(colors: ColorScheme, drag_active: bool, busy: bool) -> String {
+    let mut builder = StyleBuilder::with_capacity(320)
         .display("flex")
         .flex_direction("column")
         .align_items("center")
@@ -151,24 +160,27 @@ fn build_zone_style(colors: ColorScheme, drag_active: bool) -> String {
         ))
         .border_radius(Radius::MD)
         .padding(Spacing::LG)
-        .cursor("pointer")
+        .cursor(if busy { "wait" } else { "pointer" })
         .background_color(if drag_active {
             colors.surface2
         } else {
             colors.surface
         })
-        .color(colors.text2)
-        .build()
+        .color(colors.text2);
+    if busy {
+        builder = builder.opacity("0.7");
+    }
+    builder.build()
 }
 
-fn build_hidden_input_style() -> String {
+fn build_hidden_input_style(busy: bool) -> String {
     StyleBuilder::with_capacity(110)
         .property("position", "absolute")
         .property("inset", "0")
         .width("100%")
         .height("100%")
         .opacity("0")
-        .cursor("pointer")
+        .cursor(if busy { "wait" } else { "pointer" })
         .build()
 }
 

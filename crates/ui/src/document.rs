@@ -10,12 +10,13 @@
 
 use crate::a11y::SKIP_LINK_FOCUS_CSS;
 use crate::components::simple_analytics_badge::ANALYTICS_PIXEL_CSS;
-use crate::webmcp::{WebMcpConfig, bioschemas_json_ld, capabilities_script};
+use crate::webmcp::{WebMcpConfig, bioschemas_json_ld, capabilities_script, json_string};
 use dioxus::document::{Document, document};
 use dioxus::prelude::*;
 
 fn sync_document_lang(lang: &str) {
-    document().eval(format!("document.documentElement.lang = {lang:?};"));
+    let escaped = json_string(lang);
+    document().eval(format!("document.documentElement.lang = {escaped};"));
 }
 
 /// Properties for [`DocumentHead`].
@@ -128,7 +129,12 @@ fn inject_theme_meta(doc: &dyn Document, theme_colors: Option<(&'static str, &'s
                 None,
             );
         }
-        create_meta(doc, "name", "color-scheme", "light dark".to_string());
+        create_meta(
+            doc,
+            "name",
+            "color-scheme",
+            if light == dark { "light" } else { "light dark" }.to_string(),
+        );
     }
     doc.create_head_element(
         "style",
@@ -166,10 +172,14 @@ fn inject_structured_data(doc: &dyn Document, webmcp: Option<WebMcpConfig>, json
         }
     }
     if let Some(ld) = json_ld {
+        let escaped = ld
+            .replace("</", "\\u003c/")
+            .replace('\u{2028}', "\\u2028")
+            .replace('\u{2029}', "\\u2029");
         doc.create_head_element(
             "script",
             &[("type", "application/ld+json".to_string())],
-            Some(ld.replace("</", "<\\/")),
+            Some(escaped),
         );
     }
 }
@@ -204,7 +214,7 @@ mod tests {
                             label: "Cheminformatics",
                         }],
                         operations: &[EdamTerm {
-                            id: "operation_0366",
+                            id: "operation_3432",
                             label: "Clustering",
                         }],
                         input_data: &[],

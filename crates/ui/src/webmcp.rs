@@ -22,7 +22,7 @@ use std::fmt::Write;
 /// `operation_*`, `data_*`, or `format_*`).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct EdamTerm {
-    /// Short EDAM identifier (e.g. `"topic_2258"`, `"operation_0366"`,
+    /// Short EDAM identifier (e.g. `"topic_2258"`, `"operation_3432"`,
     /// `"data_2301"`, `"format_1196"`).
     pub id: &'static str,
     /// Human-readable preferred label (e.g. `"Cheminformatics"`).
@@ -110,7 +110,7 @@ fn write_json_string(out: &mut String, s: &str) {
 }
 
 /// Returns `s` as a JSON string literal (also valid as a JS string literal).
-fn json_string(s: &str) -> String {
+pub(crate) fn json_string(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     write_json_string(&mut out, s);
     out

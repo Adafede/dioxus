@@ -16,7 +16,7 @@ use dioxus::prelude::*;
 pub(crate) const ANALYTICS_PIXEL_CSS: &str = ".analytics-pixel { position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }";
 
 /// Renders the `SimpleAnalytics` badge for `domain` and the JavaScript-free
-/// `noscript.gif` pixel as a centered footer.
+/// `noscript.gif` pixel as a centered container.
 #[component]
 pub fn SimpleAnalyticsBadge(
     /// Public domain reported to Simple Analytics.
@@ -25,14 +25,14 @@ pub fn SimpleAnalyticsBadge(
     #[props(default)]
     path: Option<String>,
 ) -> Element {
-    let footer_style = StyleBuilder::with_capacity(48)
+    let container_style = StyleBuilder::with_capacity(48)
         .padding("0.5rem")
         .text_align("center")
         .build();
 
     if !is_valid_domain(&domain) {
         return rsx! {
-            footer { style: "{footer_style}" }
+            div { style: "{container_style}" }
         };
     }
 
@@ -54,7 +54,7 @@ pub fn SimpleAnalyticsBadge(
     );
 
     rsx! {
-        footer { style: "{footer_style}",
+        div { style: "{container_style}",
             a {
                 href: "{href}",
                 "referrerpolicy": "origin",

@@ -60,8 +60,7 @@ pub fn Footer(props: FooterProps) -> Element {
 
     let link_style = StyleBuilder::with_capacity(96)
         .color(colors.accent)
-        .text_decoration("none")
-        .border_bottom("1px solid transparent")
+        .text_decoration("underline")
         .build();
 
     rsx! {

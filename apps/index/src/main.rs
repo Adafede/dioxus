@@ -32,6 +32,8 @@ fn app() -> Element {
         .display("flex")
         .flex_direction("column")
         .property("min-height", "100vh")
+        .background_color(ColorScheme::LIGHT.bg)
+        .color(ColorScheme::LIGHT.text)
         .build();
 
     let main_style = StyleBuilder::new()
@@ -76,7 +78,6 @@ fn app() -> Element {
         .build();
 
     rsx! {
-        // Document head — replaces static index.html meta tags & styles
         DocumentHead {
             title: "Dioxus Experiments".to_string(),
             description: Some("Open-source Rust/WASM experiments built with Dioxus: CX-SMILES Yoga, JSON Count-rs, MGF Precursor Erro-rs, Lipid Selecto-rs, and Smellfish-rs.".to_string()),
@@ -102,15 +103,15 @@ fn app() -> Element {
             }),
             og_type: Some("website".to_string()),
             og_site_name: Some("Dioxus Experiments".to_string()),
-            theme_colors: Some(("#f6f8fb", "#10141b")),
+            theme_colors: Some((ColorScheme::LIGHT.bg, ColorScheme::LIGHT.bg)),
         }
 
         div { style: container_style,
             skip_link {}
 
             Header {
-                title: "🦀 Dioxus Experiments".to_string(),
-                subtitle: Some("A collection of open-source Rust/WASM applications testing the boundaries of what's possible on the web. From knowledge graphs to mass spectrometry analysis.".to_string()),
+                title: "Dioxus Experiments".to_string(),
+                subtitle: Some("Open-source Rust/WebAssembly scientific applications built with Dioxus.".to_string()),
             }
 
             main { id: "main-content", style: main_style,
@@ -127,7 +128,6 @@ fn app() -> Element {
 
                 aside { aria_labelledby: "disclaimer-heading", style: disclaimer_style,
                     h2 { id: "disclaimer-heading", style: &section_heading_style,
-                        span { aria_hidden: "true", "⚠️ " }
                         "About These Prototypes"
                     }
                     p { style: &disclaimer_text_style,
@@ -158,33 +158,33 @@ fn app() -> Element {
 const APPS: &[AppInfo] = &[
     AppInfo {
         id: "cxsmiles-yoga",
-        title: "🧘 CX-SMILES Yoga",
+        title: "CX-SMILES Yoga",
         path: "./cxsmiles-yoga/",
-        description: "Generate a single CX-SMILES from a list of related structures by collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n:) via maximum common substructure, with round-trip confidence.",
+        description: "Generate a single CX-SMILES from a list of related structures by collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n:) via maximum common substructure, with round-trip verification.",
     },
     AppInfo {
         id: "json-count-rs",
-        title: "🧮 JSON Count-rs",
+        title: "JSON Count-rs",
         path: "./json-count-rs/",
-        description: "Streaming JSON analysis for large datasets. Upload gigabyte-scale files and get instant statistics on field cardinality and null distributions.",
+        description: "Stream gigabyte-scale JSON files in the browser and count booleans, numbers, strings, and nulls with zero server upload.",
     },
     AppInfo {
-        id: "mgf-precursor-error",
-        title: "📐 MGF Precursor Erro-rs",
+        id: "mgf-precursor-erro-rs",
+        title: "MGF Precursor Erro-rs",
         path: "./mgf-precursor-erro-rs/",
         description: "Analyze mass spectrometry data. Visualize precursor mass errors from MGF files in absolute (Dalton) and relative (ppm) units with interactive plots.",
     },
     AppInfo {
         id: "lipid-selecto-rs",
-        title: "🧀 Lipid Selecto-rs",
+        title: "Lipid Selecto-rs",
         path: "./lipid-selecto-rs/",
         description: "Filter and visualize lipid mass spectrometry data by chemical class. Interactive structure viewer for lipidomics analysis with support for SMILES and SMARTS queries.",
     },
     AppInfo {
         id: "smellfish-rs",
-        title: "🐟 Smellfish-rs",
+        title: "Smellfish-rs",
         path: "./smellfish-rs/",
-        description: "Drop SMILES CSVs, render molecules with RDKit.js, highlight shared motifs, enrich the results with LOTUS and PubChem SPARQL lookups, and flag citation-needed cases.",
+        description: "Drop SMILES lists or CSVs, render molecules with RDKit.js, compute Ertl NP-likeness scores and motif balance, and query LOTUS and PubChem via SPARQL.",
     },
 ];
 

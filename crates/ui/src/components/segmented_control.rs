@@ -126,7 +126,7 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
         button {
             r#type: "button",
             aria_pressed: if props.active { "true" } else { "false" },
-            aria_current: if props.active { props.active_aria_current } else { "false" },
+            aria_current: (props.active && props.active_aria_current != "true").then_some(props.active_aria_current),
             style: button_style,
             onclick: move |_| on_select.call(value.to_string()),
             "{props.label}"

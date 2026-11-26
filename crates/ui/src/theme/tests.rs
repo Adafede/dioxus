@@ -89,3 +89,53 @@ fn style_builder_multiple_properties() {
         "Theme variants should map to light/dark palettes and shadows"
     );
 }
+
+fn srgb_to_linear(channel: u8) -> f64 {
+    let c = f64::from(channel) / 255.0;
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn relative_luminance(hex: &str) -> f64 {
+    let raw = hex.strip_prefix('#').unwrap_or(hex);
+    let r = u8::from_str_radix(&raw[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&raw[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&raw[4..6], 16).unwrap_or(0);
+    0.2126 * srgb_to_linear(r) + 0.7152 * srgb_to_linear(g) + 0.0722 * srgb_to_linear(b)
+}
+
+fn wcag_contrast_ratio(fg: &str, bg: &str) -> f64 {
+    let l1 = relative_luminance(fg);
+    let l2 = relative_luminance(bg);
+    let (hi, lo) = if l1 >= l2 { (l1, l2) } else { (l2, l1) };
+    (hi + 0.05) / (lo + 0.05)
+}
+
+#[test]
+fn palette_foregrounds_meet_wcag_aa_contrast() {
+    for (name, scheme) in [("LIGHT", ColorScheme::LIGHT), ("DARK", ColorScheme::DARK)] {
+        for (bg_name, bg) in [("bg", scheme.bg), ("surface", scheme.surface)] {
+            for (fg_name, fg) in [
+                ("text", scheme.text),
+                ("text2", scheme.text2),
+                ("text3", scheme.text3),
+                ("accent", scheme.accent),
+                ("accent2", scheme.accent2),
+                ("green", scheme.green),
+                ("red", scheme.red),
+                ("blue", scheme.blue),
+                ("yellow", scheme.yellow),
+                ("purple", scheme.purple),
+            ] {
+                let ratio = wcag_contrast_ratio(fg, bg);
+                assert!(
+                    ratio >= 4.5,
+                    "{name}.{fg_name} ({fg}) on {bg_name} ({bg}) has contrast {ratio:.2}:1 < 4.5:1"
+                );
+            }
+        }
+    }
+}

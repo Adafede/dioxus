@@ -22,8 +22,8 @@ fn script_is_guarded_iife_with_readonly_tool() {
                 label: "Cheminformatics",
             }],
             operations: &[EdamTerm {
-                id: "operation_0366",
-                label: "Structure clustering",
+                id: "operation_3432",
+                label: "Clustering",
             }],
             input_data: &[EdamTerm {
                 id: "data_2301",
@@ -57,7 +57,7 @@ fn script_is_guarded_iife_with_readonly_tool() {
     assert!(script.contains("readOnlyHint: true"));
     assert!(script.contains("inputSchema: { \"type\": \"object\""));
     assert!(script.contains("http://edamontology.org/topic_2258"));
-    assert!(script.contains("http://edamontology.org/operation_0366"));
+    assert!(script.contains("http://edamontology.org/operation_3432"));
     assert!(script.contains("http://edamontology.org/format_1196"));
     // JSON string escaping of a double quote inside the title.
     assert!(
