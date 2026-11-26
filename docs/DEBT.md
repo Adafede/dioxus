@@ -31,7 +31,7 @@ reason, owner, and removal condition.
 2. **External data, wire, and URL contracts**: MGF (`BEGIN IONS` / `END IONS`,
    `PEPMASS`, `PRECURSOR_MZ`, `COMMENT=LIPID_MAPS_*`), CX-SMILES (`|...|`),
    LIPID MAPS LMSD SDF/TSV columns and ZIP download URL, SPARQL endpoints
-   (QLever / WDQS), and Plausible Analytics domain config remain unchanged.
+   (QLever / WDQS), and Simple Analytics no-JS pixel domain config remain unchanged.
 3. **Standalone `smarts-evoliposuction` lockfile pins**: `smarts-evolution` and
    `smarts-rs` float on `branch = "main"` while upstream `smarts-rs` uses a
    different `smiles-rs` version than `smarts-evolution`; build and test

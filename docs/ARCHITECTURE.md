@@ -35,7 +35,7 @@ while remaining `wasm32-unknown-unknown` compatible.
   | ---                 | ---                                                                                          |
   | `stream-io`         | Async chunked byte and line streaming over `ChunkSource` with throttled progress tracking    |
   | `mgf`               | Streaming MGF spectrum block parser and header/peak model                                    |
-  | `chem-depict`       | Panic-guarded `chematic` SMILES parsing and 2D SVG depiction                                 |
+  | `chem-depict`       | Input-bounded (native panic-guarded) `chematic` SMILES parsing and 2D SVG depiction          |
   | `cxsmiles-core`     | CX-SMILES positional (`m:`) and repeating (`Sg:n:`) generation and round-trip verification   |
   | `json-count-core`   | Streaming RFC 8259 JSON non-null field counter, string unescaper, and result sorting         |
   | `lipid-core`        | LIPID MAPS taxonomy, 86 LMSD SMARTS rules, filtering, tagging, and MGF/SMILES export         |
@@ -77,12 +77,13 @@ while remaining `wasm32-unknown-unknown` compatible.
   yield across chunk boundaries, prevent concurrent import races, and memoize
   expensive SVG/sort derivations.
 - **Dual-target verification**: `./mk wasm` and `./mk local:lint-wasm` verify
-  `wasm32-unknown-unknown` builds across all Layer 0 crates, `upload`, and all
+  `wasm32-unknown-unknown` builds across all Layer 0 crates, `ui`, `upload`, and all
   six apps, while `./mk test` runs native unit, integration, and doc tests.
-- **Unwind-safe WASM release profile**: `[profile.wasm-release]` keeps
-  `panic = "unwind"` and `strip = "debuginfo"` so `chem-depict` recovers from
-  panics in third-party SMILES parsing without aborting the browser tab, while
-  preserving `__wasm_bindgen_unstable` custom sections on LLVM 23+.
+- **WASM release profile & `chem-depict` guards**: `[profile.wasm-release]` keeps
+  `strip = "debuginfo"` to preserve `__wasm_bindgen_unstable` custom sections on
+  LLVM 23+. On `wasm32-unknown-unknown` (which compiles with `panic = "abort"`),
+  `chem-depict` bounds SMILES length and atom counts before parsing, while
+  `catch_unwind` guards native targets.
 
 ## Glossary
 

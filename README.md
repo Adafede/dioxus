@@ -19,8 +19,8 @@ pinned to Rust `1.100.0` via `rust-toolchain.toml`.
   (`crates/lipid-core/src/chemical_class/lmsd.rs`).
 - **cxsmiles-yoga**: CX-SMILES generator and coordinate depiction tool
   collapsing positional isomers (`m:`) and variable-length repeats (`Sg:n:`).
-- **smellfish-rs**: natural-product likeness scoring combining machine-learned
-  features, RDKit.js descriptors, and QLever/LOTUS literature/SPARQL enrichment.
+- **smellfish-rs**: natural-product likeness scoring combining Ertl
+  fragment-contribution NP-likeness scores, RDKit.js descriptors, and QLever/LOTUS literature/SPARQL enrichment.
 
 ## Prerequisites
 

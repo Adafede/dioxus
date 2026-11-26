@@ -72,8 +72,8 @@ Run `./mk --list` for the available standard gates and `local:*` tasks, or
 
 `./mk ci-nightly` runs the slower scheduled suite (`mutants`, `coverage`,
 `powerset`, `miri`, `outdated`). `.cargo/mutants.toml` scopes heavy UI/SVG/WASM
-glue exclusions and `mk.local` sets `MUTANTS_PACKAGES` (`json-count-rs`,
-`cxsmiles-yoga`).
+glue exclusions and `mk.local` sets `MUTANTS_PACKAGES` (`json-count-core`,
+`cxsmiles-core`).
 
 `crates/workspace-gates/tests/gate_consistency/` checks structural invariants across the
 repository (`apps`, `.gitignore` data exclusions, `mk`, `mutants` scope,
@@ -105,7 +105,7 @@ cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction
 
 Run manually when needed (not part of every PR gate unless listed above):
 
-- `./mk local:readme-write`: regenerates the seven `README.md` files from
+- `./mk local:readme-write`: regenerates crate and app `README.md` files from
   `README.tpl` + `//!` docs and formats them with `panache`.
 - `./mk local:mutants-ui` / `./mk local:mutants-mgf`: opt-in mutation sweeps
   outside `MUTANTS_PACKAGES`.

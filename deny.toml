@@ -30,8 +30,9 @@ allow = [
   "CC0-1.0",
   "Unicode-3.0",
   "CDLA-Permissive-2.0",
-  "GPL-3.0-only",
   "BSL-1.0",
+  # Copyleft — compatible with AGPL-3.0
+  "GPL-3.0-only",
 ]
 
 [licenses.private]
