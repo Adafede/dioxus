@@ -212,13 +212,13 @@ pub(crate) fn normalize_adduct_label(adduct: &str) -> &str {
         return "[M+NH4]+";
     } else if body.eq_ignore_ascii_case("M+NA") && matches!(suffix, "" | "+") {
         return "[M+Na]+";
-    } else if body.eq_ignore_ascii_case("M+2H") && matches!(suffix, "" | "+" | "++" | "2+") {
+    } else if body.eq_ignore_ascii_case("M+2H") && matches!(suffix, "" | "++" | "2+") {
         return "[M+2H]2+";
-    } else if body.eq_ignore_ascii_case("M-H") && matches!(suffix, "" | "-" | "1-" | "--") {
+    } else if body.eq_ignore_ascii_case("M-H") && matches!(suffix, "" | "-" | "1-") {
         return "[M-H]-";
     } else if body.eq_ignore_ascii_case("M-2H") && matches!(suffix, "" | "2-" | "--") {
         return "[M-2H]2-";
-    } else if body.eq_ignore_ascii_case("4M-H") && matches!(suffix, "" | "-" | "1-" | "--") {
+    } else if body.eq_ignore_ascii_case("4M-H") && matches!(suffix, "" | "-" | "1-") {
         return "[4M-H]-";
     }
     trimmed

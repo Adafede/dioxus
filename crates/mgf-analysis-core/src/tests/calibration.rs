@@ -32,15 +32,20 @@ fn tof_and_orbitrap_fragment_corrections() {
     assert_close(tof_frags[1].mz, 249.994, 1e-10, "tof 1");
     assert_close(tof_frags[0].intensity, 1000.0, 1e-12, "intensity kept");
 
-    let mut orb_frags = vec![Peak::new(200.0, 1000.0), Peak::new(400.0, 500.0)];
+    let mut orb_frags = vec![
+        Peak::new(200.0, 1000.0),
+        Peak::new(400.0, 500.0),
+        Peak::new(500.005, 100.0),
+    ];
     recalibrate_fragments(
         &mut orb_frags,
         500.0,
         500.005,
         CalibrationModel::orbitrap(1.0),
     );
-    assert_close(orb_frags[0].mz, 199.998, 1e-6, "orbitrap 0");
-    assert_close(orb_frags[1].mz, 399.996, 1e-6, "orbitrap 1");
+    assert_close(orb_frags[0].mz, 200.0 / 1.000_01, 1e-12, "orbitrap 0");
+    assert_close(orb_frags[1].mz, 400.0 / 1.000_01, 1e-12, "orbitrap 1");
+    assert_close(orb_frags[2].mz, 500.0, 1e-12, "orbitrap precursor exact");
 }
 
 #[test]
@@ -53,6 +58,7 @@ fn edge_cases_non_finite_negligible_error_and_clamping() {
         (500.0, f64::NAN, CalibrationModel::tof(1.0)),
         (500.0, f64::INFINITY, CalibrationModel::tof(1.0)),
         (0.0, 500.0, CalibrationModel::tof(1.0)),
+        (-500.0, 500.0, CalibrationModel::orbitrap(1.0)),
         (500.0, 500.0 + 1e-15, CalibrationModel::tof(1.0)),
         (500.0, 500.0 + 1e-14, CalibrationModel::orbitrap(1.0)),
     ] {

@@ -7,10 +7,17 @@ use super::stats::{PrecursorStats, push_reservoir};
 use super::{ErrorMeasurement, HighErrorSmilesDetail, MAX_ECDF_POINTS, MAX_PLOT_POINTS, PlotPoint};
 use crate::numeric::usize_to_f64;
 
+const HIGH_ERROR_THRESHOLD_DA: f64 = 0.01;
+
 impl PrecursorStats {
     /// Records a single spectrum error observation into all running metrics and samplers.
     pub(crate) fn record_error(&mut self, measurement: ErrorMeasurement<'_>) {
-        let prev_spectra = usize_to_f64(self.spectra);
+        if !measurement.abs_error_da.is_finite()
+            || !measurement.abs_ppm.is_finite()
+            || !measurement.pepmass_header.is_finite()
+        {
+            return;
+        }
         self.total_spectra += 1;
         self.spectra += 1;
         self.spectra_with_reference_mass += 1;
@@ -20,7 +27,6 @@ impl PrecursorStats {
             measurement.pepmass_header,
             measurement.abs_error_da,
             measurement.abs_ppm,
-            prev_spectra,
             total_spectra,
         );
         push_reservoir(
@@ -67,10 +73,9 @@ impl PrecursorStats {
         pepmass_header: f64,
         abs_error_da: f64,
         abs_ppm: f64,
-        prev_spectra: f64,
         total_spectra: f64,
     ) {
-        if prev_spectra == 0.0 {
+        if self.spectra == 1 {
             self.observed_precursor_min = pepmass_header;
             self.observed_precursor_max = pepmass_header;
             self.abs_error_da_min = abs_error_da;
@@ -86,21 +91,16 @@ impl PrecursorStats {
             self.abs_error_ppm_max = self.abs_error_ppm_max.max(abs_ppm);
         }
 
-        self.observed_precursor_mean = self
-            .observed_precursor_mean
-            .mul_add(prev_spectra, pepmass_header)
-            / total_spectra;
-        self.abs_error_da_mean =
-            self.abs_error_da_mean.mul_add(prev_spectra, abs_error_da) / total_spectra;
+        self.observed_precursor_mean +=
+            (pepmass_header - self.observed_precursor_mean) / total_spectra;
+        self.abs_error_da_mean += (abs_error_da - self.abs_error_da_mean) / total_spectra;
         let da_sq = self.abs_error_da_rms * self.abs_error_da_rms;
         self.abs_error_da_rms =
-            (da_sq.mul_add(prev_spectra, abs_error_da * abs_error_da) / total_spectra).sqrt();
+            (da_sq + (abs_error_da * abs_error_da - da_sq) / total_spectra).sqrt();
 
-        self.abs_error_ppm_mean =
-            self.abs_error_ppm_mean.mul_add(prev_spectra, abs_ppm) / total_spectra;
+        self.abs_error_ppm_mean += (abs_ppm - self.abs_error_ppm_mean) / total_spectra;
         let ppm_sq = self.abs_error_ppm_rms * self.abs_error_ppm_rms;
-        self.abs_error_ppm_rms =
-            (ppm_sq.mul_add(prev_spectra, abs_ppm * abs_ppm) / total_spectra).sqrt();
+        self.abs_error_ppm_rms = (ppm_sq + (abs_ppm * abs_ppm - ppm_sq) / total_spectra).sqrt();
     }
 
     fn update_error_buckets(&mut self, abs_error_mda: f64, abs_ppm: f64) {
@@ -125,7 +125,7 @@ impl PrecursorStats {
         let Some(smiles) = update.smiles.map(str::trim).filter(|s| !s.is_empty()) else {
             return;
         };
-        if update.abs_error_da <= 0.01 {
+        if update.abs_error_da <= HIGH_ERROR_THRESHOLD_DA {
             return;
         }
         if let Some(entry) = self.high_error_smiles.get_mut(smiles) {
@@ -153,6 +153,9 @@ impl PrecursorStats {
                 }
                 if update.expected_mass.is_some() {
                     entry.expected_mass = update.expected_mass;
+                }
+                if update.formula.is_some() {
+                    entry.formula = update.formula.map(str::to_string);
                 }
                 entry.observed_precursor_mz = Some(update.pepmass_header);
             }

@@ -142,3 +142,21 @@ end ions";
     assert_eq!(stats.total_spectra, 1);
     assert_eq!(stats.spectra, 1);
 }
+
+#[test]
+fn non_positive_expected_mass_and_missing_structure_do_not_poison_stats() {
+    let input = "\
+BEGIN IONS
+PEPMASS=500.0
+EXACTMASS=0.0
+END IONS
+BEGIN IONS
+PEPMASS=500.0
+END IONS";
+    let stats = ingest_lines(input.lines(), |_| {});
+    assert_eq!(stats.total_spectra, 2);
+    assert_eq!(stats.skipped_spectra, 2);
+    assert_eq!(stats.spectra, 0);
+    assert_eq!(stats.unparsed_smiles, 0);
+    assert!(stats.abs_error_ppm_mean.is_finite());
+}

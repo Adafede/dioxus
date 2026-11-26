@@ -22,16 +22,17 @@ impl RunningStats {
 
     fn finish(self, samples: &[f64]) -> (f64, f64, f64, f64) {
         if self.count == 0 {
-            let mae = if samples.is_empty() {
+            let finite: Vec<f64> = samples.iter().copied().filter(|v| v.is_finite()).collect();
+            let mae = if finite.is_empty() {
                 0.0
             } else {
-                samples.iter().map(|v| v.abs()).sum::<f64>() / usize_to_f64(samples.len())
+                finite.iter().map(|v| v.abs()).sum::<f64>() / usize_to_f64(finite.len())
             };
             return (
-                compute_mean(samples),
-                compute_rms(samples),
+                compute_mean(&finite),
+                compute_rms(&finite),
                 mae,
-                compute_max_abs(samples),
+                compute_max_abs(&finite),
             );
         }
         let n = usize_to_f64(self.count);

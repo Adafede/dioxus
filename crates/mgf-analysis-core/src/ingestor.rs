@@ -166,7 +166,6 @@ fn compute_reference_mass<S: BuildHasher>(
 fn record_unparsable_smiles(metrics: &mut PrecursorStats, block: &MgfBlock) {
     metrics.total_spectra += 1;
     metrics.skipped_spectra += 1;
-    metrics.unparsed_smiles += 1;
     if let Some(smiles_text) = block
         .header
         .smiles
@@ -174,6 +173,7 @@ fn record_unparsable_smiles(metrics: &mut PrecursorStats, block: &MgfBlock) {
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
+        metrics.unparsed_smiles += 1;
         if let Some(detail) = metrics.unparsed_smiles_warnings.get_mut(smiles_text) {
             detail.count = detail.count.saturating_add(1);
             if detail.formula.is_none() {
@@ -204,18 +204,14 @@ fn record_observed_metrics(
         block.header.charge.as_deref(),
         block.header.ion_mode.as_deref(),
     );
-    let expected_mz = if expected_mz.is_finite() {
-        expected_mz
-    } else {
-        reference_mass
-    };
+    if !expected_mz.is_finite() || expected_mz <= 0.0 || !observed_precursor.is_finite() {
+        metrics.total_spectra += 1;
+        metrics.skipped_spectra += 1;
+        return;
+    }
     let error_da = observed_precursor - expected_mz;
     let abs_error_da = error_da.abs();
-    let ppm = if expected_mz.abs() > f64::EPSILON {
-        error_da / expected_mz * 1_000_000.0
-    } else {
-        f64::NAN
-    };
+    let ppm = error_da / expected_mz * 1_000_000.0;
     let ms2_precursor_peak =
         closest_ms2_precursor_mz(block.peaks.iter().map(|peak| peak.mz), observed_precursor);
 

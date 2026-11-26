@@ -21,6 +21,18 @@ const CARBON_MASS: f64 = 12.0;
 const OXYGEN_MASS: f64 = 15.994_914_619_57;
 const FLUORINE_MASS: f64 = 18.998_403_162_73;
 const SULFUR_MASS: f64 = 31.972_071_174_4;
+/// Monoisotopic magnesium-24 mass (CIAAW, Da).
+const MAGNESIUM_MASS: f64 = 23.985_041_7;
+/// Monoisotopic chlorine-35 mass (CIAAW, Da).
+const CHLORINE_MASS: f64 = 34.968_852_68;
+/// Monoisotopic calcium-40 mass (CIAAW, Da).
+const CALCIUM_MASS: f64 = 39.962_590_98;
+/// Monoisotopic iron-56 mass (CIAAW, Da).
+const IRON_MASS: f64 = 55.934_937_5;
+/// Monoisotopic bromine-79 mass (CIAAW, Da).
+const BROMINE_MASS: f64 = 78.918_337_1;
+const ETHYLENE_MASS: f64 = 2.0 * CARBON_MASS + 4.0 * HYDROGEN_MASS;
+const HYDROXYL_MASS: f64 = OXYGEN_MASS + HYDROGEN_MASS;
 
 const FORMIC_ACID_MASS: f64 = CARBON_MASS + 2.0 * HYDROGEN_MASS + 2.0 * OXYGEN_MASS;
 const FORMATE_MASS: f64 = CARBON_MASS + HYDROGEN_MASS + 2.0 * OXYGEN_MASS;
@@ -106,11 +118,15 @@ pub(crate) fn parse_adduct_term_mass(token: &str) -> Option<f64> {
         .chars()
         .position(|ch| !ch.is_ascii_digit())
         .unwrap_or(trimmed.len());
-    let multiplier = trimmed
-        .get(..digits_end)
-        .unwrap_or("")
-        .parse::<f64>()
-        .unwrap_or(1.0);
+    let multiplier = if digits_end == 0 {
+        1.0
+    } else {
+        let count = trimmed.get(..digits_end)?.parse::<u32>().ok()?;
+        if count == 0 {
+            return None;
+        }
+        f64::from(count)
+    };
     let symbol = trimmed.get(digits_end..).unwrap_or("").trim();
     let term_mass = match symbol {
         "FA" | "HCOOH" | "FORMICACID" | "HFA" => FORMIC_ACID_MASS,
@@ -129,17 +145,17 @@ pub(crate) fn parse_adduct_term_mass(token: &str) -> Option<f64> {
         "CO" => CO_MASS,
         "CO2" => CO2_MASS,
         "O" => OXYGEN_MASS,
-        "C2H4" => 28.031_300_128,
+        "C2H4" => ETHYLENE_MASS,
         "H" => HYDROGEN_MASS,
         "NA" => SODIUM_MASS,
         "K" => POTASSIUM_MASS,
-        "MG" => 23.985_041_7,
-        "CA" => 39.962_590_98,
-        "FE" => 55.934_937_5,
-        "CL" => 34.968_852_68,
-        "BR" => 78.918_337_1,
+        "MG" => MAGNESIUM_MASS,
+        "CA" => CALCIUM_MASS,
+        "FE" => IRON_MASS,
+        "CL" => CHLORINE_MASS,
+        "BR" => BROMINE_MASS,
         "NH4" => AMMONIUM_MASS,
-        "OH" => 17.002_739_65,
+        "OH" => HYDROXYL_MASS,
         _ => return None,
     };
     Some(term_mass * multiplier)
@@ -222,14 +238,19 @@ fn apply_adduct_token(
     saw_molecule_term: &mut bool,
     saw_unsupported_token: &mut bool,
 ) {
+    if current.is_empty() {
+        *saw_unsupported_token = true;
+        return;
+    }
     if let Some(token_mass) = parse_adduct_term_mass(current) {
         *shift = sign.mul_add(token_mass, *shift);
     } else if let Some(token_multiplier) = parse_multiplicity_token(current)
         && sign > 0.0
+        && !*saw_molecule_term
     {
         *multiplier = token_multiplier;
         *saw_molecule_term = true;
-    } else if !current.is_empty() {
+    } else {
         *saw_unsupported_token = true;
     }
 }
@@ -258,9 +279,11 @@ fn parse_multiplicity_token(token: &str) -> Option<f64> {
     }
     let mult = trimmed.get(..digits_end)?;
     let rem = trimmed.get(digits_end..)?;
-    rem.eq_ignore_ascii_case("M")
-        .then(|| mult.parse::<f64>().ok())
-        .flatten()
+    if !rem.eq_ignore_ascii_case("M") {
+        return None;
+    }
+    let count = mult.parse::<u32>().ok()?;
+    (count > 0).then(|| f64::from(count))
 }
 
 pub(crate) fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {
@@ -297,7 +320,9 @@ fn parse_ascii_digits_f64(text: &str) -> Option<f64> {
             acc = acc
                 .saturating_mul(10)
                 .saturating_add(u64::from(byte - b'0'));
+        } else if saw_digit {
+            break;
         }
     }
-    saw_digit.then(|| f64::from(u32::try_from(acc).unwrap_or(u32::MAX)).max(1.0))
+    (saw_digit && acc > 0).then(|| f64::from(u32::try_from(acc).unwrap_or(u32::MAX)))
 }

@@ -19,10 +19,14 @@ pub(crate) fn recalibrate_fragment_mz(
     match model {
         CalibrationModel::TOFDa { lambda } => lambda.get().mul_add(-delta, mz),
         CalibrationModel::OrbitrapPPM { lambda } => {
-            if !pepmass.is_finite() || pepmass <= 0.0 {
+            if !pepmass.is_finite() || pepmass <= 0.0 || !mz.is_finite() || mz <= 0.0 {
                 return mz;
             }
-            mz * (1.0 - lambda.get() * delta / pepmass)
+            let denom = 1.0 + lambda.get() * delta / pepmass;
+            if !denom.is_finite() || denom <= 0.0 {
+                return mz;
+            }
+            mz / denom
         }
         CalibrationModel::None => mz,
     }
@@ -34,15 +38,14 @@ pub(super) fn apply_orbitrap_correction(
     precursor_ms2: f64,
     lambda: ShrinkageLambda,
 ) {
-    let delta_ppm = 1e6 * (precursor_ms2 - precursor_ms1) / precursor_ms1;
+    let delta = precursor_ms2 - precursor_ms1;
+    let delta_ppm = 1e6 * delta / precursor_ms1;
     if delta_ppm.abs() < 1e-7 {
         return;
     }
-    let correction_factor = 1.0 - lambda.get() * delta_ppm / 1e6;
+    let model = CalibrationModel::OrbitrapPPM { lambda };
     for peak in fragments {
-        if peak.mz.is_finite() && peak.mz > 0.0 {
-            peak.mz *= correction_factor;
-        }
+        peak.mz = recalibrate_fragment_mz(peak.mz, delta, precursor_ms1, model);
     }
 }
 
@@ -56,10 +59,8 @@ pub(super) fn apply_tof_correction(
     if delta_da.abs() < 1e-14 {
         return;
     }
-    let correction = lambda.get() * delta_da;
+    let model = CalibrationModel::TOFDa { lambda };
     for peak in fragments {
-        if peak.mz.is_finite() {
-            peak.mz -= correction;
-        }
+        peak.mz = recalibrate_fragment_mz(peak.mz, delta_da, precursor_ms1, model);
     }
 }

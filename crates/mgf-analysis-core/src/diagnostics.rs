@@ -57,9 +57,18 @@ pub fn compute_recalibration_diagnostics(
         let Some(theoretical_mass) = point.expected_mass else {
             continue;
         };
-
-        let precursor_ms2 = point.ms2_precursor_peak.unwrap_or(point.pepmass_header);
+        let Some(precursor_ms2) = point.ms2_precursor_peak else {
+            continue;
+        };
         let precursor_ms1 = point.pepmass_header;
+        if !theoretical_mass.is_finite()
+            || theoretical_mass <= 0.0
+            || !precursor_ms1.is_finite()
+            || precursor_ms1 <= 0.0
+            || !precursor_ms2.is_finite()
+        {
+            continue;
+        }
         let error_da_ms1 = precursor_ms1 - theoretical_mass;
         let error_ppm_ms1 = ppm(error_da_ms1, theoretical_mass);
 
@@ -87,7 +96,7 @@ pub fn compute_recalibration_diagnostics(
             precursor_ms1,
             precursor_ms2_before: precursor_ms2,
             precursor_ms2_after,
-            adduct_family: None,
+            adduct_family: Some(point.adduct_family.as_str()),
             max_samples: 5000,
         });
     }

@@ -50,12 +50,14 @@ pub fn generate_recalibrated_mgf(original_content: &str, model: CalibrationModel
         }
 
         let mut pepmass: Option<f64> = None;
+        let mut end_line: Option<&str> = None;
         spectrum_frags.clear();
         result.push_str(line);
         result.push('\n');
 
         for spec_line in lines.by_ref() {
             if is_ions_marker(spec_line, "END IONS") {
+                end_line = Some(spec_line);
                 break;
             }
             if let Some(pm) = extract_pepmass_from_line(spec_line) {
@@ -95,7 +97,10 @@ pub fn generate_recalibrated_mgf(original_content: &str, model: CalibrationModel
             }
         }
 
-        result.push_str("END IONS\n");
+        if let Some(end_marker) = end_line {
+            result.push_str(end_marker);
+            result.push('\n');
+        }
     }
 
     result
@@ -108,10 +113,7 @@ pub fn recalibrate_fragments(
     precursor_ms2: f64,
     model: CalibrationModel,
 ) {
-    if !precursor_ms1.is_finite()
-        || !precursor_ms2.is_finite()
-        || precursor_ms1.abs() < f64::EPSILON
-    {
+    if !precursor_ms1.is_finite() || !precursor_ms2.is_finite() || precursor_ms1 <= 0.0 {
         return;
     }
 

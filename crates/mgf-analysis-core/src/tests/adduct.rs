@@ -309,5 +309,14 @@ fn normalize_adduct_label_and_term_masses() {
     );
     assert_eq!(parse_adduct_term_mass("M"), None);
     assert_eq!(parse_adduct_term_mass(""), None);
+    assert_eq!(parse_adduct_term_mass("0H"), None);
     assert_eq!(parse_adduct_term_mass("BogusTerm"), None);
+    assert!(!is_supported_adduct("[M+M+H]+"));
+    assert!(!is_supported_adduct("[M++H]+"));
+    assert!(!is_supported_adduct("[0M+H]+"));
+    assert!(!is_supported_adduct("[M+0H]+"));
+    assert_eq!(parse_charge_value(Some("2+ and 3+"), None), Some(2.0));
+    assert_eq!(parse_charge_value(Some("0"), None), None);
+    assert_eq!(normalize_adduct_label("[M-H]--"), "[M-H]--");
+    assert_eq!(normalize_adduct_label("[M+2H]+"), "[M+2H]+");
 }

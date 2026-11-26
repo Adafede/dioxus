@@ -60,4 +60,11 @@ fn generate_recalibrated_mgf_preserves_block_boundaries_global_params_and_separa
     let sep_out = generate_recalibrated_mgf(with_sep, CalibrationModel::tof(1.0));
     assert!(sep_out.starts_with("COM=test\n"));
     assert!(sep_out.contains("END IONS\n\nBEGIN IONS"));
+
+    let unterminated = "BEGIN IONS\nTITLE=open\nPEPMASS=500.0\n500.01 10\n100.0 5";
+    let unterm_out = generate_recalibrated_mgf(unterminated, CalibrationModel::tof(1.0));
+    assert!(
+        !unterm_out.contains("END IONS"),
+        "unterminated EOF block must not get synthetic END IONS: {unterm_out:?}"
+    );
 }

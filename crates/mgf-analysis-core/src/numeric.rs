@@ -49,14 +49,15 @@ impl PartialOrd for OrderedF64 {
     }
 }
 
-/// Deterministic splitmix-style reservoir index in `0..seen.max(1)`.
+/// Deterministic `SplitMix64` reservoir index in `0..seen.max(1)`.
 #[must_use]
 pub(crate) fn reservoir_index(seen: usize) -> usize {
     let stream_index = u64::try_from(seen).unwrap_or(u64::MAX).max(1);
-    let mixed = stream_index
-        .wrapping_mul(0x9e37_79b9_7f4a_7c15)
-        .wrapping_add(0xbf58_476d_1ce4_e5b9);
-    usize::try_from(mixed % stream_index).unwrap_or(0)
+    let mut z = stream_index.wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    z ^= z >> 31;
+    usize::try_from(z % stream_index).unwrap_or(0)
 }
 
 /// Writes `value` into `series[index]` when `index < series.len()`.

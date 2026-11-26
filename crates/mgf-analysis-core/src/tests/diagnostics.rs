@@ -106,7 +106,32 @@ fn compute_recalibration_diagnostics_pins_none_and_tof_improvement() {
 
     let diag = compute_recalibration_diagnostics(&metrics, CalibrationModel::tof(1.0)).unwrap();
     assert_eq!(diag.total_count, 1);
+    assert_eq!(
+        diag.error_by_adduct_before.get("Protonated").map(Vec::len),
+        Some(1)
+    );
     assert_close(diag.mae_error_ppm_before, 20.0, 1e-6, "mae before");
     assert_close(diag.mae_error_ppm_after, 0.0, 1e-9, "mae after");
     assert_close(diag.mean_error_improvement_ppm(), 20.0, 1e-6, "improvement");
+
+    let mut no_ms2 = PrecursorStats::default();
+    no_ms2.record_error(ErrorMeasurement {
+        abs_error_da: 0.01,
+        abs_ppm: 20.0,
+        adduct_family: AdductFamily::Protonated,
+        ppm_error: 20.0,
+        signed_error_da: 0.01,
+        pepmass_header: 500.0,
+        ms2_precursor_peak: None,
+        smiles: None,
+        calculated_mass: Some(500.0),
+        expected_mass: Some(500.0),
+        formula: None,
+    });
+    let diag_no_ms2 =
+        compute_recalibration_diagnostics(&no_ms2, CalibrationModel::tof(1.0)).unwrap();
+    assert_eq!(
+        diag_no_ms2.total_count, 0,
+        "spectra without MS2 precursor peak must not fabricate zero delta"
+    );
 }

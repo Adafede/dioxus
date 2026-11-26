@@ -125,4 +125,18 @@ fn record_error_updates_buckets_moments_median_and_sorting_helpers() {
     assert_eq!(stats.observed_precursor_median, 400.0);
     assert_eq!(stats.sorted_high_error_smiles().len(), 1);
     assert_eq!(stats.sorted_high_error_smiles()[0].0, "CCCC");
+
+    let mut even_hits = 0usize;
+    let mut odd_hits = 0usize;
+    for seen in 10_000..10_200usize {
+        if crate::numeric::reservoir_index(seen).is_multiple_of(2) {
+            even_hits += 1;
+        } else {
+            odd_hits += 1;
+        }
+    }
+    assert!(
+        even_hits > 50 && odd_hits > 50,
+        "SplitMix64 reservoir_index must hit both parities for even stream lengths: even={even_hits}, odd={odd_hits}"
+    );
 }
