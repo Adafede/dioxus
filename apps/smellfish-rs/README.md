@@ -6,8 +6,9 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 
 `smellfish-rs` --- literature-backed NP-likeness scoring.
 
-Scores natural-product-likeness of SMILES structures using machine-learned
-features, QLever/LOTUS SPARQL enrichment, and RDKit.js chemistry descriptors.
+Scores natural-product-likeness of SMILES structures using Ertl
+fragment-contribution NP-likeness scores, QLever/LOTUS SPARQL enrichment, and
+RDKit.js chemistry descriptors.
 
 ## Run locally
 

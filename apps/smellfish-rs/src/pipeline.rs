@@ -23,7 +23,6 @@ pub(crate) fn begin_import(
     file_name_value: String,
     mut signals: ImportSignals,
 ) {
-    let is_blob = matches!(source, ImportSource::Blob(_));
     let expected_gen = {
         let next = *signals.generation.peek() + 1;
         signals.generation.set(next);
@@ -33,14 +32,7 @@ pub(crate) fn begin_import(
     signals.file_name.set(file_name_value);
     signals.busy.set(true);
     signals.drag_active.set(false);
-    signals.status.set(
-        if is_blob {
-            "Preparing…"
-        } else {
-            "Preparing demo…"
-        }
-        .to_string(),
-    );
+    signals.status.set("Preparing…".to_string());
     signals.rows.set(Vec::new());
     signals.motifs.set(Vec::new());
     signals.endpoints.set(Vec::new());
@@ -52,18 +44,8 @@ pub(crate) fn begin_import(
             return;
         }
         match outcome {
-            Ok(outcome) => {
-                let prefix = if is_blob { "Done" } else { "Demo loaded" };
-                apply_import_outcome(outcome, prefix, signals);
-            }
-            Err(err) => {
-                let msg = if is_blob {
-                    format!("Error reading CSV: {err}")
-                } else {
-                    format!("Error loading demo data: {err}")
-                };
-                signals.status.set(msg);
-            }
+            Ok(outcome) => apply_import_outcome(outcome, "Done", signals),
+            Err(err) => signals.status.set(format!("Error analyzing input: {err}")),
         }
         signals.busy.set(false);
     });
@@ -95,18 +77,25 @@ async fn run_import(
     let mut inspections = Vec::with_capacity(total);
     for (idx, raw) in raw_rows.into_iter().enumerate() {
         if *generation.peek() != expected_gen {
-            break;
+            return Err("cancelled".to_string());
         }
+        let current = idx + 1;
         set_status_if_current(
             status,
             generation,
             expected_gen,
-            &format!("Inspecting structure {idx}/{total}…"),
+            &format!("Inspecting structure {current}/{total}…"),
         );
         let outcome = inspect_smiles(&raw.smiles).await;
+        if *generation.peek() != expected_gen {
+            return Err("cancelled".to_string());
+        }
         inspections.push(RowInspection { raw, outcome });
     }
 
+    if *generation.peek() != expected_gen {
+        return Err("cancelled".to_string());
+    }
     let batch = prepare_pass1(inspections);
     set_status_if_current(
         status,
@@ -134,6 +123,9 @@ async fn run_import(
         },
     };
 
+    if *generation.peek() != expected_gen {
+        return Err("cancelled".to_string());
+    }
     set_status_if_current(status, generation, expected_gen, "Assessing NP evidence…");
     Ok(finalize_pass2(batch, enrichment))
 }

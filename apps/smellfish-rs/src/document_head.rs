@@ -41,7 +41,7 @@ pub(crate) fn SmellfishDocumentHead() -> Element {
                         EdamTerm { id: "topic_3172", label: "Metabolomics" },
                     ],
                     operations: &[
-                        EdamTerm { id: "operation_0250", label: "Molecular property calculation" },
+                        EdamTerm { id: "operation_2480", label: "Structure analysis" },
                         EdamTerm { id: "operation_2421", label: "Database search" },
                         EdamTerm { id: "operation_0570", label: "Structure visualisation" },
                     ],
@@ -56,7 +56,7 @@ pub(crate) fn SmellfishDocumentHead() -> Element {
             }),
             lang: "en".to_string(),
             description: Some(description.to_string()),
-            theme_colors: Some(("#f6f8fb", "#10141b")),
+            theme_colors: Some(("#f6f8fb", "#f6f8fb")),
             scripts,
             inline_script: Some(RDKIT_BRIDGE_JS.to_string()),
         }

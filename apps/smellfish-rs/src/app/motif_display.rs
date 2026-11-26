@@ -21,7 +21,8 @@ pub(super) const fn is_unclassified_source(source_class: SourceClass) -> bool {
 pub(super) const fn chip_class_for(source_class: SourceClass) -> &'static str {
     match source_class {
         SourceClass::Natural => "chip chip-np",
-        SourceClass::Synthetic | SourceClass::Unknown => "chip alt",
+        SourceClass::Synthetic => "chip chip-synth",
+        SourceClass::Unknown => "chip alt",
     }
 }
 

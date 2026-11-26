@@ -38,7 +38,7 @@ pub(super) const MOTIF_GROUPS: [(&str, &str, MotifPredicate); 3] = [
 pub(super) fn Hero() -> Element {
     rsx! {
         section { class: "hero",
-            h1 { "\u{1f41f} Smellfish-rs" }
+            h1 { "Smellfish-rs" }
             p { "A natural-product originality screen for SMILES lists." }
         }
     }

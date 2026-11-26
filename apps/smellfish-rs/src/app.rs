@@ -9,7 +9,6 @@ use ui::{SimpleAnalyticsBadge, skip_link};
 
 pub(crate) mod browser;
 mod footer;
-mod formatting;
 mod input_panel;
 mod molecule_card;
 mod motif_display;

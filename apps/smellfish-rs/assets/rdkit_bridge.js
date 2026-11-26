@@ -54,22 +54,13 @@ function numericField(descriptors, names) {
  *
  * The fragment contribution dictionary is derived from Ertl, Roggo &
  * Schuffenhauer (J. Chem. Inf. Model. 2008, 48, 68–74,
- * DOI 10.1021/ci700286x).  The original model was trained on ~50 000
- * natural products vs. ~1 M drug-like molecules from ZINC and uses
- * sparse Morgan fingerprints (radius 2).
+ * DOI 10.1021/ci700286x) using sparse Morgan fingerprints (radius 2).
  *
- * Because rdkit.js only exposes dense (folded) Morgan fingerprints,
- * the dictionary is pre-folded to N_MODEL_BITS buckets at build time
- * (Python script: key -> key % N_MODEL_BITS, summing contributions).
- * With 1 048 576 buckets the collision rate is ~12 %, introducing a
- * negligible mean absolute error on the score (< 0.15 Ertl units).
- *
- * The scoring follows the reference implementation exactly:
- *   raw   = Σ  model[bit]            for every fingerprint bit present
- *   score = raw / numAtoms
- *   if score > 4:  score = 4 + log10(score - 4 + 1)   (compression)
- *   if score < –4: score = –4 – log10(–4 – score + 1)
- *   confidence = bitsFound / totalBitsSet
+ * Because RDKit_minimal.js exposes only binary folded Morgan bit vectors
+ * (`get_morgan_fp_as_uint8array`) rather than unfolded count fingerprints,
+ * `np_model.bin` pre-folds fragment keys modulo N_MODEL_BITS by summing
+ * colliding contributions. This provides an empirical folded approximation
+ * rather than exact bit-count Ertl scoring.
  */
 const N_MODEL_BITS = 1048576; /* 2^20 */
 const FP_OPTS = JSON.stringify({ radius: 2, nBits: N_MODEL_BITS });
@@ -91,6 +82,9 @@ async function loadNpModel() {
       throw new Error(`HTTP ${response.status} loading np_model.bin`);
     }
     const buffer = await response.arrayBuffer();
+    if (buffer.byteLength === 0 || buffer.byteLength % 8 !== 0) {
+      throw new Error(`Invalid np_model.bin byteLength: ${buffer.byteLength}`);
+    }
     const n = buffer.byteLength / 8;
     const dv = new DataView(buffer);
     const keys = new Uint32Array(n);
@@ -126,12 +120,17 @@ function binarySearch(keys, target) {
  * Returns { np_score, np_confidence, num_atoms }.
  * np_score is null when the model is unavailable.
  */
-function computeNpLikeness(mol) {
-  let numAtoms = 0;
-  try {
-    numAtoms = mol.get_num_atoms();
-  } catch (_e) {
-    numAtoms = 0;
+function computeNpLikeness(mol, heavyAtoms) {
+  let numAtoms =
+    typeof heavyAtoms === "number" && Number.isFinite(heavyAtoms) && heavyAtoms > 0
+      ? heavyAtoms
+      : 0;
+  if (numAtoms === 0) {
+    try {
+      numAtoms = mol.get_num_atoms();
+    } catch (_e) {
+      numAtoms = 0;
+    }
   }
   if (numAtoms === 0) {
     return { np_score: null, np_confidence: null, num_atoms: 0 };
@@ -268,6 +267,28 @@ const rdkitReady = (async () => {
 
   /* RDKit.js supports substructure matching via get_substruct_match. */
 
+  function extractSubstructMatches(mol, qmol) {
+    if (typeof mol.get_substruct_matches === "function") {
+      const raw = mol.get_substruct_matches(qmol);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    if (typeof mol.get_substruct_match === "function") {
+      const raw = mol.get_substruct_match(qmol);
+      if (raw) {
+        const match = JSON.parse(raw);
+        if (match && (Array.isArray(match.atoms) || Array.isArray(match.bonds))) {
+          return [match];
+        }
+      }
+    }
+    return [];
+  }
+
   return {
     inspect(smiles) {
       return withMol(smiles, (mol) => {
@@ -282,7 +303,26 @@ const rdkitReady = (async () => {
           throw new Error("rdkit.js could not generate InChIKey");
         }
         const rawDescriptors = JSON.parse(mol.get_descriptors() || "{}");
-        const stereoTags = JSON.parse(mol.get_stereo_tags() || "[]");
+        const parsedStereo = JSON.parse(mol.get_stereo_tags() || "{}");
+        const stereoTags = Array.isArray(parsedStereo)
+          ? parsedStereo.map((t) => (Array.isArray(t) ? t.join(":") : String(t)))
+          : [
+              ...(Array.isArray(parsedStereo?.CIP_atoms)
+                ? parsedStereo.CIP_atoms.map((t) =>
+                    Array.isArray(t) ? t.join(":") : String(t),
+                  )
+                : []),
+              ...(Array.isArray(parsedStereo?.CIP_bonds)
+                ? parsedStereo.CIP_bonds.map((t) =>
+                    Array.isArray(t) ? t.join(":") : String(t),
+                  )
+                : []),
+            ];
+        const heavyAtoms = numericField(rawDescriptors, [
+          "NumHeavyAtoms",
+          "num_heavy_atoms",
+          "numHeavyAtoms",
+        ]);
         const descriptors = {
           amw: numericField(rawDescriptors, ["amw", "AMW"]),
           exact_mw: numericField(rawDescriptors, [
@@ -319,45 +359,61 @@ const rdkitReady = (async () => {
         const hits = [];
         const atoms = [];
         const atomColors = {};
+        const atomPriority = {};
         const bonds = [];
         const bondColors = {};
+        const bondPriority = {};
 
-        /* Colour palette (matches the CSS chip colours) */
+        /* Colour palette and priority hierarchy (COL_LOTUS > COL_SCAFF > COL_NP > COL_DECO) */
         const COL_NP    = [0.09, 0.51, 0.18];  /* green   #16a34a */
         const COL_SCAFF = [0.15, 0.37, 0.97];  /* blue    #2563eb */
         const COL_DECO  = [0.56, 0.25, 0.03];  /* amber   #92400e */
         const COL_LOTUS = [0.49, 0.19, 0.86];  /* purple  #7c3aed */
 
         function classifyMotif(motif) {
-          if (motif?.kind === "scaffold") return COL_SCAFF;
-          if (motif?.source_class === "synthetic") return COL_DECO;
-          if (motif?.kind === "ring") return COL_NP;
+          if (motif?.kind === "scaffold") return { colour: COL_SCAFF, priority: 3 };
+          if (motif?.source_class === "synthetic") return { colour: COL_DECO, priority: 1 };
+          if (motif?.kind === "ring") return { colour: COL_NP, priority: 2 };
           if (motif?.kind === "decoration") {
             return motif?.source_class === "natural"
-              ? COL_NP
-              : COL_DECO;
+              ? { colour: COL_NP, priority: 2 }
+              : { colour: COL_DECO, priority: 1 };
           }
           const l = String(motif?.label || "").toLowerCase();
-          if (l.includes("ring") || l.includes("cycle")) return COL_NP;
-          return COL_DECO;
+          if (l.includes("ring") || l.includes("cycle")) {
+            return { colour: COL_NP, priority: 2 };
+          }
+          return { colour: COL_DECO, priority: 1 };
+        }
+
+        function assignHighlight(hitAtoms, hitBonds, colour, priority) {
+          for (const atom of hitAtoms) {
+            if (priority >= (atomPriority[atom] ?? 0)) {
+              atomColors[atom] = colour;
+              atomPriority[atom] = priority;
+            }
+          }
+          for (const bond of hitBonds) {
+            if (priority >= (bondPriority[bond] ?? 0)) {
+              bondColors[bond] = colour;
+              bondPriority[bond] = priority;
+            }
+          }
         }
 
         for (const motif of compiledMotifs) {
-          const raw = typeof mol.get_substruct_match === "function"
-            ? mol.get_substruct_match(motif.qmol)
-            : null;
-          if (!raw) {
-            continue;
-          }
-          const match = JSON.parse(raw);
-          const rawAtoms = Array.isArray(match.atoms) ? match.atoms : [];
-          const rawBonds = Array.isArray(match.bonds) ? match.bonds : [];
-          const hitAtoms = rawAtoms;
-          const hitBonds = rawBonds;
+          const matches = extractSubstructMatches(mol, motif.qmol);
+          if (!matches.length) continue;
+          const hitAtoms = uniqueSorted(
+            matches.flatMap((m) => (Array.isArray(m.atoms) ? m.atoms : [])),
+          );
+          const hitBonds = uniqueSorted(
+            matches.flatMap((m) => (Array.isArray(m.bonds) ? m.bonds : [])),
+          );
           if (!hitAtoms.length && !hitBonds.length) {
             continue;
           }
-          const colour = classifyMotif(motif);
+          const { colour, priority } = classifyMotif(motif);
           hits.push({
             label: motif.label,
             kind: motif.kind,
@@ -371,12 +427,7 @@ const rdkitReady = (async () => {
           });
           atoms.push(...hitAtoms);
           bonds.push(...hitBonds);
-          for (const atom of hitAtoms) {
-            atomColors[atom] = colour;
-          }
-          for (const bond of hitBonds) {
-            bondColors[bond] = colour;
-          }
+          assignHighlight(hitAtoms, hitBonds, colour, priority);
         }
         /* LOTUS 1-percent scaffold search (Rutz et al. mortar
          * fragmentation) — substructure match against pre-compiled
@@ -384,20 +435,19 @@ const rdkitReady = (async () => {
          * so the purple highlights are baked into the SVG. */
         const lotusScaffolds = [];
         for (const scaff of lotusScaffoldQueries) {
-          const raw = typeof mol.get_substruct_match === "function"
-            ? mol.get_substruct_match(scaff.qmol)
-            : null;
-          if (raw) {
-            const match = JSON.parse(raw);
-            const hitAtoms = Array.isArray(match.atoms) ? match.atoms : [];
-            const hitBonds = Array.isArray(match.bonds) ? match.bonds : [];
-            if (hitAtoms.length || hitBonds.length) {
-              lotusScaffolds.push(scaff.smiles);
-              atoms.push(...hitAtoms);
-              bonds.push(...hitBonds);
-              for (const atom of hitAtoms) atomColors[atom] = COL_LOTUS;
-              for (const bond of hitBonds) bondColors[bond] = COL_LOTUS;
-            }
+          const matches = extractSubstructMatches(mol, scaff.qmol);
+          if (!matches.length) continue;
+          const hitAtoms = uniqueSorted(
+            matches.flatMap((m) => (Array.isArray(m.atoms) ? m.atoms : [])),
+          );
+          const hitBonds = uniqueSorted(
+            matches.flatMap((m) => (Array.isArray(m.bonds) ? m.bonds : [])),
+          );
+          if (hitAtoms.length || hitBonds.length) {
+            lotusScaffolds.push(scaff.smiles);
+            atoms.push(...hitAtoms);
+            bonds.push(...hitBonds);
+            assignHighlight(hitAtoms, hitBonds, COL_LOTUS, 4);
           }
         }
         /*
@@ -420,16 +470,13 @@ const rdkitReady = (async () => {
           svg = mol.get_svg();
         }
 
-        const npResult = computeNpLikeness(mol);
+        const npResult = computeNpLikeness(mol, heavyAtoms);
 
         // Check Ertl's top-2000 most common natural-product substituents
         const matchedSubstituents = [];
         for (const sub of compiledSubstituents) {
-          const raw = typeof mol.get_substruct_match === "function"
-            ? mol.get_substruct_match(sub.qmol)
-            : null;
-          if (raw) {
-            const match = JSON.parse(raw);
+          const matches = extractSubstructMatches(mol, sub.qmol);
+          for (const match of matches) {
             const hitAtoms = Array.isArray(match.atoms) ? match.atoms : [];
             const hitBonds = Array.isArray(match.bonds) ? match.bonds : [];
             if (hitAtoms.length || hitBonds.length) {
@@ -438,7 +485,6 @@ const rdkitReady = (async () => {
           }
         }
 
-        /* LOTUS 1-percent scaffold search — moved before SVG render */
         return {
           canonicalsmiles,
           isomericsmiles,
@@ -447,7 +493,7 @@ const rdkitReady = (async () => {
           motifs: hits,
           lotus_scaffolds: lotusScaffolds,
           descriptors,
-          stereo_tags: Array.isArray(stereoTags) ? stereoTags : [],
+          stereo_tags: stereoTags,
           np_score: npResult.np_score,
           np_confidence: npResult.np_confidence,
           num_atoms: npResult.num_atoms,

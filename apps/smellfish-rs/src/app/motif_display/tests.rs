@@ -17,7 +17,7 @@ fn natural_and_synthetic_are_distinct_buckets() {
 #[test]
 fn chip_class_natural_is_np() {
     assert_eq!(chip_class_for(SourceClass::Natural), "chip chip-np");
-    assert_eq!(chip_class_for(SourceClass::Synthetic), "chip alt");
+    assert_eq!(chip_class_for(SourceClass::Synthetic), "chip chip-synth");
     assert_eq!(chip_class_for(SourceClass::Unknown), "chip alt");
 }
 

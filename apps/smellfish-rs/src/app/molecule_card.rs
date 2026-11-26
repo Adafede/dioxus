@@ -11,7 +11,6 @@
 use dioxus::prelude::*;
 use smellfish_core::model::MoleculeRow;
 
-use super::formatting::format_score;
 use super::motif_display::{chip_class_for, display_label};
 use super::results::MOTIF_GROUPS;
 
@@ -41,13 +40,16 @@ pub(crate) fn MoleculeCard(row: MoleculeRow) -> Element {
                     strong { "Ertl NP-likeness" }
                     div { class: "chip-list",
                         if let Some(np) = row.np_score {
-                            span { class: "chip good", "{format_score(np.score)}" }
+                            span {
+                                class: if np.score >= 1.0 { "chip good" } else if np.score >= 0.0 { "chip warn" } else { "chip fail" },
+                                "{np.score:+.2}"
+                            }
                         } else {
                             span { class: "chip warn", "model unloaded" }
                         }
                         span { class: "chip alt", "{row.np_label}" }
                     }
-                    div { class: "small", "{row.ring_family.emoji()} {row.ring_family}" }
+                    div { class: "small", "{row.ring_family}" }
                     if row.motif_context.is_detected() {
                         div { class: "small muted", "{row.motif_context}" }
                     }
@@ -69,7 +71,7 @@ pub(crate) fn MoleculeCard(row: MoleculeRow) -> Element {
                     }
                 }
 
-                if !row.lotus_compounds.is_empty() {
+                if !row.lotus_compounds.is_empty() || !row.lotus_taxa.is_empty() {
                     div { class: "meta small",
                         strong { class: "blue", "LOTUS" }
                         div { class: "chip-list",
@@ -81,6 +83,9 @@ pub(crate) fn MoleculeCard(row: MoleculeRow) -> Element {
                                     rel: "noopener noreferrer",
                                     "{compound.qid}"
                                 }
+                            }
+                            for taxon in row.lotus_taxa.iter() {
+                                span { class: "cid-link green", "{taxon}" }
                             }
                         }
                     }

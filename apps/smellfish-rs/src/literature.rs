@@ -26,7 +26,7 @@ pub(crate) const LITERATURE: &[PaperEntry] = &[
         note: "Wetzel, Schuffenhauer, Roggo, Ertl & Waldmann (2007, CHIMIA 61, 355). Cheminformatic analysis of natural-product chemical space and comparison with drug-like compounds.",
     },
     PaperEntry {
-        title: "Analysis of the Natural-Product Content in Commercial Screening Collections: The Impact of a Natural-Product Clone Database",
+        title: "A Systematic Cheminformatics Analysis of Functional Groups Occurring in Natural Products",
         doi: "10.1021/acs.jnatprod.8b01022",
         note: "Ertl & Schuhmann (2019, J. Nat. Prod. 82, 1258-1263). Systematic analysis of functional-group occurrence in natural products vs. synthetic compounds, with kingdom-level (animals, plants, fungi, bacteria) enrichment data. Provides the source-vs-synthetic and kingdom-enrichment tables loaded from ertl_source_vs_synthetic.txt and ertl_kingdom_enrichment.txt.",
     },

@@ -89,7 +89,11 @@ function buildMotifLibrary(
     const source = sourceMap.get(label);
     const kingdom = kingdomMap.get(label);
     const nameRow = nameMap.get(label) || nameMap.get(labelToSmarts(label));
-    const sourceSplit = source ? classifySource(source.values) : null;
+    const sourceSplit = source
+      ? classifySource(source.values)
+      : kingdom
+        ? classifySource(kingdom.values)
+        : null;
     const kingdomSplit = kingdom ? classifyKingdom(kingdom.values) : null;
 
     motifs.push({
@@ -138,8 +142,8 @@ function classifyKingdom(values) {
       bestDelta = delta;
     }
     if (
-      value >= 5 &&
-      delta >= 5 &&
+      value >= 0.05 &&
+      delta >= 0.05 &&
       (synthetic === 0 || value >= synthetic * 1.5)
     ) {
       enriched.push(labels[i]);
@@ -182,7 +186,8 @@ function parseGroupNames(text) {
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"))
     .map((line) => {
-      const parts = line.split(/\s+/).map(stripQuotes);
+      const tokens = line.match(/"[^"]*"|\S+/g) || [];
+      const parts = tokens.map(stripQuotes);
       if (!parts.length) return null;
       if (parts.length === 1) {
         return { label: parts[0], smarts: parts[0], group_id: "" };
