@@ -4,8 +4,8 @@
 [![CI](https://github.com/Adafede/dioxus/actions/workflows/ci.yml/badge.svg)](https://github.com/Adafede/dioxus/actions/workflows/ci.yml)
 
 > **Note:** Portable streaming primitives (`BlobCursor`, `BlobLines`,
-> `ChunkSource`, `SliceSource`, `StreamError`) live in `stream-io` and are
-> re-exported here alongside browser `BlobSource`, Dioxus `FileData` extraction,
+> `ChunkSource`, `SliceSource`, `StreamError`) live directly in [`stream-io`](../stream-io/README.md).
+> This crate provides browser `BlobSource`, Dioxus `FileData` extraction,
 > and DOM download helpers.
 
 {{readme}}

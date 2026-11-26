@@ -35,7 +35,12 @@ pub(crate) fn download_with_mime(
     filename: &str,
     mime: &str,
 ) -> Result<(), UploadError> {
-    let safe_name = sanitize_filename(filename);
+    let fallback = if mime.starts_with("image/svg+xml") {
+        "download.svg"
+    } else {
+        "download.txt"
+    };
+    let safe_name = sanitize_filename_with_fallback(filename, fallback);
     let url = blob_url_from_str(content, mime)?;
 
     if let Err(err) = click_download_anchor(&url, &safe_name) {
@@ -43,7 +48,7 @@ pub(crate) fn download_with_mime(
         return Err(err);
     }
 
-    gloo_timers::callback::Timeout::new(1_000, move || {
+    gloo_timers::callback::Timeout::new(60_000, move || {
         drop(Url::revoke_object_url(&url));
     })
     .forget();
@@ -143,7 +148,7 @@ fn truncate_utf8_filename(name: String, max_bytes: usize) -> String {
 
 #[cfg(any(test, target_arch = "wasm32"))]
 #[must_use]
-pub(crate) fn sanitize_filename(input: &str) -> String {
+pub(crate) fn sanitize_filename_with_fallback(input: &str, fallback: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for c in input.trim().chars() {
         if c.is_control() {
@@ -154,17 +159,23 @@ pub(crate) fn sanitize_filename(input: &str) -> String {
             _ => out.push(c),
         }
     }
-    let cleaned = out.trim_matches('.').trim();
+    let cleaned = out.trim_matches(|c: char| c == '.' || c.is_whitespace());
     if cleaned.is_empty() {
-        return "download.txt".to_string();
+        return fallback.to_string();
     }
-    let stem = cleaned.split('.').next().unwrap_or("");
+    let stem = cleaned.split('.').next().unwrap_or("").trim_end();
     let guarded = if is_windows_reserved_stem(stem) {
         format!("_{cleaned}")
     } else {
         cleaned.to_string()
     };
     truncate_utf8_filename(guarded, MAX_FILENAME_BYTES)
+}
+
+#[cfg(test)]
+#[must_use]
+pub(crate) fn sanitize_filename(input: &str) -> String {
+    sanitize_filename_with_fallback(input, "download.txt")
 }
 
 #[cfg(not(target_arch = "wasm32"))]

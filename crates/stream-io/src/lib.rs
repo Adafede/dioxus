@@ -27,9 +27,10 @@
 //! assert_eq!(lines, Ok(vec!["alpha".to_string(), "beta".to_string()]));
 //! ```
 
-// `ChunkSource` implementations on wasm32 (such as browser `Blob` readers) are
-// `!Send`, so generic streaming methods do not require `Send + Sync` bounds.
-#![allow(clippy::future_not_send)]
+#![expect(
+    clippy::future_not_send,
+    reason = "ChunkSource implementations on wasm32 (such as browser Blob readers) are !Send"
+)]
 #![warn(missing_docs)]
 
 mod blob_cursor;

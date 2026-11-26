@@ -4,6 +4,7 @@
 //! Byte-source trait and host [`SliceSource`] implementation.
 
 use std::fmt::Debug;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
 use crate::error::StreamError;
@@ -63,7 +64,13 @@ impl ChunkSource for SliceSource<'_> {
             usize::try_from(start).map_err(|_| StreamError::OffsetOutOfRange { offset: start })?;
         let end =
             usize::try_from(end).map_err(|_| StreamError::OffsetOutOfRange { offset: end })?;
-        Ok(self.bytes.get(start..end).unwrap_or_default().to_vec())
+        let clamped_end = end.min(self.bytes.len());
+        let clamped_start = start.min(clamped_end);
+        Ok(self
+            .bytes
+            .get(clamped_start..clamped_end)
+            .unwrap_or_default()
+            .to_vec())
     }
 
     async fn yield_now(&self) {}
@@ -73,6 +80,7 @@ impl ChunkSource for SliceSource<'_> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn slice_clock() -> f64 {
     thread_local! {
         static EPOCH: std::cell::Cell<Option<Instant>> = const { std::cell::Cell::new(None) };
@@ -85,4 +93,9 @@ fn slice_clock() -> f64 {
         });
         start.elapsed().as_secs_f64() * 1000.0
     })
+}
+
+#[cfg(target_arch = "wasm32")]
+const fn slice_clock() -> f64 {
+    0.0
 }

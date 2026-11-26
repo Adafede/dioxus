@@ -62,13 +62,19 @@ impl<S: ChunkSource> ChunkBuffer<S> {
         }
 
         let chunk = self.source.read_chunk(start, end).await?;
+        let read_len = chunk.len() as u64;
+        if read_len == 0 {
+            return Err(StreamError::io(
+                "unexpected EOF: source returned empty chunk",
+            ));
+        }
         if self.buf.is_empty() {
             self.buf = chunk;
         } else {
             self.buf.extend_from_slice(&chunk);
         }
-        self.source_read = end;
-        Ok(Some((start, end)))
+        self.source_read = start.saturating_add(read_len);
+        Ok(Some((start, self.source_read)))
     }
 
     /// Reports progress if due and yields to the scheduler when a report fired.

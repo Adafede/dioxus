@@ -6,7 +6,7 @@
 // They were inline, and together they were several times the size of the
 // code they cover. `super` is still the `download` module, so
 // `use super::*` below reaches exactly what it did before the move.
-use super::sanitize_filename;
+use super::{sanitize_filename, sanitize_filename_with_fallback};
 
 #[test]
 fn sanitize_removes_path_separators() {
@@ -112,5 +112,16 @@ fn sanitize_caps_utf8_byte_length_preserving_extension() {
             .extension()
             .is_some_and(|ext| ext.eq_ignore_ascii_case("csv")),
         "extension must be preserved: {sanitized}"
+    );
+}
+
+#[test]
+fn sanitize_trims_dots_whitespace_and_trimmed_reserved_stems() {
+    assert_eq!(sanitize_filename(". . ."), "download.txt");
+    assert_eq!(sanitize_filename("a. ."), "a");
+    assert_eq!(sanitize_filename("CON .txt"), "_CON .txt");
+    assert_eq!(
+        sanitize_filename_with_fallback("...", "download.svg"),
+        "download.svg"
     );
 }

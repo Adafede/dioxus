@@ -196,8 +196,91 @@ where
 #[cfg(test)]
 mod tests {
     use super::BlobCursor;
-    use crate::bytes::SliceSource;
+    use crate::bytes::{ChunkSource, SliceSource};
+    use crate::error::StreamError;
     use futures_executor::block_on;
+
+    #[derive(Debug)]
+    struct ShortChunkSource<'a> {
+        bytes: &'a [u8],
+        max_per_read: usize,
+    }
+
+    impl ChunkSource for ShortChunkSource<'_> {
+        fn total_bytes(&self) -> u64 {
+            self.bytes.len() as u64
+        }
+
+        fn read_chunk(
+            &self,
+            start: u64,
+            end: u64,
+        ) -> impl std::future::Future<Output = Result<Vec<u8>, StreamError>> {
+            let s = usize::try_from(start).unwrap_or(usize::MAX);
+            let e = usize::try_from(end)
+                .unwrap_or(usize::MAX)
+                .min(s.saturating_add(self.max_per_read));
+            std::future::ready(Ok(self
+                .bytes
+                .get(s..e.min(self.bytes.len()))
+                .unwrap_or_default()
+                .to_vec()))
+        }
+
+        async fn yield_now(&self) {}
+
+        fn clock() -> fn() -> f64 {
+            SliceSource::clock()
+        }
+    }
+
+    #[derive(Debug)]
+    struct EmptyChunkSource;
+
+    impl ChunkSource for EmptyChunkSource {
+        fn total_bytes(&self) -> u64 {
+            4
+        }
+
+        fn read_chunk(
+            &self,
+            _start: u64,
+            _end: u64,
+        ) -> impl std::future::Future<Output = Result<Vec<u8>, StreamError>> {
+            std::future::ready(Ok(Vec::new()))
+        }
+
+        async fn yield_now(&self) {}
+
+        fn clock() -> fn() -> f64 {
+            SliceSource::clock()
+        }
+    }
+
+    #[test]
+    fn short_reads_advance_only_by_returned_len_and_empty_chunk_errors() -> Result<(), StreamError>
+    {
+        block_on(async {
+            let src = ShortChunkSource {
+                bytes: b"abcdef",
+                max_per_read: 2,
+            };
+            let mut cursor = BlobCursor::new(src, 6, |_, _| {}).with_chunk_size(5);
+            let mut out = Vec::new();
+            while let Some(b) = cursor.next_byte().await? {
+                out.push(b);
+            }
+            assert_eq!(out, b"abcdef", "short reads must not skip unreturned bytes");
+
+            let mut empty_cursor = BlobCursor::new(EmptyChunkSource, 4, |_, _| {});
+            let outcome = empty_cursor.fill().await;
+            assert!(
+                matches!(outcome, Err(StreamError::Io(_))),
+                "empty chunk before EOF must error, got {outcome:?}"
+            );
+            Ok(())
+        })
+    }
 
     #[test]
     fn advance_saturates_at_buffer_length() {

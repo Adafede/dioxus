@@ -136,7 +136,7 @@ where
             .pull_chunk(self.chunk_size, self.total_bytes)
             .await?
         {
-            self.processed = self.processed.saturating_add((end - start).max(1));
+            self.processed = self.processed.saturating_add(end - start);
             self.inner
                 .report_and_yield(&mut self.progress, self.processed, self.total_bytes)
                 .await;

@@ -5,9 +5,9 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 [![CI](https://github.com/Adafede/dioxus/actions/workflows/ci.yml/badge.svg)](https://github.com/Adafede/dioxus/actions/workflows/ci.yml)
 
 > **Note:** Portable streaming primitives (`BlobCursor`, `BlobLines`,
-> `ChunkSource`, `SliceSource`, `StreamError`) live in `stream-io` and are
-> re-exported here alongside browser `BlobSource`, Dioxus `FileData` extraction,
-> and DOM download helpers.
+> `ChunkSource`, `SliceSource`, `StreamError`) live directly in
+> [`stream-io`](../stream-io/README.md). This crate provides browser
+> `BlobSource`, Dioxus `FileData` extraction, and DOM download helpers.
 
 ## upload --- browser file I/O, extraction, and download adapters
 

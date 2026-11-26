@@ -12,7 +12,13 @@
 //! - [`download_text`] / [`download_svg`] — browser download helpers returning
 //!   [`UploadError`].
 
-#![cfg_attr(target_arch = "wasm32", allow(clippy::future_not_send))]
+#![cfg_attr(
+    target_arch = "wasm32",
+    expect(
+        clippy::future_not_send,
+        reason = "browser Blob async ChunkSource implementation on wasm32 is !Send"
+    )
+)]
 #![warn(missing_docs)]
 
 /// Browser `Blob` chunk source (`wasm32`).
