@@ -25,14 +25,15 @@ pub(crate) struct ElementCounts {
 }
 
 impl ElementCounts {
-    /// Double-bond equivalents (`C - H/2 - X/2 + N/2 + 1`).
+    /// Double-bond equivalents (`C - H/2 - X/2 + (N + P)/2 + 1`).
     #[must_use]
     pub(crate) fn double_bond_equivalent(&self) -> f64 {
-        let c = f64::from(self.carbon);
-        let h = f64::from(self.hydrogen);
-        let n = f64::from(self.nitrogen);
-        let x = f64::from(self.halogens);
-        c - h / 2.0 - x / 2.0 + n / 2.0 + 1.0
+        let carbon = f64::from(self.carbon);
+        let hydrogen = f64::from(self.hydrogen);
+        let nitrogen = f64::from(self.nitrogen);
+        let phosphorus = f64::from(self.phosphorus);
+        let halogens = f64::from(self.halogens);
+        carbon - hydrogen / 2.0 - halogens / 2.0 + f64::midpoint(nitrogen, phosphorus) + 1.0
     }
 
     /// Molecular formula formatted in Hill order (e.g. `C16H32O2`).

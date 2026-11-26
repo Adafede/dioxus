@@ -40,11 +40,20 @@ pub fn passes_item_filters(
     if !class_matches.intersects(criteria.selected_classes) {
         return false;
     }
-    if exact_mass < criteria.mz_min || exact_mass > criteria.mz_max {
+    if !exact_mass.is_finite()
+        || !criteria.mz_min.is_finite()
+        || !criteria.mz_max.is_finite()
+        || exact_mass < criteria.mz_min
+        || exact_mass > criteria.mz_max
+    {
         return false;
     }
     if let Some(pmz) = precursor_mz
-        && (pmz < criteria.precursor_min || pmz > criteria.precursor_max)
+        && (!pmz.is_finite()
+            || !criteria.precursor_min.is_finite()
+            || !criteria.precursor_max.is_finite()
+            || pmz < criteria.precursor_min
+            || pmz > criteria.precursor_max)
     {
         return false;
     }

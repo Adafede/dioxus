@@ -23,25 +23,39 @@ macro_rules! lazy_smarts {
 }
 
 lazy_smarts!(Q_RING, "[R]");
-lazy_smarts!(Q_PHOSPHATE, "[PX4](=[OX1])");
+lazy_smarts!(Q_PHOSPHATE, "[PX4](=[OX1])([OX2])[OX2]");
+lazy_smarts!(
+    Q_GLYCEROPHOSPHATE,
+    "[CX4][CHX4]([OX2])[CH2X4][OX2][PX4](=[OX1])([OX2])[OX2]"
+);
 lazy_smarts!(Q_CHOLINE, "[NX4+]");
 lazy_smarts!(Q_ETHANOLAMINE, "[NX3][CX4]");
 lazy_smarts!(
     Q_TRIGLYCERIDE,
-    "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])"
+    "[CH2X4]([OX2][CX3](=[OX1])[#6])[CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2][CX3](=[OX1])[#6]"
 );
 lazy_smarts!(
-    Q_DIGLYCERIDE,
-    "[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])"
+    Q_DIGLYCERIDE_12,
+    "[CH2X4]([OX2][CX3](=[OX1])[#6])[CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2H]"
 );
-lazy_smarts!(Q_MONOGLYCERIDE, "[CX4][OX2][CX3](=[OX1])[#6]");
+lazy_smarts!(
+    Q_DIGLYCERIDE_13,
+    "[CH2X4]([OX2][CX3](=[OX1])[#6])[CHX4]([OX2H])[CH2X4][OX2][CX3](=[OX1])[#6]"
+);
+lazy_smarts!(
+    Q_MONOGLYCERIDE_1,
+    "[CH2X4]([OX2][CX3](=[OX1])[#6])[CHX4]([OX2H])[CH2X4][OX2H]"
+);
+lazy_smarts!(
+    Q_MONOGLYCERIDE_2,
+    "[CH2X4]([OX2H])[CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2H]"
+);
 lazy_smarts!(
     Q_ALIPHATIC_CHAIN,
     "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]"
 );
-lazy_smarts!(Q_AMIDE, "[CX3](=[OX1])[NX3]");
-lazy_smarts!(Q_AMINO, "[NX3][CH0,CH1,CH2,CH3]");
-lazy_smarts!(Q_CARBOXYLIC_ACID, "[#6;!a;!R][CX3](=[OX1])[OH]");
+lazy_smarts!(Q_SPHINGOID, "[CH2X4]([OX2])[CHX4]([NX3])[CX4]");
+lazy_smarts!(Q_CARBOXYLIC_ACID, "[#6;!a;!R][CX3](=[OX1])[OX2H1,OX1-]");
 
 fn has_query(molecule: &Molecule, query: &LazyLock<Option<QueryMolecule>>) -> bool {
     let Some(parsed) = query.as_ref() else {
@@ -85,18 +99,24 @@ pub(crate) fn classify_acyclic_molecule(molecule: &Molecule) -> Option<LipidFami
         || *chain_cached.get_or_insert_with(|| has_query(molecule, &Q_ALIPHATIC_CHAIN));
 
     if has_query(molecule, &Q_PHOSPHATE)
+        && has_query(molecule, &Q_GLYCEROPHOSPHATE)
         && has_chain()
         && (has_query(molecule, &Q_CHOLINE) || has_query(molecule, &Q_ETHANOLAMINE))
     {
         return Some(LipidFamily::Glycerophospholipids);
     }
-    if has_query(molecule, &Q_TRIGLYCERIDE) || has_query(molecule, &Q_DIGLYCERIDE) {
+    if has_query(molecule, &Q_TRIGLYCERIDE)
+        || has_query(molecule, &Q_DIGLYCERIDE_12)
+        || has_query(molecule, &Q_DIGLYCERIDE_13)
+    {
         return Some(LipidFamily::Glycerolipids);
     }
-    if has_query(molecule, &Q_MONOGLYCERIDE) && has_chain() {
+    if has_chain()
+        && (has_query(molecule, &Q_MONOGLYCERIDE_1) || has_query(molecule, &Q_MONOGLYCERIDE_2))
+    {
         return Some(LipidFamily::Glycerolipids);
     }
-    if has_chain() && (has_query(molecule, &Q_AMIDE) || has_query(molecule, &Q_AMINO)) {
+    if has_chain() && has_query(molecule, &Q_SPHINGOID) {
         return Some(LipidFamily::Sphingolipids);
     }
     if has_query(molecule, &Q_CARBOXYLIC_ACID) && has_chain() {
@@ -135,7 +155,9 @@ fn classify_from_counts(counts: &ElementCounts) -> Option<LipidFamily> {
     if carbon == 0 || heavy < 4 {
         return None;
     }
-    let h_within_bounds = hydrogen <= 2 * carbon + 2 && hydrogen >= (2 * carbon).saturating_sub(28);
+    let h_within_bounds = hydrogen > carbon
+        && hydrogen <= 2 * carbon + 2
+        && hydrogen >= (2 * carbon).saturating_sub(28);
     if phosphorus == 0
         && nitrogen == 0
         && sulfur == 0
@@ -149,6 +171,8 @@ fn classify_from_counts(counts: &ElementCounts) -> Option<LipidFamily> {
     }
     if phosphorus == 0
         && nitrogen == 0
+        && sulfur == 0
+        && halogens == 0
         && (3..=6).contains(&oxygen)
         && carbon >= 8
         && f64::from(oxygen) / f64::from(carbon) <= 0.25
@@ -158,9 +182,13 @@ fn classify_from_counts(counts: &ElementCounts) -> Option<LipidFamily> {
         return Some(LipidFamily::Glycerolipids);
     }
     if phosphorus >= 1
+        && sulfur == 0
+        && halogens == 0
+        && nitrogen <= 2
         && carbon >= 15
         && oxygen >= 6
         && f64::from(oxygen) / f64::from(carbon) <= 0.6
+        && h_within_bounds
     {
         return Some(LipidFamily::Glycerophospholipids);
     }

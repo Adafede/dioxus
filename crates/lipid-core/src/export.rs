@@ -8,6 +8,7 @@ use std::fmt::Write as _;
 use crate::chemical_class::ChemicalClass;
 use crate::family::LipidFamily;
 use crate::filter::{FilterCriteria, passes_item_filters};
+use crate::lipids::types::LipidClassification;
 use crate::parser::analysis::GalleryItem;
 use crate::parser::block::SpectrumBlock;
 
@@ -34,29 +35,37 @@ impl ClassTags {
     }
 }
 
-/// Compute `CATEGORY` / `MAIN_CLASS` / `SUB_CLASS` tags from a [`GalleryItem`].
-#[must_use]
-pub(crate) fn class_tags_from_gallery(item: &GalleryItem, classes: &[ChemicalClass]) -> ClassTags {
-    let matched: Vec<&ChemicalClass> = classes
-        .iter()
-        .filter(|c| item.class_matches.contains(c.index))
-        .collect();
+fn tags_for(
+    mask: crate::bitset::ClassMatchSet,
+    classification: Option<&LipidClassification>,
+    primary_class_name: Option<&str>,
+    classes: &[ChemicalClass],
+) -> ClassTags {
+    let matched: Vec<&ChemicalClass> = classes.iter().filter(|c| mask.contains(c.index)).collect();
     if matched.is_empty() {
-        let category = item.classification.as_ref().map_or_else(
+        let category = classification.map_or_else(
             || "Other Lipids [-]".to_string(),
             |c| c.family.category().to_string(),
         );
-        let main_class = item
-            .primary_class_name
-            .clone()
-            .unwrap_or_else(|| "-".to_string());
+        let main_class = primary_class_name.unwrap_or("-").to_string();
         return ClassTags {
             category,
             main_class,
             sub_class: "-",
         };
     }
-    tags_from_matched(&matched, item.classification.as_ref().map(|c| c.family))
+    tags_from_matched(&matched, classification.map(|c| c.family))
+}
+
+/// Compute `CATEGORY` / `MAIN_CLASS` / `SUB_CLASS` tags from a [`GalleryItem`].
+#[must_use]
+pub(crate) fn class_tags_from_gallery(item: &GalleryItem, classes: &[ChemicalClass]) -> ClassTags {
+    tags_for(
+        item.class_matches,
+        item.classification.as_ref(),
+        item.primary_class_name.as_deref(),
+        classes,
+    )
 }
 
 fn tags_from_matched(matched: &[&ChemicalClass], broad: Option<LipidFamily>) -> ClassTags {
@@ -98,24 +107,12 @@ fn tags_from_matched(matched: &[&ChemicalClass], broad: Option<LipidFamily>) -> 
 /// Compute fallback tags directly from a [`SpectrumBlock`].
 #[must_use]
 pub(crate) fn class_tags_from_block(block: &SpectrumBlock, classes: &[ChemicalClass]) -> ClassTags {
-    let category = block.classification.as_ref().map_or_else(
-        || "Other Lipids [-]".to_string(),
-        |c| c.family.category().to_string(),
-    );
-    let main_class = block
-        .gallery_item_matches
-        .and_then(|mask| {
-            classes
-                .iter()
-                .find(|c| mask.contains(c.index))
-                .map(|c| c.name.clone())
-        })
-        .unwrap_or_else(|| "-".to_string());
-    ClassTags {
-        category,
-        main_class,
-        sub_class: "-",
-    }
+    tags_for(
+        block.class_matches(),
+        block.classification.as_ref(),
+        None,
+        classes,
+    )
 }
 
 /// Look up matching gallery item tags if in gallery cap, otherwise derive from block.
@@ -139,27 +136,35 @@ pub(crate) fn block_class_tags(
 #[must_use]
 pub(crate) fn insert_class_comment(block_raw: &str, tags: &ClassTags) -> String {
     let mut out = String::with_capacity(block_raw.len() + 128);
-    let split_pos = block_raw
-        .find(|c: char| !c.is_whitespace())
-        .filter(|&begin_pos| {
-            block_raw
-                .get(begin_pos..)
-                .and_then(|rest| rest.lines().next())
-                .is_some_and(|line| mgf::is_ions_marker(line, "BEGIN IONS"))
-        })
-        .and_then(|begin_pos| {
-            block_raw
-                .get(begin_pos..)
-                .and_then(|rest| rest.find('\n'))
-                .map(|newline_pos| begin_pos + newline_pos + 1)
-        })
-        .unwrap_or(0);
-    let (before, after) = block_raw.split_at(split_pos);
-    out.push_str(before);
-    for (k, v) in tags.as_pairs() {
-        let _ = writeln!(out, "COMMENT=LIPID_MAPS_{k}={v}");
+    let begin_pos = block_raw.find(|c: char| !c.is_whitespace()).filter(|&pos| {
+        block_raw
+            .get(pos..)
+            .and_then(|rest| rest.lines().next())
+            .is_some_and(|line| mgf::is_ions_marker(line, "BEGIN IONS"))
+    });
+    if let Some(pos) = begin_pos {
+        let rest = block_raw.get(pos..).unwrap_or_default();
+        if let Some(newline_pos) = rest.find('\n') {
+            let split_pos = pos + newline_pos + 1;
+            let (before, after) = block_raw.split_at(split_pos);
+            out.push_str(before);
+            for (k, v) in tags.as_pairs() {
+                let _ = writeln!(out, "COMMENT=LIPID_MAPS_{k}={v}");
+            }
+            out.push_str(after);
+        } else {
+            out.push_str(block_raw);
+            out.push('\n');
+            for (k, v) in tags.as_pairs() {
+                let _ = writeln!(out, "COMMENT=LIPID_MAPS_{k}={v}");
+            }
+        }
+    } else {
+        for (k, v) in tags.as_pairs() {
+            let _ = writeln!(out, "COMMENT=LIPID_MAPS_{k}={v}");
+        }
+        out.push_str(block_raw);
     }
-    out.push_str(after);
     out
 }
 
@@ -226,8 +231,14 @@ pub fn build_filtered_smiles_content(
             .title
             .as_deref()
             .filter(|s| !s.is_empty())
-            .unwrap_or("-");
-        let _ = writeln!(out, "{smiles}\t{title}\t{cat}\t{mc}\t{}", tags.sub_class);
+            .unwrap_or("-")
+            .replace(['\t', '\r', '\n'], " ");
+        let safe_smiles = smiles.replace(['\t', '\r', '\n'], " ");
+        let _ = writeln!(
+            out,
+            "{safe_smiles}\t{title}\t{cat}\t{mc}\t{}",
+            tags.sub_class
+        );
     }
     out
 }

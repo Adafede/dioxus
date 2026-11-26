@@ -25,8 +25,13 @@ fn acyclic_lipids_are_recognized() {
         Some(LipidFamily::FattyAcyls)
     );
     assert_eq!(
-        class_of("CCCCCCCCCCCCCCC(=O)OC"),
+        class_of("CCCCCCCCCCCCCCCC(=O)OCC(O)CO"),
         Some(LipidFamily::Glycerolipids)
+    );
+    assert_ne!(
+        class_of("CCCCCCCCCCCCCCC(=O)OC"),
+        Some(LipidFamily::Glycerolipids),
+        "methyl palmitate is a fatty ester, not a glycerolipid"
     );
     assert_eq!(
         class_of("CCCCCCCCCCCCC=CC(C(CO)N)O"),
@@ -110,4 +115,22 @@ fn counts_and_spectrum_fallback_work_as_expected() {
     assert_eq!((hal.carbon, hal.halogens, hal.oxygen), (10, 5, 0));
     map.clear();
     assert_eq!(formula_counts(&map).carbon, 0);
+
+    // Non-lipid aromatic acid must not fall back to FORMULA= when valid SMILES matched 0 classes.
+    let mut benzoic = crate::parser::block::SpectrumBlock::new(1);
+    benzoic.psm_smiles = Some("c1ccccc1C(=O)O".to_string());
+    benzoic.formula = Some("C7H6O2".to_string());
+    benzoic.classify_and_match(crate::lmsd_classes());
+    assert!(!benzoic.is_lipid());
+    assert!(benzoic.classification.is_none());
+
+    // Double-bond equivalents include phosphorus: C20H38O8P -> 20 - 19 + 0.5 + 1 = 2.5
+    let gp = formula_counts(&HashMap::from([
+        ("C".to_string(), 20),
+        ("H".to_string(), 38),
+        ("O".to_string(), 8),
+        ("P".to_string(), 1),
+    ]));
+    assert!((gp.double_bond_equivalent() - 2.5).abs() < 1e-12);
+    assert_eq!(classify_formula("C7H6O2"), None);
 }

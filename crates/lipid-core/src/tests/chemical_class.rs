@@ -124,4 +124,17 @@ fn lmsd_classes_match_all_eight_lipid_families() {
             expected_family.name()
         );
     }
+
+    // Verify coarse defaults distinguish real lipids from decoys (PC vs phosphonate, ST vs bicyclic, SL vs phosphodiester).
+    let defaults = ChemicalClass::defaults();
+    let get = |name: &str| defaults.iter().find(|c| c.name == name).unwrap();
+    assert!(get("TG(AAA)").matches(&smiles::parse("CC(=O)OCC(OC(=O)C)COC(=O)C").unwrap()));
+    assert!(!get("TG(AAA)").matches(&smiles::parse("CC(=O)OC(OC(=O)C)(OC(=O)C)C").unwrap()));
+    assert!(
+        get("PC(AA)")
+            .matches(&smiles::parse("CC(=O)OCC(OC(=O)C)COP(=O)([O-])OCC[N+](C)(C)C").unwrap())
+    );
+    assert!(!get("PC(AA)").matches(&smiles::parse("CP(=O)(O)(O)[N+](C)(C)C").unwrap()));
+    assert!(get("ST").matches(&smiles::parse("CC12CCC3C(C1CCC2O)CCC4=CC(=O)CCC34C").unwrap()));
+    assert!(!get("ST").matches(&smiles::parse("C1CCC2C(C1)CCC2(C)C").unwrap()));
 }

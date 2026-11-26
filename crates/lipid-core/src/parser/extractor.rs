@@ -152,13 +152,7 @@ fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
                         (first, sec, Some(f_mol))
                     }
                 }
-                (None, None) => {
-                    if looks_like_id(sec) {
-                        (first, sec, None)
-                    } else {
-                        (sec, first, None)
-                    }
-                }
+                (None, None) => (first, sec, None),
             }
         },
     );

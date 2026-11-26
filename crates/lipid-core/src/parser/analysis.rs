@@ -10,6 +10,7 @@ use crate::bitset::ClassMatchSet;
 use crate::chemical_class::ChemicalClass;
 #[cfg(test)]
 use crate::chemical_class::lmsd::lmsd_classes;
+use crate::family::LipidFamily;
 use crate::lipids::types::LipidClassification;
 
 /// Aggregate counts produced by collection summarization.
@@ -79,11 +80,47 @@ pub struct GalleryItem {
     pub classification: Option<LipidClassification>,
 }
 
+/// Specificity priority when multiple LMSD classes match: prefer complex
+/// lipid families (e.g. `GP`, `SP`, `GL`, `ST`) over `FattyAcyls` (`FA`).
+const fn specificity_priority(family: LipidFamily) -> u8 {
+    match family {
+        LipidFamily::Glycerophospholipids => 7,
+        LipidFamily::Sphingolipids => 6,
+        LipidFamily::Saccharolipids => 5,
+        LipidFamily::SterolLipids => 4,
+        LipidFamily::Glycerolipids => 3,
+        LipidFamily::Polyketides => 2,
+        LipidFamily::PrenolLipids => 1,
+        LipidFamily::FattyAcyls => 0,
+    }
+}
+
+/// Select the highest-specificity matched LMSD class for gallery/export display.
+#[must_use]
+pub(crate) fn primary_class(
+    classes: &[ChemicalClass],
+    class_matches: ClassMatchSet,
+    broad_family: Option<LipidFamily>,
+) -> Option<&ChemicalClass> {
+    classes
+        .iter()
+        .filter(|c| class_matches.contains(c.index))
+        .max_by_key(|c| {
+            let matches_broad = u8::from(broad_family == Some(c.family));
+            (
+                matches_broad,
+                specificity_priority(c.family),
+                std::cmp::Reverse(c.index),
+            )
+        })
+}
+
 /// Project one classified [`SpectrumBlock`] into a [`GalleryItem`] without re-parsing SMILES.
 #[must_use]
 pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
     let class_matches = block.class_matches();
-    let first_class = classes.iter().find(|c| class_matches.contains(c.index));
+    let broad = block.classification.as_ref().map(|c| c.family);
+    let first_class = primary_class(classes, class_matches, broad);
     let primary_class_color =
         first_class.map_or_else(|| "#f1f5f9".to_string(), |c| c.color.to_string());
     let primary_class_name = first_class.map(|c| c.name.clone());

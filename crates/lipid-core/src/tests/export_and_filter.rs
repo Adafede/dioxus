@@ -45,14 +45,7 @@ END IONS
     assert_ne!(gallery_tags.main_class, "");
 
     let block_tags = class_tags_from_block(&analysis.blocks[0], classes);
-    assert_eq!(block_tags.category, gallery_tags.category);
-    assert_eq!(
-        block_tags.main_class,
-        analysis.gallery[0]
-            .primary_class_name
-            .clone()
-            .unwrap_or_default()
-    );
+    assert_eq!(block_tags, gallery_tags);
 
     let tagged = insert_class_comment(&analysis.blocks[0].raw, &block_tags);
     assert!(tagged.starts_with(
@@ -131,6 +124,20 @@ fn passes_item_filters_checks_classes_mass_precursor_and_adduct_boundaries() {
         200.0,
         Some(250.0),
         Some("[M+Na]+"),
+        &base
+    ));
+    assert!(!passes_item_filters(
+        mask,
+        f64::NAN,
+        Some(250.0),
+        Some("[M+H]+"),
+        &base
+    ));
+    assert!(!passes_item_filters(
+        mask,
+        200.0,
+        Some(f64::NAN),
+        Some("[M+H]+"),
         &base
     ));
     assert!(!passes_item_filters(
@@ -218,9 +225,7 @@ fn export_and_adduct_options_stay_consistent_past_gallery_cap() {
     let block_105 = &analysis.blocks[104];
     let tags_1 = block_class_tags(block_1, &analysis.gallery, analysis.all_classes);
     let tags_105 = block_class_tags(block_105, &analysis.gallery, analysis.all_classes);
-    // Conservative parity check: category stays identical past gallery cap; fallback keeps primary class.
-    assert_eq!(tags_105.category, tags_1.category);
-    assert_eq!(tags_105.main_class, "Fatty Acids and Conjugates [FA01]");
+    assert_eq!(tags_105, tags_1);
 
     let all_criteria = FilterCriteria {
         selected_classes: ClassMatchSet::all(analysis.all_classes.len()),

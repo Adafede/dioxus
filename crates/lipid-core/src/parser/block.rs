@@ -109,8 +109,7 @@ impl SpectrumBlock {
             "CHARGE" => self.charge = Some(value.to_string()),
             "ADDUCT" => self.adduct = Some(value.to_string()),
             "IONMODE" => self.ion_mode = Some(value.to_ascii_lowercase()),
-            "PEPMASS" => self.precursor_mz = parse_leading_float(value),
-            "PRECURSOR_MZ" => self.precursor_mz = value.parse().ok(),
+            "PEPMASS" | "PRECURSOR_MZ" => self.precursor_mz = parse_leading_float(value),
             "TITLE" => self.title = Some(value.to_string()),
             "NAME" | "SCANS" if self.title.is_none() => self.title = Some(value.to_string()),
             _ => {}
@@ -164,25 +163,25 @@ impl SpectrumBlock {
             if !matches.is_empty() {
                 self.parsed_molecule = Some(molecule);
             }
-        }
-
-        if self.exact_mass <= 0.0
-            && let Some(formula_str) = self.formula.as_deref()
-        {
-            self.exact_mass = formula_exact_mass(formula_str);
-        }
-
-        self.classification = smiles_classification.or_else(|| {
-            let formula_str = self.formula.as_deref()?;
-            let family = classify_formula(formula_str)?;
-            if let Some(idx) = formula_fallback_class_index(classes, family) {
-                matches.insert(idx);
+            self.classification = smiles_classification;
+        } else {
+            if self.exact_mass <= 0.0
+                && let Some(formula_str) = self.formula.as_deref()
+            {
+                self.exact_mass = formula_exact_mass(formula_str);
             }
-            Some(LipidClassification {
-                family,
-                derived_from_smiles: false,
-            })
-        });
+
+            self.classification = self.formula.as_deref().and_then(|formula_str| {
+                let family = classify_formula(formula_str)?;
+                if let Some(idx) = formula_fallback_class_index(classes, family) {
+                    matches.insert(idx);
+                }
+                Some(LipidClassification {
+                    family,
+                    derived_from_smiles: false,
+                })
+            });
+        }
         self.gallery_item_matches = Some(matches);
     }
 }
