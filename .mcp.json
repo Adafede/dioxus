@@ -7,7 +7,7 @@
         "@modelcontextprotocol/server-filesystem",
         ".github/ai"
       ],
-      "description": "Read-only MCP filesystem access to the AI collaboration guides under .github/ai/.",
+      "description": "MCP filesystem access to the AI collaboration guides under .github/ai/.",
       "disabled": false
     },
     "code-review-graph": {
