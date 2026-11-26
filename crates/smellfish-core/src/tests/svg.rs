@@ -42,6 +42,15 @@ fn accepts_plain_and_xml_prefixed_svg_and_rejects_active_payloads() {
         "foreignObject blocked"
     );
     assert!(!is_safe_svg(r"<svg><path d='M0 0'"), "unclosed tag blocked");
+    assert!(!is_safe_svg(r"<svgfoo></svg>"), "svg tag boundary enforced");
+    assert!(
+        !is_safe_svg(r#"<svg><animate onbegin="alert(1)"/></svg>"#),
+        "animate blocked"
+    );
+    assert!(
+        !is_safe_svg("<svg><a href=\"java\nscript:alert(1)\">x</a></svg>"),
+        "control-char obfuscated script blocked"
+    );
 
     assert!(
         sanitize_svg(Some("<svg></svg>".to_string())).is_some(),

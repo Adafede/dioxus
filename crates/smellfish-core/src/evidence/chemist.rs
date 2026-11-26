@@ -62,10 +62,10 @@ const DECORATION_MOTIFS: &[&str] = &[
 /// Runs the three visual chemist checks (NP-likeness score, skeleton, database presence).
 #[must_use]
 pub(crate) fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
-    let (np_status, np_detail) = match row.np_score {
-        None => (CheckStatus::Warn, "Ertl model not loaded".into()),
-        Some(np) if np.score >= 0.5 => (CheckStatus::Pass, format!("Ertl score {:+.2}", np.score)),
-        Some(np) if np.score > -0.5 => (
+    let (np_status, np_detail) = match row.np_score.filter(|np| np.score.is_finite()) {
+        None => (CheckStatus::Warn, "Ertl model unavailable".into()),
+        Some(np) if np.score >= 1.0 => (CheckStatus::Pass, format!("Ertl score {:+.2}", np.score)),
+        Some(np) if np.score >= 0.0 => (
             CheckStatus::Warn,
             format!("Ertl score {:+.2} — borderline", np.score),
         ),

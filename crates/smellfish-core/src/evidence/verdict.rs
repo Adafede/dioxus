@@ -34,10 +34,6 @@ impl EvidenceSignals {
     const fn structural_support(self) -> bool {
         self.counts.scaffold > 0 && self.counts.np_core > 0 && self.natural_dominant()
     }
-
-    const fn decoration_heavy(self) -> bool {
-        self.counts.decoration > self.counts.scaffold
-    }
 }
 
 /// Derives the screening verdict for a molecule row, computing motif counts directly.
@@ -67,20 +63,20 @@ pub(crate) fn row_verdict_with_counts(row: &MoleculeRow, counts: EvidenceCounts)
 /// Pure evidence classifier returning both a [`VerdictCategory`] and explanation message.
 #[must_use]
 pub(crate) fn classify_np_evidence(signals: &EvidenceSignals) -> Verdict {
-    let Some(score) = signals.np_score else {
+    let Some(score) = signals.np_score.filter(|s| s.is_finite()) else {
         return classify_without_model(*signals);
     };
     if score <= -2.0 {
         return Verdict::new(
             VerdictCategory::Fishy,
-            format!("👃 Smells fishy — highly synthetic (Ertl {score:+.2})"),
+            format!("Smells fishy — highly synthetic (Ertl {score:+.2})"),
         );
     }
-    let synthetic_lean = signals.synthetic_majority() || signals.decoration_heavy() || score < 0.0;
+    let synthetic_lean = signals.synthetic_majority() || score < 0.0;
     if synthetic_lean && !signals.has_lotus {
         return Verdict::new(
             VerdictCategory::Caution,
-            format!("🟧 Synthetic-leaning structure (Ertl {score:+.2})"),
+            format!("Synthetic-leaning structure (Ertl {score:+.2})"),
         );
     }
     if signals.has_lotus {
@@ -100,24 +96,24 @@ fn classify_without_model(signals: EvidenceSignals) -> Verdict {
     {
         return Verdict::new(
             VerdictCategory::Likely,
-            "🌿 LOTUS-prevalent scaffold + NP structure — supporting evidence (Ertl unavailable)",
+            "LOTUS-prevalent scaffold + NP structure — supporting evidence (Ertl unavailable)",
         );
     }
     if signals.has_lotus && signals.structural_support() {
         return Verdict::new(
             VerdictCategory::Likely,
-            "🌿 LOTUS + NP structure (Ertl unavailable)",
+            "LOTUS + NP structure (Ertl unavailable)",
         );
     }
     if signals.has_lotus {
         return Verdict::new(
             VerdictCategory::Likely,
-            "🌿 LOTUS organism record (Ertl unavailable)",
+            "LOTUS organism record (Ertl unavailable)",
         );
     }
     Verdict::new(
         VerdictCategory::Skeptical,
-        "⚠ Citation needed — no Ertl model and no structural evidence",
+        "Citation needed — no Ertl model and no structural evidence",
     )
 }
 
@@ -125,17 +121,17 @@ fn classify_with_lotus(signals: EvidenceSignals, score: f64) -> Verdict {
     if score >= 2.0 && signals.structural_support() {
         Verdict::new(
             VerdictCategory::Likely,
-            format!("🌿 LOTUS + strong NP evidence (Ertl {score:+.2})"),
+            format!("LOTUS + strong NP evidence (Ertl {score:+.2})"),
         )
     } else if score >= 1.0 && signals.structural_support() {
         Verdict::new(
             VerdictCategory::Likely,
-            format!("🌿 LOTUS-backed NP evidence (Ertl {score:+.2})"),
+            format!("LOTUS-backed NP evidence (Ertl {score:+.2})"),
         )
     } else {
         Verdict::new(
             VerdictCategory::Likely,
-            format!("🌿 LOTUS organism record (Ertl {score:+.2})"),
+            format!("LOTUS organism record (Ertl {score:+.2})"),
         )
     }
 }
@@ -150,33 +146,33 @@ fn classify_with_lotus_scaffold(signals: EvidenceSignals, score: f64) -> Verdict
         Verdict::new(
             VerdictCategory::Likely,
             format!(
-                "🌿 Likely NP — LOTUS-prevalent scaffold + strong Ertl + natural motifs (Ertl {score:+.2})"
+                "Likely NP — LOTUS-prevalent scaffold + strong Ertl + natural motifs (Ertl {score:+.2})"
             ),
         )
     } else if score >= 2.0 {
         Verdict::new(
             VerdictCategory::Skeptical,
             format!(
-                "👃 Citation needed — LOTUS scaffold hint, no natural corroboration (Ertl {score:+.2})"
+                "Citation needed — LOTUS scaffold hint, no natural corroboration (Ertl {score:+.2})"
             ),
         )
     } else if score >= 1.0 && corroborates {
         Verdict::new(
             VerdictCategory::Likely,
             format!(
-                "🌿 Likely NP — LOTUS-prevalent scaffold + Ertl + natural motifs (Ertl {score:+.2})"
+                "Likely NP — LOTUS-prevalent scaffold + Ertl + natural motifs (Ertl {score:+.2})"
             ),
         )
     } else if score >= 1.0 {
         Verdict::new(
             VerdictCategory::Skeptical,
-            format!("👃 Citation needed — LOTUS scaffold hint, Ertl-only (Ertl {score:+.2})"),
+            format!("Citation needed — LOTUS scaffold hint, Ertl-only (Ertl {score:+.2})"),
         )
     } else {
         Verdict::new(
             VerdictCategory::Skeptical,
             format!(
-                "👃 Citation needed — LOTUS scaffold hint, insufficient corroboration (Ertl {score:+.2})"
+                "Citation needed — LOTUS scaffold hint, insufficient corroboration (Ertl {score:+.2})"
             ),
         )
     }
@@ -186,27 +182,22 @@ fn classify_with_pubchem(signals: EvidenceSignals, score: f64) -> Verdict {
     if score >= 2.0 && signals.structural_support() {
         Verdict::new(
             VerdictCategory::Likely,
-            format!("🌿 PubChem + strong NP evidence (Ertl {score:+.2})"),
-        )
-    } else if score >= 2.0 {
-        Verdict::new(
-            VerdictCategory::Skeptical,
-            format!("👃 Citation needed — PubChem hit, unsupported structure (Ertl {score:+.2})"),
+            format!("PubChem + strong NP evidence (Ertl {score:+.2})"),
         )
     } else if score >= 1.0 && signals.structural_support() {
         Verdict::new(
-            VerdictCategory::Skeptical,
-            format!("👃 Citation needed — PubChem + strong NP-likeness (Ertl {score:+.2})"),
+            VerdictCategory::Neutral,
+            format!("PubChem hit + moderate NP structure (Ertl {score:+.2})"),
         )
     } else if score >= 1.0 {
         Verdict::new(
-            VerdictCategory::Neutral,
-            format!("📚 PubChem hit — NP-ambiguous (Ertl {score:+.2})"),
+            VerdictCategory::Skeptical,
+            format!("Citation needed — PubChem hit, unsupported structure (Ertl {score:+.2})"),
         )
     } else {
         Verdict::new(
             VerdictCategory::Caution,
-            format!("📚 PubChem hit — weak NP signals (Ertl {score:+.2})"),
+            format!("PubChem hit — weak or ambiguous NP signals (Ertl {score:+.2})"),
         )
     }
 }
@@ -220,24 +211,23 @@ fn classify_unbacked(signals: EvidenceSignals, score: f64) -> Verdict {
         && signals.counts.scaffold > 0
         && signals.natural_dominant()
         && signals.counts.kingdom_enriched > 0
-        && !signals.decoration_heavy()
     {
         return Verdict::new(
             VerdictCategory::Likely,
-            format!("🌿 Likely novel NP (Ertl {score:+.2})"),
+            format!("Likely novel NP (Ertl {score:+.2})"),
         );
     }
 
     let message = if strong && signals.structural_support() {
-        format!("👃 Citation needed — strong NP-likeness, no DB (Ertl {score:+.2})")
+        format!("Citation needed — strong NP-likeness, no DB (Ertl {score:+.2})")
     } else if strong {
-        format!("👃 Citation needed — strong Ertl but unsupported structure (Ertl {score:+.2})")
+        format!("Citation needed — strong Ertl but unsupported structure (Ertl {score:+.2})")
     } else if confident && signals.structural_support() {
-        format!("👃 Citation needed — moderate NP-likeness, no DB (Ertl {score:+.2})")
-    } else if score >= 0.5 {
-        format!("👃 Citation needed — borderline NP-likeness (Ertl {score:+.2})")
+        format!("Citation needed — moderate NP-likeness, no DB (Ertl {score:+.2})")
+    } else if score >= 0.0 {
+        format!("Citation needed — ambiguous NP-likeness (Ertl {score:+.2})")
     } else {
-        format!("👃 Citation needed (Ertl {score:+.2})")
+        format!("Citation needed (Ertl {score:+.2})")
     };
     Verdict::new(VerdictCategory::Skeptical, message)
 }

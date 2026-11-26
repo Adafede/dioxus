@@ -3,12 +3,15 @@
 
 //! SVG validation for molecule depictions injected into the DOM.
 
-const FORBIDDEN_MARKERS: [&str; 8] = [
+const FORBIDDEN_MARKERS: [&str; 11] = [
     "<script",
     "<foreignobject",
     "<iframe",
     "<object",
     "<embed",
+    "<animate",
+    "<set",
+    "<handler",
     "javascript:",
     "vbscript:",
     "data:text/html",
@@ -23,12 +26,18 @@ pub(crate) fn is_safe_svg(svg: &str) -> bool {
         .strip_prefix("<?xml")
         .and_then(|rest| rest.split_once("?>").map(|(_, after)| after.trim_start()))
         .unwrap_or(trimmed);
-    if !body.starts_with("<svg") || !trimmed.ends_with("</svg>") {
+    let Some(after_svg) = body.strip_prefix("<svg") else {
+        return false;
+    };
+    if !after_svg.starts_with(|c: char| c.is_ascii_whitespace() || c == '>')
+        || !trimmed.ends_with("</svg>")
+    {
         return false;
     }
+    let normalized: String = trimmed.chars().filter(|c| !c.is_control()).collect();
     if FORBIDDEN_MARKERS
         .iter()
-        .any(|needle| trimmed.contains(needle))
+        .any(|needle| normalized.contains(needle))
     {
         return false;
     }

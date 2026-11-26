@@ -100,14 +100,11 @@ impl InChIKey14 {
     #[must_use]
     pub(crate) fn from_inchikey(inchikey: &str) -> Option<Self> {
         let trimmed = inchikey.trim();
-        if trimmed.is_empty() {
-            return None;
-        }
-        let layer = trimmed.split('-').next().unwrap_or(trimmed);
-        if layer.is_empty() {
-            None
-        } else {
+        let layer = trimmed.split('-').next()?;
+        if layer.len() == 14 && layer.bytes().all(|b| b.is_ascii_uppercase()) {
             Some(Self(layer.to_string()))
+        } else {
+            None
         }
     }
 

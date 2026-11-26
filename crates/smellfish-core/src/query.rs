@@ -49,9 +49,9 @@ SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
     SELECT DISTINCT ?inchikey ?connectivity ?related_item WHERE {{
       VALUES ?inchikey {{ {values} }}
       BIND(SUBSTR(?inchikey, 1, 14) AS ?connectivity)
-      ?item wdt:P235 ?inchikey .
 
       {{
+        ?item wdt:P235 ?inchikey .
         ?item (wdt:P3364|wdt:P6185|(wdt:P279*)|^(wdt:P279+)) ?related_item .
         OPTIONAL {{ ?related_item wdt:P235 ?related_inchikey . }}
         OPTIONAL {{

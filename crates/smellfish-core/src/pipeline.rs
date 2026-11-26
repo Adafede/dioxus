@@ -132,7 +132,7 @@ fn build_pass1_row(
     }
 
     let inchikey = inspect.inchikey.unwrap_or_default();
-    if !inchikey.is_empty() {
+    if InChIKey14::from_inchikey(&inchikey).is_some() {
         unique_inchikeys.insert(inchikey.clone());
     }
     let substituents_counts =
@@ -143,10 +143,16 @@ fn build_pass1_row(
                 *acc.entry(sub).or_insert(0) += 1;
                 acc
             });
-    let np_score = inspect.np_score.map(|score| NpScore {
-        score,
-        confidence: inspect.np_confidence.unwrap_or(0.0),
-    });
+    let np_score = inspect
+        .np_score
+        .filter(|s| s.is_finite())
+        .map(|score| NpScore {
+            score,
+            confidence: inspect
+                .np_confidence
+                .filter(|c| c.is_finite())
+                .unwrap_or(0.0),
+        });
 
     MoleculeRow {
         index,

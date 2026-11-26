@@ -70,15 +70,15 @@ impl RingFamily {
         )
     }
 
-    /// Display emoji for the scaffold line in the UI.
+    /// Display marker for the scaffold line in the UI.
     #[must_use]
     pub const fn emoji(self) -> &'static str {
         if self.is_polyaromatic() {
-            "\u{26a0}"
+            "[polyaromatic]"
         } else if self.is_np_skeleton() {
-            "\u{1f33f}"
+            "[NP]"
         } else {
-            "\u{2014}"
+            "-"
         }
     }
 }
@@ -211,7 +211,7 @@ impl Verdict {
     /// Wraps a structure/inspection error as a neutral warning verdict.
     #[must_use]
     pub fn error(err: &str) -> Self {
-        Self::new(VerdictCategory::Neutral, format!("⚠ {err}"))
+        Self::new(VerdictCategory::Neutral, format!("Error: {err}"))
     }
 }
 

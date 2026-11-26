@@ -92,7 +92,9 @@ fn format_csv_rows_formats_rows_and_neutralizes_formulas() {
         index: 1,
         label: "Caffeine, test".to_string(),
         smiles: "CN1C=NC2=C1C(=O)N(C(=O)N2C)C".to_string(),
+        inchikey: "RYYVLZVUVIJVGH-UHFFFAOYSA-N".to_string(),
         substituents_counts: BTreeMap::from([("methyl".to_string(), 3), ("ethyl".to_string(), 1)]),
+        lotus_taxa: vec!["Coffea arabica".to_string()],
         lotus_compounds: vec![LotusCompound {
             qid: "Q60235".to_string(),
             has_taxa: false,
@@ -109,23 +111,24 @@ fn format_csv_rows_formats_rows_and_neutralizes_formulas() {
             status: CheckStatus::Pass,
             detail: "ok".to_string(),
         }],
-        verdict: Verdict::new(
-            VerdictCategory::Likely,
-            "🌿 LOTUS-backed (Ertl score +1.25).",
-        ),
+        verdict: Verdict::new(VerdictCategory::Likely, "LOTUS-backed (Ertl score +1.25)."),
         num_atoms: 14,
         ..MoleculeRow::default()
     };
 
     let csv = format_csv_rows(&[row]);
+    assert!(csv.starts_with(
+        "label,smiles,inchikey,np_score,np_label,np_confidence,ring_family,substituents,lotus_qids,lotus_taxa,pubchem_cids,verdict_category,chemist_checks\n"
+    ));
     assert!(
-        csv.contains("\"Caffeine, test\",CN1C=NC2=C1C(=O)N(C(=O)N2C)C,1.250,NP-like,85%,fused heteroaromatic scaffold,ethyl(1);methyl(3),Q60235;2519,likely,NP-likeness:pass"),
+        csv.contains("\"Caffeine, test\",CN1C=NC2=C1C(=O)N(C(=O)N2C)C,RYYVLZVUVIJVGH-UHFFFAOYSA-N,1.250,NP-like,85%,fused heteroaromatic scaffold,ethyl(1);methyl(3),Q60235,Coffea arabica,2519,likely,NP-likeness:pass"),
         "unexpected CSV row: {csv}"
     );
 
     let formula_row = MoleculeRow {
         label: "=cmd|'/C calc'!A0".to_string(),
         smiles: "+CCO".to_string(),
+        inchikey: "LFQSCWFLJHTTHZ-UHFFFAOYSA-N".to_string(),
         lotus_compounds: vec![LotusCompound {
             qid: "@evil".to_string(),
             has_taxa: false,
@@ -134,7 +137,7 @@ fn format_csv_rows_formats_rows_and_neutralizes_formulas() {
             score: -1.25,
             confidence: 0.90,
         }),
-        np_label: "Synthetic".to_string(),
+        np_label: "synthetic, label".to_string(),
         ring_family: RingFamily::Acyclic,
         chemist_checks: vec![ChemistCheck {
             name: "\tCheck",
@@ -147,9 +150,48 @@ fn format_csv_rows_formats_rows_and_neutralizes_formulas() {
     let exported = format_csv_rows(&[formula_row]);
     let data_line = exported.lines().nth(1).unwrap_or("");
     assert!(
-        data_line.starts_with("'=cmd|'/C calc'!A0,'+CCO,-1.250,Synthetic,90%,acyclic,"),
+        data_line.starts_with(
+            "'=cmd|'/C calc'!A0,'+CCO,LFQSCWFLJHTTHZ-UHFFFAOYSA-N,-1.250,\"synthetic, label\",90%,acyclic,"
+        ),
         "text cells neutralized while numeric score stays numeric: {data_line}"
     );
-    assert!(data_line.contains(",'@evil,"), "{data_line}");
+    assert!(data_line.contains(",'@evil,,"), "{data_line}");
     assert!(data_line.contains(",'\tCheck:pass"), "{data_line}");
+
+    let missing_score_row = MoleculeRow {
+        label: "NoModel".to_string(),
+        smiles: "CCO".to_string(),
+        np_score: None,
+        np_label: "unavailable".to_string(),
+        ring_family: RingFamily::Acyclic,
+        ..MoleculeRow::default()
+    };
+    let exported_missing = format_csv_rows(&[missing_score_row]);
+    assert!(
+        exported_missing.contains("NoModel,CCO,,,unavailable,,acyclic,,,,,neutral,"),
+        "missing score must export empty numeric cells: {exported_missing}"
+    );
+}
+
+#[test]
+fn parses_tsv_semicolon_and_headerless_tsv() -> Result<(), SmellfishError> {
+    let tsv = parse_csv_rows("name\tsmiles\nethanol\tCCO\n")?;
+    assert_eq!(tsv.len(), 1);
+    assert_eq!(tsv.first().map(|r| r.label.as_str()), Some("ethanol"));
+    assert_eq!(tsv.first().map(|r| r.smiles.as_str()), Some("CCO"));
+
+    let semi = parse_csv_rows("name;smiles\nbenzene;c1ccccc1\n")?;
+    assert_eq!(semi.len(), 1);
+    assert_eq!(semi.first().map(|r| r.label.as_str()), Some("benzene"));
+    assert_eq!(semi.first().map(|r| r.smiles.as_str()), Some("c1ccccc1"));
+
+    let headerless_tsv = parse_csv_rows("CCO\tethanol\nCC\tethane\n")?;
+    assert_eq!(headerless_tsv.len(), 2);
+    assert_eq!(
+        headerless_tsv
+            .first()
+            .map(|r| (r.smiles.as_str(), r.label.as_str())),
+        Some(("CCO", "ethanol"))
+    );
+    Ok(())
 }

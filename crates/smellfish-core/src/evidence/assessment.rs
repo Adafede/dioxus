@@ -21,15 +21,26 @@ pub(crate) struct EvidenceAssessment {
     pub(crate) motif_context: MotifContext,
 }
 
-/// Empirical classification labels for the Ertl NP-likeness score.
+/// Empirical classification labels for an optional finite Ertl NP-likeness score.
+///
+/// Thresholds match [`super::chemist::run_checks`] and [`super::verdict::classify_np_evidence`]:
+/// `>= 2.0` strong NP, `>= 1.0` NP-like, `>= 0.0` ambiguous, `> -2.0` synthetic-leaning,
+/// `<= -2.0` highly synthetic; `None` or non-finite returns `"unavailable"`.
 #[must_use]
-pub(crate) const fn np_likeness_label(score: f64) -> &'static str {
-    if score >= 2.0 {
+pub(crate) const fn np_likeness_label(score: Option<f64>) -> &'static str {
+    let Some(s) = score else {
+        return "unavailable";
+    };
+    if !s.is_finite() {
+        "unavailable"
+    } else if s >= 2.0 {
         "strong natural product"
-    } else if score >= 0.5 {
+    } else if s >= 1.0 {
+        "NP-like"
+    } else if s >= 0.0 {
         "NP-ambiguous"
-    } else if score >= -1.0 {
-        "weak NP signals"
+    } else if s > -2.0 {
+        "synthetic-leaning"
     } else {
         "highly synthetic"
     }
@@ -72,11 +83,15 @@ pub(crate) fn assess_np_evidence_with_counts(
     let ring_family = classify_ring_family(inputs.descriptors, inputs.motifs);
     let natural_only = counts.natural.saturating_sub(counts.kingdom_enriched);
     let kingdom_support = counts.kingdom_enriched > 0;
-    let raw_score = inputs.np_score.map_or(0.0, |np| np.score);
-    let conf_pct = inputs.np_score.map_or(0.0, |np| np.confidence * 100.0);
+    let finite_score = inputs.np_score.map(|np| np.score).filter(|s| s.is_finite());
+    let conf_pct = inputs
+        .np_score
+        .map(|np| np.confidence * 100.0)
+        .filter(|c| c.is_finite())
+        .unwrap_or(0.0);
 
     let mut notes = primary_evidence_notes(
-        inputs.np_score.map(|np| np.score),
+        finite_score,
         conf_pct,
         inputs.lotus_scaffolds,
         inputs.stereo_tags,
@@ -89,7 +104,7 @@ pub(crate) fn assess_np_evidence_with_counts(
     ));
 
     EvidenceAssessment {
-        np_label: np_likeness_label(raw_score).to_string(),
+        np_label: np_likeness_label(finite_score).to_string(),
         ring_family,
         evidence_notes: notes,
         motif_context: classify_motif_context(counts, natural_only, kingdom_support),
@@ -119,14 +134,14 @@ fn primary_evidence_notes(
     }
     if !lotus_scaffolds.is_empty() {
         notes.push(format!(
-            "✓ {} LOTUS 1% scaffold(s) matched — Rutz et al. mortar \
+            "{} LOTUS 1% scaffold(s) matched — Rutz et al. mortar \
              fragmentation; scaffolds appearing in >1% of LOTUS compounds",
             lotus_scaffolds.len()
         ));
     }
     if !stereo_tags.is_empty() {
         notes.push(format!(
-            "✓ {} stereochemical center(s) — consistent with enzymatic origin",
+            "{} stereochemical center(s) — consistent with enzymatic origin",
             stereo_tags.len()
         ));
     }
@@ -149,13 +164,13 @@ fn motif_evidence_notes(
             .collect::<Vec<_>>()
             .join(", ");
         notes.push(format!(
-            "✓ {} Ertl-style NP motif(s): {shown}",
+            "{} Ertl-style NP motif(s): {shown}",
             counts.np_core
         ));
     }
     if counts.scaffold > 0 && counts.np_core == 0 {
         notes.push(format!(
-            "○ {} structural support motif(s) — \
+            "{} structural support motif(s) — \
              supportive only, not Ertl-enriched by itself",
             counts.scaffold
         ));
@@ -172,7 +187,7 @@ fn motif_evidence_notes(
     }
     if counts.decoration > 0 && counts.np_core == 0 {
         notes.push(format!(
-            "○ {} decoration motif(s) — support side-chain chemistry, \
+            "{} decoration motif(s) — support side-chain chemistry, \
              but weak NP evidence alone",
             counts.decoration
         ));
@@ -188,7 +203,7 @@ fn motif_evidence_notes(
         .count();
     if shared > 0 {
         notes.push(format!(
-            "✓ {shared} motif(s) shared with dataset — possible family"
+            "{shared} motif(s) shared with dataset — possible family"
         ));
     }
     notes
@@ -209,18 +224,18 @@ const fn classify_motif_context(
         MotifContext::ErtlCoreWithSupport
     } else if counts.np_core > 0 {
         MotifContext::ErtlCore
-    } else if counts.scaffold > 0 && kingdom_support {
+    } else if counts.scaffold > 0 && kingdom_support && counts.natural >= counts.synthetic {
         MotifContext::KingdomEnrichedStructural
-    } else if counts.scaffold > 0 && natural_only > 0 {
+    } else if counts.scaffold > 0 && natural_only > 0 && counts.natural >= counts.synthetic {
         MotifContext::NaturalStructural
     } else if counts.scaffold > 0 {
         MotifContext::StructuralSupport
-    } else if kingdom_support && counts.kingdom_enriched > counts.synthetic {
-        MotifContext::KingdomEnriched
-    } else if natural_only > counts.synthetic && natural_only > 0 {
-        MotifContext::NaturalLeaning
-    } else if counts.synthetic > counts.natural && counts.synthetic > 0 {
+    } else if counts.synthetic > counts.natural {
         MotifContext::SyntheticLeaning
+    } else if kingdom_support && counts.natural > counts.synthetic {
+        MotifContext::KingdomEnriched
+    } else if counts.natural > counts.synthetic {
+        MotifContext::NaturalLeaning
     } else if counts.decoration > 0 {
         MotifContext::DecorationOnly
     } else {

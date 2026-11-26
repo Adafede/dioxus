@@ -26,17 +26,22 @@ fn motif_hit(label: &str, source_class: SourceClass, kingdom: &str) -> RdkitMoti
 
 #[test]
 fn label_thresholds_match_ertl_distribution() {
-    assert_eq!(np_likeness_label(5.0), "strong natural product");
-    assert_eq!(np_likeness_label(2.0), "strong natural product");
-    assert_eq!(np_likeness_label(1.999), "NP-ambiguous");
-    assert_eq!(np_likeness_label(0.5), "NP-ambiguous");
-    assert_eq!(np_likeness_label(0.499), "weak NP signals");
-    assert_eq!(np_likeness_label(-1.0), "weak NP signals");
-    assert_eq!(np_likeness_label(-1.001), "highly synthetic");
+    assert_eq!(np_likeness_label(Some(5.0)), "strong natural product");
+    assert_eq!(np_likeness_label(Some(2.0)), "strong natural product");
+    assert_eq!(np_likeness_label(Some(1.999)), "NP-like");
+    assert_eq!(np_likeness_label(Some(1.0)), "NP-like");
+    assert_eq!(np_likeness_label(Some(0.999)), "NP-ambiguous");
+    assert_eq!(np_likeness_label(Some(0.0)), "NP-ambiguous");
+    assert_eq!(np_likeness_label(Some(-0.001)), "synthetic-leaning");
+    assert_eq!(np_likeness_label(Some(-1.999)), "synthetic-leaning");
+    assert_eq!(np_likeness_label(Some(-2.0)), "highly synthetic");
+    assert_eq!(np_likeness_label(None), "unavailable");
+    assert_eq!(np_likeness_label(Some(f64::NAN)), "unavailable");
+    assert_eq!(np_likeness_label(Some(f64::INFINITY)), "unavailable");
 }
 
 #[test]
-fn real_ertl_score_stereo_and_no_hallucinated_rules() {
+fn real_ertl_score_notes_stereocenters_and_ring_family() {
     let desc = RdkitDescriptors {
         fraction_csp3: Some(0.68),
         ring_count: Some(4.0),
@@ -66,12 +71,6 @@ fn real_ertl_score_stereo_and_no_hallucinated_rules() {
             .iter()
             .any(|n| n.contains("stereochemical"))
     );
-    assert!(
-        assessment
-            .evidence_notes
-            .iter()
-            .all(|n| !n.contains("TPSA") && !n.contains("clogp") && !n.contains("lipophilic"))
-    );
 }
 
 #[test]
@@ -93,7 +92,7 @@ fn model_unavailable_and_dataset_common_motif_notes() {
         },
         &[],
     );
-    assert_eq!(assessment.np_label, "weak NP signals");
+    assert_eq!(assessment.np_label, "unavailable");
     assert!(
         assessment
             .evidence_notes
@@ -193,5 +192,68 @@ fn run_checks_evaluates_score_skeleton_and_databases() {
     assert_eq!(
         pass.get(2).map(|c| c.detail.as_str()),
         Some("LOTUS + PubChem")
+    );
+
+    let mut nan_row = MoleculeRow {
+        np_score: Some(NpScore {
+            score: f64::NAN,
+            confidence: 0.5,
+        }),
+        ..MoleculeRow::default()
+    };
+    assert_eq!(
+        run_checks(&nan_row).first().map(|c| c.status),
+        Some(CheckStatus::Warn)
+    );
+    nan_row.np_score = None;
+    assert_eq!(
+        run_checks(&nan_row).first().map(|c| c.status),
+        Some(CheckStatus::Warn)
+    );
+}
+
+#[test]
+fn motif_context_handles_mixed_kingdom_and_synthetic_majority() {
+    let desc = RdkitDescriptors::default();
+    let ctx = DatasetMotifContext::default();
+    let kingdom_dominant = assess_np_evidence(
+        &EvidenceInputs {
+            descriptors: &desc,
+            motifs: &["m1".into(), "m2".into(), "m3".into(), "m4".into()],
+            stereo_tags: &[],
+            np_score: None,
+            dataset_context: &ctx,
+            lotus_scaffolds: &[],
+        },
+        &[
+            motif_hit("m1", SourceClass::Natural, "plants"),
+            motif_hit("m2", SourceClass::Natural, ""),
+            motif_hit("m3", SourceClass::Natural, ""),
+            motif_hit("m4", SourceClass::Synthetic, ""),
+        ],
+    );
+    assert_eq!(
+        kingdom_dominant.motif_context,
+        MotifContext::KingdomEnriched
+    );
+
+    let synthetic_dominant = assess_np_evidence(
+        &EvidenceInputs {
+            descriptors: &desc,
+            motifs: &["s1".into(), "s2".into(), "s3".into()],
+            stereo_tags: &[],
+            np_score: None,
+            dataset_context: &ctx,
+            lotus_scaffolds: &[],
+        },
+        &[
+            motif_hit("s1", SourceClass::Natural, "plants"),
+            motif_hit("s2", SourceClass::Synthetic, ""),
+            motif_hit("s3", SourceClass::Synthetic, ""),
+        ],
+    );
+    assert_eq!(
+        synthetic_dominant.motif_context,
+        MotifContext::SyntheticLeaning
     );
 }

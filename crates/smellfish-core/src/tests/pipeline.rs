@@ -135,6 +135,26 @@ fn pass1_and_pass2_aggregate_motifs_sanitize_svgs_and_merge_enrichment() {
     if let Some(third) = outcome.rows.get(2) {
         assert_eq!(third.error.as_deref(), Some("parse error"));
         assert_eq!(third.verdict.category, VerdictCategory::Neutral);
-        assert_eq!(third.verdict.message, "⚠ parse error");
+        assert_eq!(third.verdict.message, "Error: parse error");
     }
+}
+
+#[test]
+fn prepare_pass1_filters_invalid_inchikeys_and_non_finite_scores() {
+    let json = r#"{
+        "inchikey": "not-valid-key",
+        "np_score": null
+    }"#;
+    let Ok(parsed) = parse_rdkit_inspect_json(json) else {
+        unreachable!("valid JSON fixture must parse");
+    };
+    let batch = prepare_pass1(vec![RowInspection {
+        raw: RawRow {
+            index: 1,
+            label: "InvalidKey".to_string(),
+            smiles: "CC".to_string(),
+        },
+        outcome: Ok(parsed),
+    }]);
+    assert_eq!(batch.unique_inchikeys, Vec::<String>::new());
 }

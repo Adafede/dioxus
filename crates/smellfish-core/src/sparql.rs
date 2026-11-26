@@ -7,7 +7,7 @@ use lotus_search::{FetchError, Http, HttpResponse, ResponseFormat};
 use std::fmt::Write as _;
 
 /// `PubChem`'s public `QLever` SPARQL endpoint.
-pub(crate) const QLEVER_PUBCHEM: &str = "https://qlever.cs.uni-freiburg.de/api/pubchem";
+pub(crate) const QLEVER_PUBCHEM: &str = "https://qlever.dev/api/pubchem";
 
 pub(crate) const MAX_MESSAGE_CHARS: usize = 200;
 

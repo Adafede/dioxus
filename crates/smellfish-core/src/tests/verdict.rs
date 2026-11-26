@@ -99,7 +99,7 @@ fn classifies_unloaded_synthetic_and_lotus_verdicts() {
         ),
         (
             ev(2.5, false, false, 0, counts(0, 0, 1, 0, 0, 0)),
-            VerdictCategory::Caution,
+            VerdictCategory::Skeptical,
         ),
         (
             ev(-1.0, false, false, 0, counts(0, 0, 0, 0, 0, 0)),
@@ -157,11 +157,11 @@ fn classifies_scaffolds_pubchem_and_unbacked_verdicts() {
         ),
         (
             ev(1.2, false, true, 0, counts(1, 1, 0, 1, 0, 0)),
-            VerdictCategory::Skeptical,
+            VerdictCategory::Neutral,
         ),
         (
             ev(1.2, false, true, 0, counts(0, 0, 0, 0, 0, 0)),
-            VerdictCategory::Neutral,
+            VerdictCategory::Skeptical,
         ),
         (
             ev(0.6, false, true, 0, counts(0, 0, 0, 0, 0, 0)),
@@ -198,7 +198,7 @@ fn row_verdict_routes_errors_and_database_evidence() {
     };
     let err_v = row_verdict(&err_row);
     assert_eq!(err_v.category, VerdictCategory::Neutral);
-    assert_eq!(err_v.message, "⚠ invalid SMILES");
+    assert_eq!(err_v.message, "Error: invalid SMILES");
 
     err_row.error = None;
     err_row.lotus_taxa = vec!["Plantae".to_string()];
@@ -251,8 +251,31 @@ fn count_evidence_feeds_classifier_for_novel_np() {
     assert_eq!(counts.kingdom_enriched, 2);
     let verdict = classify_np_evidence(&ev(2.6, false, false, 0, counts));
     assert!(
-        verdict.message.contains("🌿 Likely novel NP"),
+        verdict.message.contains("Likely novel NP"),
         "{}",
         verdict.message
+    );
+}
+
+#[test]
+fn non_finite_scores_do_not_classify_as_fishy_and_decorations_do_not_penalize_natural_glycosides() {
+    assert_eq!(
+        classify_np_evidence(&ev(f64::NAN, false, false, 0, counts(0, 0, 0, 0, 0, 0))).category,
+        VerdictCategory::Skeptical
+    );
+    assert_eq!(
+        classify_np_evidence(&ev(
+            f64::INFINITY,
+            false,
+            false,
+            0,
+            counts(0, 0, 0, 0, 0, 0)
+        ))
+        .category,
+        VerdictCategory::Skeptical
+    );
+    assert_eq!(
+        classify_np_evidence(&ev(2.8, false, false, 0, counts(2, 1, 6, 3, 0, 1))).category,
+        VerdictCategory::Likely
     );
 }

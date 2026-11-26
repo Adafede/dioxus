@@ -55,6 +55,16 @@ fn formats_values_clause_escapes_quotes_and_selects_expected_columns() {
         qlever.contains("UNION") && qlever.contains("?prefix_inchikey"),
         "{qlever}"
     );
+    let union_pos = qlever.find("UNION").unwrap_or(0);
+    let p235_pos = qlever.find("?item wdt:P235 ?inchikey").unwrap_or(0);
+    let first_branch_open = qlever
+        .find("BIND(SUBSTR(?inchikey, 1, 14) AS ?connectivity)")
+        .and_then(|start| qlever[start..].find('{').map(|rel| start + rel))
+        .unwrap_or(usize::MAX);
+    assert!(
+        first_branch_open < p235_pos && p235_pos < union_pos,
+        "exact P235 triple must stay inside first UNION branch:\n{qlever}"
+    );
     assert!(!wdqs.contains("?prefix_inchikey"), "{wdqs}");
 
     for (name, query) in [("wdqs", wdqs), ("qlever", qlever)] {

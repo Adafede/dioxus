@@ -8,7 +8,7 @@ use crate::model::{MoleculeRow, RawRow};
 use std::borrow::Cow;
 use std::fmt::Write;
 
-/// Parse CSV text or newline-delimited SMILES into [`RawRow`] values, auto-detecting columns.
+/// Parse delimited text (`CSV`, `TSV`, `;`-separated) or newline-delimited SMILES into [`RawRow`] values.
 ///
 /// # Errors
 ///
@@ -23,27 +23,46 @@ pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, SmellfishError> {
         return Ok(parse_smiles_lines(trimmed));
     }
 
-    let mut records = parse_csv_records(trimmed)?.into_iter();
-    let Some(headers) = records.next() else {
+    let delimiter = detect_delimiter(trimmed);
+    let records = parse_delimited_records(trimmed, delimiter)?;
+    if records.is_empty() {
         return Err(SmellfishError::EmptyInput);
+    }
+    let has_header = records
+        .first()
+        .is_some_and(|first| delimiter == ',' || row_looks_like_header(first));
+
+    let (smiles_idx, label_idx, skip) = if has_header {
+        let headers = records.first().ok_or(SmellfishError::EmptyInput)?;
+        let smiles_idx = detect_column(
+            headers,
+            &["smiles", "smile", "structure", "canonical_smiles"],
+        )
+        .unwrap_or(0);
+        let label_idx = detect_column(headers, &["name", "label", "id", "compound"]);
+        (smiles_idx, label_idx, 1usize)
+    } else {
+        // Headerless TSV / semicolon SMILES+label rows: column 0 is SMILES, column 1 is label.
+        let label_idx = records.first().and_then(|r| (r.len() > 1).then_some(1));
+        (0, label_idx, 0usize)
     };
-    let smiles_idx = detect_column(
-        &headers,
-        &["smiles", "smile", "structure", "canonical_smiles"],
-    )
-    .unwrap_or(0);
-    let label_idx = detect_column(&headers, &["name", "label", "id", "compound"]);
 
     let rows: Vec<RawRow> = records
-        .enumerate()
-        .map(|(line, record)| RawRow {
-            index: line + 1,
-            label: label_for_record(&record, label_idx, line + 1),
-            smiles: record
+        .iter()
+        .skip(skip)
+        .filter_map(|record| {
+            let smiles = record
                 .get(smiles_idx)
                 .map_or("", String::as_str)
                 .trim()
-                .to_string(),
+                .to_string();
+            (!smiles.is_empty()).then_some((smiles, record))
+        })
+        .enumerate()
+        .map(|(line, (smiles, record))| RawRow {
+            index: line + 1,
+            label: label_for_record(record, label_idx, line + 1),
+            smiles,
         })
         .collect();
 
@@ -53,12 +72,10 @@ pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, SmellfishError> {
     Ok(rows)
 }
 
-/// Parses RFC 4180 CSV text into raw string records without indexing panics.
-///
-/// # Errors
-///
-/// Returns [`SmellfishError::UnterminatedCsvQuote`] when a quoted cell runs past EOF.
-pub(crate) fn parse_csv_records(text: &str) -> Result<Vec<Vec<String>>, SmellfishError> {
+fn parse_delimited_records(
+    text: &str,
+    delimiter: char,
+) -> Result<Vec<Vec<String>>, SmellfishError> {
     let mut records = Vec::new();
     let mut current_record = Vec::new();
     let mut current_field = String::new();
@@ -82,7 +99,7 @@ pub(crate) fn parse_csv_records(text: &str) -> Result<Vec<Vec<String>>, Smellfis
                 current_field.clear();
                 in_quotes = true;
             }
-            ',' => current_record.push(std::mem::take(&mut current_field)),
+            c if c == delimiter => current_record.push(std::mem::take(&mut current_field)),
             '\r' => {
                 if chars.peek() == Some(&'\n') {
                     let _ = chars.next();
@@ -101,6 +118,51 @@ pub(crate) fn parse_csv_records(text: &str) -> Result<Vec<Vec<String>>, Smellfis
         finish_csv_row(&mut records, &mut current_record, &mut current_field);
     }
     Ok(records)
+}
+
+fn detect_delimiter(text: &str) -> char {
+    let first_line = text
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("");
+    let (mut commas, mut tabs, mut semis) = (0usize, 0usize, 0usize);
+    let mut in_quotes = false;
+    for ch in first_line.chars() {
+        match ch {
+            '"' => in_quotes = !in_quotes,
+            ',' if !in_quotes => commas += 1,
+            '\t' if !in_quotes => tabs += 1,
+            ';' if !in_quotes => semis += 1,
+            _ => {}
+        }
+    }
+    if commas > 0 {
+        ','
+    } else if tabs > 0 {
+        '\t'
+    } else if semis > 0 {
+        ';'
+    } else {
+        ','
+    }
+}
+
+fn row_looks_like_header(record: &[String]) -> bool {
+    const KNOWN_HEADERS: &[&str] = &[
+        "smiles",
+        "smile",
+        "structure",
+        "canonical_smiles",
+        "name",
+        "label",
+        "id",
+        "compound",
+    ];
+    record.iter().any(|cell| {
+        let norm = strip_header_prefix(cell).to_ascii_lowercase();
+        KNOWN_HEADERS.iter().any(|k| norm == *k)
+    })
 }
 
 fn finish_csv_row(
@@ -225,17 +287,30 @@ fn push_csv_escaped(out: &mut String, s: &str) {
 pub fn format_csv_rows(rows: &[MoleculeRow]) -> String {
     let mut csv = String::with_capacity(128 + rows.len() * 128);
     csv.push_str(
-        "label,smiles,np_score,np_label,np_confidence,ring_family,substituents,locus,verdict_category,chemist_checks\n",
+        "label,smiles,inchikey,np_score,np_label,np_confidence,ring_family,substituents,lotus_qids,lotus_taxa,pubchem_cids,verdict_category,chemist_checks\n",
     );
     let mut scratch = String::new();
     for r in rows {
         push_csv_escaped(&mut csv, &r.label);
         csv.push(',');
         push_csv_escaped(&mut csv, &r.smiles);
-        let (score, confidence_pct) = r
-            .np_score
-            .map_or((0.0, 0.0), |np| (np.score, (np.confidence * 100.0).round()));
-        let _ = write!(csv, ",{score:.3},{},{confidence_pct}%,", r.np_label);
+        csv.push(',');
+        push_csv_escaped(&mut csv, &r.inchikey);
+        csv.push(',');
+        if let Some(np) = r.np_score.filter(|np| np.score.is_finite()) {
+            let _ = write!(csv, "{:.3},", np.score);
+            push_csv_escaped(&mut csv, &r.np_label);
+            if np.confidence.is_finite() {
+                let conf_pct = (np.confidence * 100.0).round();
+                let _ = write!(csv, ",{conf_pct}%,");
+            } else {
+                csv.push_str(",,");
+            }
+        } else {
+            csv.push(',');
+            push_csv_escaped(&mut csv, &r.np_label);
+            csv.push_str(",,");
+        }
         push_csv_escaped(&mut csv, r.ring_family.as_str());
         csv.push(',');
 
@@ -249,20 +324,23 @@ pub fn format_csv_rows(rows: &[MoleculeRow]) -> String {
         push_csv_escaped(&mut csv, &scratch);
         csv.push(',');
 
-        scratch.clear();
-        for (idx, item) in r
-            .lotus_compounds
-            .iter()
-            .map(|c| c.qid.as_str())
-            .chain(r.pubchem_cids.iter().map(String::as_str))
-            .enumerate()
-        {
-            if idx > 0 {
-                scratch.push(';');
-            }
-            scratch.push_str(item);
-        }
-        push_csv_escaped(&mut csv, &scratch);
+        push_joined_csv_list(
+            &mut csv,
+            &mut scratch,
+            r.lotus_compounds.iter().map(|c| c.qid.as_str()),
+        );
+        csv.push(',');
+        push_joined_csv_list(
+            &mut csv,
+            &mut scratch,
+            r.lotus_taxa.iter().map(String::as_str),
+        );
+        csv.push(',');
+        push_joined_csv_list(
+            &mut csv,
+            &mut scratch,
+            r.pubchem_cids.iter().map(String::as_str),
+        );
         let _ = write!(csv, ",{},", r.verdict.category.csv_label());
 
         scratch.clear();
@@ -278,4 +356,19 @@ pub fn format_csv_rows(rows: &[MoleculeRow]) -> String {
         csv.push('\n');
     }
     csv
+}
+
+fn push_joined_csv_list<'a>(
+    out: &mut String,
+    scratch: &mut String,
+    items: impl Iterator<Item = &'a str>,
+) {
+    scratch.clear();
+    for (idx, item) in items.enumerate() {
+        if idx > 0 {
+            scratch.push(';');
+        }
+        scratch.push_str(item);
+    }
+    push_csv_escaped(out, scratch);
 }
