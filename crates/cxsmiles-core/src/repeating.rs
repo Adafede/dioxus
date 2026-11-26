@@ -5,12 +5,12 @@
 
 use chematic::core::{AtomIdx, BondOrder, Molecule};
 use chematic::smarts::{QueryMolecule, find_matches};
-use chematic::smiles::{parse, write};
+use chematic::smiles::{canonical_smiles, parse, write};
 use rustc_hash::FxHashMap;
 
 use crate::error::CxError;
 use crate::graph::{components, matched_mask, molecule_to_query, multiset_into, unmatched_atoms};
-use crate::roundtrip::{enumerate_repeating, evaluate_construct};
+use crate::roundtrip::{dedup_sort, enumerate_repeating, evaluate_construct};
 use crate::types::{ConstructKind, CxResult, RepeatUnit};
 
 const MAX_FRAGMENTS: usize = 200_000;
@@ -43,7 +43,14 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> Result<CxResult, CxError> {
     let cx_smiles = format_repeat_cx(&scaffold_smiles, &repeat_unit.atoms);
     let enumerated = enumerate_repeating(&scaffold, &repeat_unit)?;
     let (construct, coverage) = evaluate_construct(&enumerated, group, ConstructKind::Repeating);
-    if coverage.covered < 2 {
+    let distinct_reproduced = dedup_sort(
+        group
+            .iter()
+            .map(canonical_smiles)
+            .filter(|smi| enumerated.binary_search(smi).is_ok())
+            .collect(),
+    );
+    if distinct_reproduced.len() < 2 {
         return Err(CxError::NoHomologueReproduced);
     }
     Ok(CxResult {
@@ -128,7 +135,7 @@ struct SearchState {
     best: Option<Vec<u32>>,
 }
 
-/// Locate the centered internal connected subgraph matching `target` via backtracking DFS.
+/// Locate the centered internal connected subgraph matching `target` via ESU enumeration.
 pub(crate) fn locate_repeat_in_scaffold(
     scaffold: &Molecule,
     target: &[u8],
@@ -162,7 +169,14 @@ pub(crate) fn locate_repeat_in_scaffold(
         if let Some(slot) = state.visited.get_mut(su) {
             *slot = true;
         }
-        dfs_repeat(&ctx, &mut state, start)?;
+        if unit_size == 1 {
+            evaluate_candidate(&ctx, &mut state);
+        } else {
+            let mut root_ext = Vec::new();
+            extend_neighbors(scaffold, &mut state.visited, start, start, &mut root_ext);
+            esu_repeat(&ctx, &mut state, start, &root_ext)?;
+            clear_visited(&mut state.visited, &root_ext);
+        }
         state.frag.pop();
         if let Some(slot) = state.visited.get_mut(su) {
             *slot = false;
@@ -178,33 +192,65 @@ pub(crate) fn locate_repeat_in_scaffold(
         .ok_or(CxError::RepeatNotFound)
 }
 
-fn dfs_repeat(ctx: &SearchCtx<'_>, state: &mut SearchState, cur: u32) -> Result<(), CxError> {
-    state.budget = state.budget.saturating_sub(1);
-    if state.budget == 0 {
-        return Err(CxError::RepeatBudgetExceeded {
-            unit_size: ctx.unit_size,
-            scaffold_atoms: ctx.atom_count,
-            limit: MAX_FRAGMENTS,
-        });
-    }
-    if state.frag.len() == ctx.unit_size {
-        evaluate_candidate(ctx, state);
-        return Ok(());
-    }
-    for (nbr, _) in ctx.scaffold.neighbors(AtomIdx(cur)) {
+fn extend_neighbors(
+    scaffold: &Molecule,
+    visited: &mut [bool],
+    atom: u32,
+    start: u32,
+    out: &mut Vec<u32>,
+) {
+    for (nbr, _) in scaffold.neighbors(AtomIdx(atom)) {
         let nu = usize::try_from(nbr.0).unwrap_or(usize::MAX);
-        if state.visited.get(nu).copied() != Some(false) {
-            continue;
+        if nbr.0 > start && visited.get(nu).copied() == Some(false) {
+            if let Some(slot) = visited.get_mut(nu) {
+                *slot = true;
+            }
+            out.push(nbr.0);
         }
-        if let Some(slot) = state.visited.get_mut(nu) {
-            *slot = true;
-        }
-        state.frag.push(nbr.0);
-        dfs_repeat(ctx, state, nbr.0)?;
-        state.frag.pop();
-        if let Some(slot) = state.visited.get_mut(nu) {
+    }
+}
+
+fn clear_visited(visited: &mut [bool], vertices: &[u32]) {
+    for &v in vertices {
+        let vu = usize::try_from(v).unwrap_or(usize::MAX);
+        if let Some(slot) = visited.get_mut(vu) {
             *slot = false;
         }
+    }
+}
+
+fn esu_repeat(
+    ctx: &SearchCtx<'_>,
+    state: &mut SearchState,
+    start: u32,
+    ext: &[u32],
+) -> Result<(), CxError> {
+    for (i, &w) in ext.iter().enumerate() {
+        state.budget = state.budget.saturating_sub(1);
+        if state.budget == 0 {
+            return Err(CxError::RepeatBudgetExceeded {
+                unit_size: ctx.unit_size,
+                scaffold_atoms: ctx.atom_count,
+                limit: MAX_FRAGMENTS,
+            });
+        }
+        state.frag.push(w);
+        if state.frag.len() == ctx.unit_size {
+            evaluate_candidate(ctx, state);
+            state.frag.pop();
+            continue;
+        }
+        let tail = ext.get(i + 1..).unwrap_or_default();
+        let mut next_ext = Vec::with_capacity(tail.len() + 4);
+        next_ext.extend_from_slice(tail);
+        let tail_end = next_ext.len();
+        extend_neighbors(ctx.scaffold, &mut state.visited, w, start, &mut next_ext);
+        esu_repeat(ctx, state, start, &next_ext)?;
+        clear_visited(
+            &mut state.visited,
+            next_ext.get(tail_end..).unwrap_or_default(),
+        );
+        state.frag.pop();
     }
     Ok(())
 }
@@ -230,6 +276,7 @@ fn evaluate_candidate(ctx: &SearchCtx<'_>, state: &mut SearchState) {
 
 pub(crate) fn is_internal(atoms: &[u32], mol: &Molecule) -> bool {
     let mut ext = 0usize;
+    let mut anchors: [Option<u32>; 2] = [None, None];
     for &a in atoms {
         for (nbr, bond_idx) in mol.neighbors(AtomIdx(a)) {
             if !atoms.contains(&nbr.0) && nbr.0 != a {
@@ -237,10 +284,18 @@ pub(crate) fn is_internal(atoms: &[u32], mol: &Molecule) -> bool {
                     return false;
                 }
                 ext += 1;
+                if ext > 2 {
+                    return false;
+                }
+                match anchors {
+                    [None, _] => anchors[0] = Some(nbr.0),
+                    [Some(x), None] if x != nbr.0 => anchors[1] = Some(nbr.0),
+                    _ => return false,
+                }
             }
         }
     }
-    ext == 2
+    ext == 2 && anchors[1].is_some()
 }
 
 pub(crate) fn center_dist(atoms: &[u32], n: usize) -> i64 {

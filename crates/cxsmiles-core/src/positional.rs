@@ -5,7 +5,7 @@
 
 use chematic::core::{AtomIdx, BondOrder, Molecule};
 use chematic::smarts::{QueryMolecule, find_matches, find_mcs};
-use chematic::smiles::{parse, write};
+use chematic::smiles::{canonical_smiles, parse};
 
 use crate::aromatic::expand_aromatic_equiv;
 use crate::error::CxError;
@@ -83,7 +83,7 @@ fn extract_scaffold(rep: &Molecule, group: &[Molecule]) -> Result<ExtractedScaff
         }
     }
     let scaffold_mol = subgraph(rep, &keep);
-    let smiles = write(&scaffold_mol);
+    let smiles = canonical_smiles(&scaffold_mol);
     let mol = parse(&smiles).map_err(|e| CxError::ScaffoldReparse(format!("{e:?}")))?;
     Ok(ExtractedScaffold {
         smiles,
@@ -235,18 +235,46 @@ pub(crate) fn equiv_positions(
     let mut positions = Vec::new();
     let mut scratch = Vec::new();
     for mol in group {
-        let Some(hit) = find_matches(scaffold_q, mol).into_iter().next() else {
-            continue;
-        };
-        let rev = reverse_match_table(&hit, mol);
-        let unf = unmatched_atoms(&matched_mask(&hit, mol));
-        for mc in components(&unf, mol) {
-            if let Some(target) = &target_multiset
-                && !matches_multiset(&mc, mol, target, &mut scratch)
-            {
-                continue;
+        let hits = find_matches(scaffold_q, mol);
+        let mut best_new: Option<Vec<usize>> = None;
+        for hit in hits {
+            let rev = reverse_match_table(&hit, mol);
+            let unf = unmatched_atoms(&matched_mask(&hit, mol));
+            let mut candidate = Vec::new();
+            for mc in components(&unf, mol) {
+                if let Some(target) = &target_multiset
+                    && !matches_multiset(&mc, mol, target, &mut scratch)
+                {
+                    continue;
+                }
+                for &u in &mc {
+                    for (nbr, _) in mol.neighbors(AtomIdx(u)) {
+                        if let Some(qi) = rev.get(atom_usize(nbr)).copied().flatten()
+                            && seen_pos.get(qi) == Some(&false)
+                            && !candidate.contains(&qi)
+                        {
+                            candidate.push(qi);
+                        }
+                    }
+                }
             }
-            record_neighbor_positions(mol, &mc, &rev, &mut seen_pos, &mut positions);
+            candidate.sort_unstable();
+            let take = best_new
+                .as_ref()
+                .is_none_or(|prev| (candidate.len(), &candidate) < (prev.len(), prev));
+            if take {
+                best_new = Some(candidate);
+            }
+        }
+        if let Some(new_positions) = best_new {
+            for qi in new_positions {
+                if let Some(slot) = seen_pos.get_mut(qi)
+                    && !*slot
+                {
+                    *slot = true;
+                    positions.push(qi);
+                }
+            }
         }
     }
     positions.sort_unstable();
@@ -254,26 +282,6 @@ pub(crate) fn equiv_positions(
         positions = (0..scaffold_q.atoms.len()).collect();
     }
     positions
-}
-
-fn record_neighbor_positions(
-    mol: &Molecule,
-    mc: &[u32],
-    rev: &[Option<usize>],
-    seen_pos: &mut [bool],
-    positions: &mut Vec<usize>,
-) {
-    for &u in mc {
-        for (nbr, _) in mol.neighbors(AtomIdx(u)) {
-            if let Some(qi) = rev.get(atom_usize(nbr)).copied().flatten()
-                && let Some(slot) = seen_pos.get_mut(qi)
-                && !*slot
-            {
-                *slot = true;
-                positions.push(qi);
-            }
-        }
-    }
 }
 
 pub(crate) fn split_floating_and_recovered(

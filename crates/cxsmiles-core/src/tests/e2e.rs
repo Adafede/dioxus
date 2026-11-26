@@ -46,8 +46,8 @@ fn positional_biphenyl_cl_and_omf_and_acetyl_double_m() {
     assert_eq!(cl.construct, ConstructKind::Positional);
     assert_roundtrip(&cl, &cl_mols);
     assert!(cl.coverage.is_clean());
-    assert_eq!(cl.scaffold_smiles, "c1ccccc1-c2ccccc2");
-    assert_eq!(cl.cx_smiles, "c1ccccc1-c2ccccc2.[*]Cl |m:12:0.2.3|");
+    assert_eq!(cl.scaffold_smiles, "c2ccc(cc2)-c1ccccc1");
+    assert_eq!(cl.cx_smiles, "c2ccc(cc2)-c1ccccc1.[*]Cl |m:12:0.2.5|");
     assert_eq!(cl.floating.len(), 1);
     assert_eq!(cl.floating[0].equiv.len(), 3);
 
@@ -165,10 +165,10 @@ Clc1cc(-c2ccccc2)ccc1";
     assert_eq!(bip_arom.construct, ConstructKind::Positional);
     assert_roundtrip(&bip_arom, &bip_mols);
     assert!(bip_arom.coverage.is_clean());
-    assert_eq!(bip_arom.floating[0].equiv, vec![0, 1, 2, 3, 4]);
+    assert_eq!(bip_arom.floating[0].equiv, vec![0, 1, 2, 4, 5]);
     assert_eq!(
         bip_arom.cx_smiles,
-        "c1ccccc1-c2ccccc2.[*]Cl |m:12:0.1.2.3.4|"
+        "c2ccc(cc2)-c1ccccc1.[*]Cl |m:12:0.1.2.4.5|"
     );
 
     let const_in = "CC(C)(C)O\nCC(C)CO\nCC(O)CC\nOCCCC\nCCOCC\nCOCCC";
@@ -221,4 +221,16 @@ O=C=O";
 
     let aryl = generate(&lines("Cc1ccccc1\nCCc1ccccc1")).unwrap();
     assert_ne!(aryl.construct, ConstructKind::Repeating);
+
+    let forward = generate(&lines(
+        "Clc1ccccc1-c2ccccc2\nClc1cccc(-c2ccccc2)c1\nClc1ccc(-c2ccccc2)cc1",
+    ))
+    .unwrap();
+    let reversed = generate(&lines(
+        "Clc1ccc(-c2ccccc2)cc1\nClc1cccc(-c2ccccc2)c1\nClc1ccccc1-c2ccccc2",
+    ))
+    .unwrap();
+    assert_eq!(forward.cx_smiles, reversed.cx_smiles);
+    assert_eq!(forward.scaffold_smiles, reversed.scaffold_smiles);
+    assert_eq!(forward.enumerated, reversed.enumerated);
 }

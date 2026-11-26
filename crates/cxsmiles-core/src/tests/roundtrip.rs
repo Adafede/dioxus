@@ -101,11 +101,11 @@ fn one_variable_target_with_two_positions_enumerates_both() {
 fn two_positions_that_give_the_same_molecule_are_deduplicated() {
     let scaffold = mol("C1CC1");
     let targets = [AttachmentTarget::Variable(vec![1, 2])];
-    let out = enumerate(&scaffold, &[], &targets).expect("one distinct molecule");
+    let out = enumerate(&scaffold, &[methyl()], &targets).expect("one distinct molecule");
     assert_eq!(
         out.len(),
         1,
-        "two positions on a symmetric ring are one molecule"
+        "two positions on a symmetric ring yield one distinct molecule"
     );
 }
 

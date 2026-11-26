@@ -47,31 +47,34 @@ fn aromatic_components(scaffold: &Molecule) -> Vec<Option<usize>> {
 pub(crate) fn expand_aromatic_equiv(positions: &[usize], scaffold: &Molecule) -> Vec<usize> {
     let n = scaffold.atom_count();
     let comp = aromatic_components(scaffold);
-    let sigs: Vec<(u8, usize)> = (0..n)
+    let sigs: Vec<(u8, usize, i8, bool)> = (0..n)
         .map(|i| {
             let idx = atom_idx(i);
+            let atom = scaffold.atom(idx);
             (
-                scaffold.atom(idx).element.atomic_number(),
+                atom.element.atomic_number(),
                 scaffold.neighbors(idx).count(),
+                atom.charge,
+                scaffold.implicit_hydrogen_count(idx) > 0,
             )
         })
         .collect();
     let mut out = Vec::new();
-    let mut targets: Vec<(usize, u8, usize)> = Vec::new();
+    let mut targets: Vec<(usize, u8, usize, i8, bool)> = Vec::new();
     for &p in positions {
         match (comp.get(p), sigs.get(p)) {
-            (Some(Some(cid)), Some(&(el, deg))) => {
-                if !targets.contains(&(*cid, el, deg)) {
-                    targets.push((*cid, el, deg));
+            (Some(Some(cid)), Some(&(el, deg, chg, has_h))) => {
+                if !targets.contains(&(*cid, el, deg, chg, has_h)) {
+                    targets.push((*cid, el, deg, chg, has_h));
                 }
             }
             (Some(None), Some(_)) => out.push(p),
             _ => {}
         }
     }
-    for (q, (c, &(el, deg))) in comp.iter().zip(&sigs).enumerate() {
+    for (q, (c, &(el, deg, chg, has_h))) in comp.iter().zip(&sigs).enumerate() {
         if let Some(cid) = c
-            && targets.contains(&(*cid, el, deg))
+            && targets.contains(&(*cid, el, deg, chg, has_h))
         {
             out.push(q);
         }

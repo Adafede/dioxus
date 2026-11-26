@@ -29,14 +29,14 @@ pub(crate) fn enumerate(
         })
         .collect();
     if ranges.is_empty() {
-        return Ok(dedup_sort(vec![canonical_smiles(&build_one(
-            scaffold,
-            defs,
-            targets,
-            &[],
-        ))]));
+        return Ok(dedup_sort(
+            build_one(scaffold, defs, targets, &[])
+                .into_iter()
+                .map(|m| canonical_smiles(&m))
+                .collect(),
+        ));
     }
-    let total = check_positional_bounds(scaffold, &ranges)?;
+    let total = check_positional_bounds(scaffold, defs, &ranges)?;
     let mut combo = vec![0usize; ranges.len()];
     let mut out = Vec::with_capacity(total.min(MAX_ARRANGEMENTS));
     for _ in 0..total.min(MAX_ARRANGEMENTS) {
@@ -48,9 +48,9 @@ pub(crate) fn enumerate(
                 });
             }
         }
-        out.push(canonical_smiles(&build_one(
-            scaffold, defs, targets, &combo,
-        )));
+        if let Some(mol) = build_one(scaffold, defs, targets, &combo) {
+            out.push(canonical_smiles(&mol));
+        }
         if !next_combo(&mut combo, &ranges) {
             break;
         }
@@ -58,7 +58,11 @@ pub(crate) fn enumerate(
     Ok(dedup_sort(out))
 }
 
-fn check_positional_bounds(scaffold: &Molecule, ranges: &[&[usize]]) -> Result<usize, CxError> {
+fn check_positional_bounds(
+    scaffold: &Molecule,
+    defs: &[FloatingDef],
+    ranges: &[&[usize]],
+) -> Result<usize, CxError> {
     let total = ranges
         .iter()
         .try_fold(1usize, |acc, range| acc.checked_mul(range.len()))
@@ -72,12 +76,24 @@ fn check_positional_bounds(scaffold: &Molecule, ranges: &[&[usize]]) -> Result<u
             limit: MAX_ARRANGEMENTS,
         });
     }
-    if scaffold.atom_count() > MAX_MOLECULE_ATOMS {
+    let extra_atoms: usize = defs.iter().map(|d| d.atoms.len()).sum();
+    let expanded_atoms = scaffold.atom_count().saturating_add(extra_atoms);
+    if expanded_atoms > MAX_MOLECULE_ATOMS {
         return Err(CxError::ScaffoldTooLarge {
-            atoms: scaffold.atom_count(),
+            atoms: expanded_atoms,
             arrangements: total,
             limit: MAX_MOLECULE_ATOMS,
         });
+    }
+    for range in ranges {
+        for &pos in *range {
+            if pos >= scaffold.atom_count() {
+                return Err(CxError::InvalidPosition {
+                    pos,
+                    group_len: scaffold.atom_count(),
+                });
+            }
+        }
     }
     Ok(total)
 }
@@ -94,14 +110,25 @@ pub(crate) fn next_combo(combo: &mut [usize], ranges: &[&[usize]]) -> bool {
     false
 }
 
+const fn bond_valence_cost(order: BondOrder) -> u8 {
+    match order {
+        BondOrder::Double => 2,
+        BondOrder::Triple => 3,
+        _ => 1,
+    }
+}
+
 /// Build one concrete molecule for a given variable-position choice.
 fn build_one(
     scaffold: &Molecule,
     defs: &[FloatingDef],
     targets: &[AttachmentTarget],
     combo: &[usize],
-) -> Molecule {
+) -> Option<Molecule> {
     let mut b = MoleculeBuilder::new();
+    let mut rem_h: Vec<u8> = (0..scaffold.atom_count())
+        .map(|i| scaffold.implicit_hydrogen_count(crate::graph::atom_idx(i)))
+        .collect();
     let sc: Vec<AtomIdx> = scaffold
         .atoms()
         .map(|(_, atom)| b.add_atom(atom.clone()))
@@ -123,11 +150,15 @@ fn build_one(
     for (&(attach, order), target) in part_attach.iter().zip(targets) {
         match target {
             AttachmentTarget::Variable(positions) => {
-                if let Some(&pos) = choices.next().and_then(|&c| positions.get(c))
-                    && let Some(&p) = sc.get(pos)
-                {
-                    let _ = b.add_bond(attach, p, order);
+                let pos = *choices.next().and_then(|&c| positions.get(c))?;
+                let slot = rem_h.get_mut(pos)?;
+                let cost = bond_valence_cost(order);
+                if *slot < cost {
+                    return None;
                 }
+                *slot -= cost;
+                let p = *sc.get(pos)?;
+                let _ = b.add_bond(attach, p, order);
             }
             AttachmentTarget::Fixed(other) => {
                 if let Some(&(target_attach, _)) = part_attach.get(*other) {
@@ -136,7 +167,7 @@ fn build_one(
             }
         }
     }
-    b.build()
+    Some(b.build())
 }
 
 /// Enumerate all repeat counts from `unit.min` through `unit.max`.
@@ -153,9 +184,17 @@ pub(crate) fn enumerate_repeating(
             limit: MAX_ARRANGEMENTS,
         });
     }
-    let widest = unit
-        .max
-        .checked_mul(unit.atoms.len())
+    let nonrepeat = scaffold.atom_count().saturating_sub(unit.atoms.len());
+    let expanded_repeat =
+        unit.max
+            .checked_mul(unit.atoms.len())
+            .ok_or(CxError::ExpansionOverflow {
+                min: unit.min,
+                max: unit.max,
+                unit_len: unit.atoms.len(),
+            })?;
+    let widest = nonrepeat
+        .checked_add(expanded_repeat)
         .ok_or(CxError::ExpansionOverflow {
             min: unit.min,
             max: unit.max,
@@ -169,10 +208,8 @@ pub(crate) fn enumerate_repeating(
             limit: MAX_MOLECULE_ATOMS,
         });
     }
-    let unit_size = unit.atoms.len().max(1);
-    let count_cap = MAX_MOLECULE_ATOMS.saturating_div(unit_size);
-    let mut out = Vec::with_capacity(total.min(count_cap));
-    for n in (unit.min..=unit.max).take(count_cap) {
+    let mut out = Vec::with_capacity(total);
+    for n in unit.min..=unit.max {
         out.push(canonical_smiles(&splice_repeat(scaffold, &unit.atoms, n)));
     }
     Ok(dedup_sort(out))

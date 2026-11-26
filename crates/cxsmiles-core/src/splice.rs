@@ -7,7 +7,7 @@ use chematic::core::{AtomIdx, BondOrder, Molecule, MoleculeBuilder};
 
 use crate::graph::atom_usize;
 
-fn collect_anchors(scaffold: &Molecule, unit: &[u32]) -> (u32, u32) {
+fn collect_anchors(scaffold: &Molecule, unit: &[u32]) -> Option<(u32, u32)> {
     let mut anchors: Vec<u32> = unit
         .iter()
         .flat_map(|&a| {
@@ -19,10 +19,11 @@ fn collect_anchors(scaffold: &Molecule, unit: &[u32]) -> (u32, u32) {
         .collect();
     anchors.sort_unstable();
     anchors.dedup();
-    (
-        anchors.first().copied().unwrap_or(0),
-        anchors.get(1).copied().unwrap_or(0),
-    )
+    let (&a, &b) = (anchors.first()?, anchors.get(1)?);
+    if anchors.len() != 2 {
+        return None;
+    }
+    Some((a, b))
 }
 
 fn collect_unit_bonds(scaffold: &Molecule, unit: &[u32]) -> Vec<(usize, usize, BondOrder)> {
@@ -102,21 +103,51 @@ fn bond_splice_chain(
     }
 }
 
-/// Splice `n` copies of `repeat_atoms` between its two external anchors.
+/// Splice `n` copies of `repeat_atoms` between its two external anchors, or chain whole-molecule repeats.
 pub(crate) fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> Molecule {
-    if n <= 1 {
+    if n <= 1 || repeat_atoms.is_empty() {
         return scaffold.clone();
     }
     let unit: Vec<u32> = repeat_atoms
         .iter()
         .map(|&a| u32::try_from(a).unwrap_or(u32::MAX))
         .collect();
-    let (anchor_a, anchor_b) = collect_anchors(scaffold, &unit);
+    let unit_internal = collect_unit_bonds(scaffold, &unit);
+
+    if unit.len() == scaffold.atom_count() {
+        let mut b = MoleculeBuilder::new();
+        let sc: Vec<AtomIdx> = scaffold
+            .atoms()
+            .map(|(_, atom)| b.add_atom(atom.clone()))
+            .collect();
+        let copy_atoms = append_repeat_copies(&mut b, scaffold, &sc, &unit, &unit_internal, n);
+        add_scaffold_bonds(
+            &mut b,
+            scaffold,
+            &sc,
+            u32::MAX,
+            u32::MAX,
+            u32::MAX,
+            u32::MAX,
+        );
+        let last = unit.len() - 1;
+        for pair in copy_atoms.windows(2) {
+            if let [cur, next] = pair
+                && let (Some(&rb_k), Some(&ra_k1)) = (cur.get(last), next.first())
+            {
+                let _ = b.add_bond(rb_k, ra_k1, BondOrder::Single);
+            }
+        }
+        return b.build();
+    }
+
+    let Some((anchor_a, anchor_b)) = collect_anchors(scaffold, &unit) else {
+        return scaffold.clone();
+    };
     let ep_a = endpoint_for(scaffold, &unit, anchor_a);
     let ep_b = endpoint_for(scaffold, &unit, anchor_b);
     let rpos_a = pos_in_unit(&unit, ep_a).unwrap_or(0);
     let rpos_b = pos_in_unit(&unit, ep_b).unwrap_or(0);
-    let unit_internal = collect_unit_bonds(scaffold, &unit);
 
     let mut b = MoleculeBuilder::new();
     let sc: Vec<AtomIdx> = scaffold

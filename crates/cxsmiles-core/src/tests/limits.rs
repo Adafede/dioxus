@@ -33,7 +33,7 @@ fn a_few_arrangements_of_a_scaffold_past_the_atom_ceiling_are_refused_too() {
 
 #[test]
 fn an_ordinary_expansion_is_not_refused() {
-    let scaffold = mol("C");
+    let scaffold = chain_mol(5);
     let out = enumerate(&scaffold, &[], &targets_of(&[5; 4])).expect("625 arrangements");
     assert_eq!(out.len(), 1, "all identical, so one distinct molecule");
 }
@@ -49,9 +49,18 @@ fn a_group_with_no_positions_is_refused_rather_than_expanded_nothing() {
 #[test]
 fn a_position_past_the_scaffold_is_refused() {
     let scaffold = mol("CC");
-    let out = enumerate(&scaffold, &[], &[AttachmentTarget::Variable(vec![0, 9])])
-        .expect("a position past the end is reported, not skipped");
-    assert_eq!(out.len(), 1, "only the in-range position contributed");
+    let err = enumerate(&scaffold, &[], &[AttachmentTarget::Variable(vec![0, 9])])
+        .expect_err("an out-of-range position must return InvalidPosition");
+    assert!(
+        matches!(
+            err,
+            CxError::InvalidPosition {
+                pos: 9,
+                group_len: 2
+            }
+        ),
+        "unexpected error: {err}"
+    );
 }
 
 #[test]
@@ -138,13 +147,14 @@ fn an_ordinary_repeat_range_is_expanded() {
 
 #[test]
 fn positional_and_atom_ceilings_stand_on_exact_boundaries() {
-    let c1 = mol("C");
-    let on_count =
-        enumerate(&c1, &[], &targets_of(&[100, 100])).expect("10,000 sitting on ceiling is legal");
+    let c100 = chain_mol(100);
+    let on_count = enumerate(&c100, &[], &targets_of(&[100, 100]))
+        .expect("10,000 sitting on ceiling is legal");
     assert_eq!(on_count.len(), 1);
 
-    let past_count =
-        enumerate(&c1, &[], &targets_of(&[73, 137])).expect_err("10,001 is past the count ceiling");
+    let c137 = chain_mol(137);
+    let past_count = enumerate(&c137, &[], &targets_of(&[73, 137]))
+        .expect_err("10,001 is past the count ceiling");
     assert!(past_count.to_string().contains("arrangements to expand"));
 
     let on_atoms = chain_mol(MAX_MOLECULE_ATOMS);
@@ -167,7 +177,7 @@ fn positional_and_atom_ceilings_stand_on_exact_boundaries() {
         max: 1,
     };
     assert_eq!(
-        enumerate_repeating(&past_atoms, &unit_ok)
+        enumerate_repeating(&on_atoms, &unit_ok)
             .expect("exact repeat atom ceiling")
             .len(),
         1

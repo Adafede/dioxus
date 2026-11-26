@@ -146,4 +146,23 @@ fn non_single_external_bonds_are_not_internal_and_ring_repeats_are_rejected() {
         .expect("a two-member alkane homologue pair with covered == 2 must succeed");
     assert_eq!(two_ok.construct, ConstructKind::Repeating);
     assert_eq!(two_ok.coverage.covered, 2);
+
+    let dup_only = build_repeating(&[mol("CCCC"), mol("CCCC"), mol("CC(C)CC")]);
+    assert_eq!(
+        dup_only.unwrap_err(),
+        CxError::NoHomologueReproduced,
+        "duplicate shortest molecule alone must not satisfy distinct-homologue guard"
+    );
+
+    // 4-atom branched unit (-C(F)(F)O-) requires ESU connected-subgraph search (not simple paths).
+    let branched_mol = mol("CCC(F)(F)OC");
+    let found = crate::repeating::locate_repeat_in_scaffold(&branched_mol, &[6, 8, 9, 9], 4)
+        .expect("4-atom branched unit must be found by ESU search");
+    assert_eq!(found, vec![2, 3, 4, 5]);
+
+    let branched_series = [mol("CCCC(F)(F)OC(F)F"), mol("CCCC(F)(F)OC(F)(F)OC(F)F")];
+    let branched_res =
+        build_repeating(&branched_series).expect("4-atom branched repeat series must build");
+    assert_eq!(branched_res.construct, ConstructKind::Repeating);
+    assert!(branched_res.coverage.is_clean());
 }

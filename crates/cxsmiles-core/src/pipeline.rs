@@ -36,20 +36,34 @@ pub fn generate_with_options(smiles: &[String], options: CxOptions) -> Result<Cx
     if mols.is_empty() {
         return Err(CxError::EmptyInput);
     }
-    if let [single] = mols.as_slice() {
+    let mut canonical_mols = mols;
+    canonical_mols.sort_by_cached_key(|m| (m.atom_count(), canonical_smiles(m)));
+    if let [single] = canonical_mols.as_slice() {
         return Ok(singleton_result(single));
     }
 
-    let group: Vec<Molecule> = cluster(&mols, CLUSTER_TANIMOTO)
+    let group: Vec<Molecule> = cluster(&canonical_mols, CLUSTER_TANIMOTO)
         .into_iter()
-        .max_by_key(Vec::len)
+        .max_by(|a, b| {
+            a.len().cmp(&b.len()).then_with(|| {
+                let sa = a.first().map(canonical_smiles);
+                let sb = b.first().map(canonical_smiles);
+                sb.cmp(&sa)
+            })
+        })
         .filter(|c| c.len() >= 2)
-        .unwrap_or_else(|| mols.clone());
+        .unwrap_or_else(|| canonical_mols.clone());
 
-    let mut res = build_repeating(&group)
-        .or_else(|_| build_positional_with_options(&group, options.expand_aromatic))?;
+    let mut res = match build_repeating(&group) {
+        Ok(rep) if rep.coverage.is_clean() => rep,
+        Ok(rep) => match build_positional_with_options(&group, options.expand_aromatic) {
+            Ok(pos) if pos.coverage.covered > rep.coverage.covered => pos,
+            _ => rep,
+        },
+        Err(_) => build_positional_with_options(&group, options.expand_aromatic)?,
+    };
 
-    let (construct, coverage) = evaluate_construct(&res.enumerated, &mols, res.construct);
+    let (construct, coverage) = evaluate_construct(&res.enumerated, &canonical_mols, res.construct);
     res.construct = construct;
     res.coverage = coverage;
     Ok(res)

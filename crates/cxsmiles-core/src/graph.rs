@@ -27,14 +27,30 @@ pub(crate) fn usize_to_f64(value: usize) -> f64 {
     f64::from(u32::try_from(value).unwrap_or(u32::MAX))
 }
 
-/// Convert `Molecule` to `QueryMolecule` (element + bond-order).
+/// Convert `Molecule` to `QueryMolecule` (atomic number, formal charge, aromaticity, isotope, bond order).
 pub(crate) fn molecule_to_query(mol: &Molecule) -> QueryMolecule {
     let n = mol.atom_count();
     let atoms: Vec<QueryAtom> = (0..n)
         .map(|i| {
             let a = mol.atom(atom_idx(i));
+            let mut query =
+                AtomQuery::Primitive(AtomPrimitive::AtomicNum(a.element.atomic_number()));
+            query = AtomQuery::And(
+                Box::new(query),
+                Box::new(AtomQuery::Primitive(AtomPrimitive::Aromatic(a.aromatic))),
+            );
+            query = AtomQuery::And(
+                Box::new(query),
+                Box::new(AtomQuery::Primitive(AtomPrimitive::Charge(a.charge))),
+            );
+            if let Some(iso) = a.isotope {
+                query = AtomQuery::And(
+                    Box::new(query),
+                    Box::new(AtomQuery::Primitive(AtomPrimitive::Isotope(iso))),
+                );
+            }
             QueryAtom {
-                query: AtomQuery::Primitive(AtomPrimitive::AtomicNum(a.element.atomic_number())),
+                query,
                 atom_map: a.atom_map,
             }
         })
@@ -62,7 +78,7 @@ pub(crate) fn molecule_to_query(mol: &Molecule) -> QueryMolecule {
 /// Map bond order to a SMARTS bond primitive.
 pub(crate) const fn bond_to_primitive(order: BondOrder) -> BondPrimitive {
     match order {
-        BondOrder::Single => BondPrimitive::Single,
+        BondOrder::Single | BondOrder::Up | BondOrder::Down => BondPrimitive::Single,
         BondOrder::Double => BondPrimitive::Double,
         BondOrder::Triple => BondPrimitive::Triple,
         BondOrder::Aromatic => BondPrimitive::Aromatic,
