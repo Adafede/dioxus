@@ -83,3 +83,22 @@ fn invalid_smiles_and_highlighted_atoms_behave_safely() {
         "highlighted valid SMILES should render"
     );
 }
+
+#[test]
+fn guards_reject_oversized_and_empty_inputs_and_check_svg_closing_tag() {
+    let empty_mol = chematic::core::MoleculeBuilder::new().build();
+    assert_eq!(render_molecule_svg_compact(&empty_mol), empty_compact_svg());
+    assert!(empty_compact_svg().contains("viewBox=\"0 0 80 24\""));
+
+    let huge_smiles = "C".repeat(16_385);
+    assert!(matches!(
+        parse_smiles_safe(&huge_smiles),
+        Err(ChemParseError::InvalidSmiles { .. })
+    ));
+    assert_eq!(render_smiles_svg(&huge_smiles), empty_svg());
+
+    let over_atoms = "C".repeat(513);
+    assert_eq!(render_smiles_svg(&over_atoms), empty_svg());
+    assert_eq!(render_smiles_svg_compact(&over_atoms), empty_compact_svg());
+    assert!(render_smiles_svg("CCO").trim().ends_with("</svg>"));
+}

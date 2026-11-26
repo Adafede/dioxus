@@ -79,10 +79,11 @@ pub(super) fn InputCard(input: Signal<String>, aromatic: Signal<bool>) -> Elemen
     rsx! {
         div { style: card_style,
             div { style: header_style,
-                label { style: StyleBuilder::new().font_size(Typography::UI).font_weight("600").color(light.text).build(), "SMILES list" }
+                label { r#for: "smiles-input", style: StyleBuilder::new().font_size(Typography::UI).font_weight("600").color(light.text).build(), "SMILES list" }
                 span { style: StyleBuilder::new().font_size(Typography::LABEL).color(light.text3).build(), "{line_count} line(s)" }
             }
             textarea {
+                id: "smiles-input",
                 style: area_style,
                 value: "{input.read()}",
                 placeholder: "Clc1ccccc1-c2ccccc2\nClc1cccc(-c2ccccc2)c1\nClc1ccc(-c2ccccc2)cc1",

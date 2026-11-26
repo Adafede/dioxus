@@ -12,6 +12,8 @@ use ui::{Card, ColorScheme, NoticeBar, NoticeTone, Radius, StyleBuilder, Typogra
 
 use super::clipboard::CopyCell;
 
+const CANDIDATE_PAGE_SIZE: usize = 60;
+
 #[derive(Clone, PartialEq, Eq)]
 struct DepictedResult {
     scaffold_svg: String,
@@ -110,7 +112,10 @@ fn floating_badges(res: &CxResult) -> Element {
 
 /// Renders the CX-SMILES output card when a result is present, memoizing SVGs.
 #[component]
-pub(super) fn ResultsPanel(result: Signal<Option<CxResult>>) -> Element {
+pub(super) fn ResultsPanel(
+    result: Signal<Option<CxResult>>,
+    mut show_all: Signal<bool>,
+) -> Element {
     let depicted = use_memo(move || result.read().as_ref().map(depict_result));
     let res_guard = result.read();
     let Some(res) = res_guard.as_ref() else {
@@ -122,6 +127,18 @@ pub(super) fn ResultsPanel(result: Signal<Option<CxResult>>) -> Element {
     };
     let light = ColorScheme::LIGHT;
     let frac = res.coverage.fraction() * 100.0;
+    let recall_text = if res.coverage.is_clean() {
+        format!(
+            "Round-trip recall: 100% ({}/{})",
+            res.coverage.covered, res.coverage.total
+        )
+    } else {
+        let floored = (frac * 10.0).floor() / 10.0;
+        format!(
+            "Round-trip recall: {floored:.1}% ({}/{})",
+            res.coverage.covered, res.coverage.total
+        )
+    };
     let tone = if res.coverage.is_clean() {
         NoticeTone::Success
     } else {
@@ -165,7 +182,7 @@ pub(super) fn ResultsPanel(result: Signal<Option<CxResult>>) -> Element {
                     span { style: StyleBuilder::new().font_size(Typography::UI).color(light.text3).build(), "{construct_label}" }
                 }
                 NoticeBar {
-                    label: format!("Round-trip recall: {frac:.0}% ({}/{})", res.coverage.covered, res.coverage.total),
+                    label: recall_text,
                     tone,
                 }
                 div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "1fr 1fr").gap("0.75rem").build(),
@@ -182,13 +199,30 @@ pub(super) fn ResultsPanel(result: Signal<Option<CxResult>>) -> Element {
                                 div { style: field_label(false), "Enumerated candidates ({n_enum})" }
                                 CopyCell { text: Arc::<str>::from(all_enumerated.as_str()) }
                             }
-                            div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fill, minmax(110px, 1fr))").gap("0.4rem").width("100%").property("overflow-y", "auto").build(),
-                                for (smi, svg) in &dep.candidates {
-                                    div {
-                                        title: "{smi}",
-                                        style: "{candidate_cell_style}",
-                                        div { dangerous_inner_html: "{svg}" }
+                            div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fill, minmax(110px, 1fr))").gap("0.4rem").width("100%").property("max-height", "420px").property("overflow-y", "auto").build(),
+                                {
+                                    let limit = if *show_all.read() {
+                                        dep.candidates.len()
+                                    } else {
+                                        CANDIDATE_PAGE_SIZE
+                                    };
+                                    rsx! {
+                                        for (smi, svg) in dep.candidates.iter().take(limit) {
+                                            div {
+                                                title: "{smi}",
+                                                style: "{candidate_cell_style}",
+                                                div { dangerous_inner_html: "{svg}" }
+                                            }
+                                        }
                                     }
+                                }
+                            }
+                            if dep.candidates.len() > CANDIDATE_PAGE_SIZE && !*show_all.read() {
+                                button {
+                                    r#type: "button",
+                                    onclick: move |_| show_all.set(true),
+                                    style: StyleBuilder::new().background_color(light.bg).color(light.text2).border(&format!("1px solid {}", light.border)).border_radius(Radius::MD).padding("0.3rem 0.6rem").font_size(Typography::UI).cursor("pointer").build(),
+                                    "Show all ({n_enum})"
                                 }
                             }
                         }

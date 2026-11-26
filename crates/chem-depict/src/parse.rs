@@ -10,6 +10,9 @@ use chematic::smiles::parse;
 
 use crate::error::ChemParseError;
 
+/// Maximum accepted SMILES byte length before invoking `chematic::smiles::parse`.
+pub(crate) const MAX_SMILES_LEN: usize = 16_384;
+
 pub(crate) fn panic_payload_message(payload: &(dyn std::any::Any + Send)) -> String {
     payload
         .downcast_ref::<&str>()
@@ -29,6 +32,15 @@ pub fn parse_smiles_safe(smiles: &str) -> Result<Molecule, ChemParseError> {
     let trimmed = smiles.trim();
     if trimmed.is_empty() {
         return Err(ChemParseError::Empty);
+    }
+    if trimmed.len() > MAX_SMILES_LEN {
+        return Err(ChemParseError::InvalidSmiles {
+            smiles: trimmed.chars().take(64).collect(),
+            message: format!(
+                "SMILES length {} exceeds maximum of {MAX_SMILES_LEN} bytes",
+                trimmed.len()
+            ),
+        });
     }
 
     match catch_unwind(AssertUnwindSafe(|| parse(trimmed))) {

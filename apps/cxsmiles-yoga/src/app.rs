@@ -45,8 +45,8 @@ const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
         ],
         operations: &[
             EdamTerm {
-                id: "operation_0366",
-                label: "Structure clustering",
+                id: "operation_3432",
+                label: "Clustering",
             },
             EdamTerm {
                 id: "operation_0335",
@@ -99,11 +99,13 @@ pub fn app() -> Element {
     let mut error = use_signal(|| None::<String>);
     let mut selected = use_signal(String::new);
     let aromatic = use_signal(|| false);
+    let mut show_all = use_signal(|| false);
     let light = ColorScheme::LIGHT;
 
     let on_generate = move |_| {
         error.set(None);
         result.set(None);
+        show_all.set(false);
         let lines: Vec<String> = input
             .read()
             .lines()
@@ -127,11 +129,12 @@ pub fn app() -> Element {
         selected.set(value);
         result.set(None);
         error.set(None);
+        show_all.set(false);
     };
 
     rsx! {
         DocumentHead {
-            title: "🧘 CX-SMILES Yoga".to_string(),
+            title: "CX-SMILES Yoga".to_string(),
             webmcp: Some(WEBMCP_CONFIG),
             lang: "en".to_string(),
             theme_colors: Some((light.bg, ColorScheme::DARK.bg)),
@@ -140,7 +143,7 @@ pub fn app() -> Element {
         skip_link {}
 
         Header {
-            title: "🧘 CX-SMILES Yoga".to_string(),
+            title: "CX-SMILES Yoga".to_string(),
             subtitle: Some("Generate CX-SMILES from a list of related structures".to_string()),
         }
 
@@ -177,7 +180,7 @@ pub fn app() -> Element {
                 NoticeBar { label: err.clone(), tone: NoticeTone::Danger }
             }
 
-            ResultsPanel { result }
+            ResultsPanel { result, show_all }
         }
         Footer {}
         SimpleAnalyticsBadge {

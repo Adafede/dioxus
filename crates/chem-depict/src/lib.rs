@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Panic-guarded `chematic` SMILES parsing and local 2D SVG depiction.
+//! Size-guarded `chematic` SMILES parsing and local 2D SVG depiction.
 //!
-//! Centralizes `std::panic::catch_unwind` recovery around `chematic::smiles`
-//! and `chematic::depict` so WASM apps fall back cleanly instead of aborting.
+//! Enforces SMILES byte-length (`16_384`) and atom-count (`512`) bounds before
+//! calling `chematic::smiles` or `chematic::depict`. On unwind targets,
+//! `std::panic::catch_unwind` recovers from internal parser or layout panics;
+//! `wasm32-unknown-unknown` builds (`panic = "abort"`) rely on those pre-guards.
 //!
 //! # Example
 //!

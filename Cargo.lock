@@ -760,6 +760,7 @@ dependencies = [
  "dioxus",
  "gloo-timers 0.4.1",
  "ui",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 

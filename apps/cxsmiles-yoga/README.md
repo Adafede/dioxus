@@ -1,106 +1,62 @@
 # CX-SMILES Yoga
 
-Generate a single **CX-SMILES** from a list of related structures and validate
-it back by re-expansion.
+Generate a **CX-SMILES** representation from a list of related structures and validate it by re-expansion.
 
-A CX-SMILES encodes *structural uncertainty*: a positional isomer (`m:` block)
-or a variable-length repeat (`Sg:n:` block). Hand-crafting these does not scale,
-so this app derives them automatically from a candidate structure list using the
-**maximum common substructure** as the shared scaffold.
-
---------------------------------------------------------------------------------
+A CX-SMILES encodes positional isomers (`m:` blocks) or variable-length repeats (`Sg:n:` blocks) over a shared scaffold derived from the input list via maximum common substructure.
 
 ## How it works
 
-The UI (`src/app.rs` + `src/app/*`) is intentionally thin. All chemistry lives
-in the headless domain crate [`crates/cxsmiles-core`](../../crates/cxsmiles-core/README.md)
-and 2D SVG depiction lives in [`crates/chem-depict`](../../crates/chem-depict/README.md).
+The UI (`src/app.rs` and `src/app/*`) calls [`crates/cxsmiles-core`](../../crates/cxsmiles-core/README.md) for CX-SMILES generation and [`crates/chem-depict`](../../crates/chem-depict/README.md) for local 2D SVG rendering.
 
 ```
- input SMILES list   ──▶  parse & ECFP4/Tanimoto clustering (τ = 0.3)
-                               └─ rejects unrelated structures so they are not
-                                  forced into one nonsensical CX-SMILES
-                        ──▶  Maximum Common Substructure
-                        ──▶  diff group vs. MCS → classify each variable region
-                               • discrete equivalents  →  m:   block
-                               • variable-length repeat →  Sg:n: block
-                        ──▶  serialize base SMILES and CX extension fields
-                        ──▶  round-trip: enumerate the CX-SMILES and check that
-                               it re-expands to (a superset of) the inputs
-                               └─ surfaced as a confidence % in the UI
+ input SMILES list   ──▶  parse & sort canonically, then cluster by ECFP4/Tanimoto (threshold = 0.3)
+                               └─ isolates the largest chemically related cluster
+                        ──▶  try variable-length repeat detection (Sg:n: block)
+                        ──▶  if no clean repeat holds, compute MCS & extract positional groups (m: block)
+                        ──▶  serialize canonical base SMILES and CX extension fields
+                        ──▶  round-trip: enumerate the CX-SMILES and measure recall (covered / total)
 ```
 
 ### Construct families
 
   | Family                          | CX-SMILES construct                         | Example                                                                                   |
   | ------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
-  | Positional isomers              | `m:<starIdx>:<pos1>.<pos2>.…`               | `…Cl* \|m:13:0.2.3\|` for Cl on a biphenyl at three positions                             |
-  | Variable-length repeat          | `Sg:n:<atomRange>:n:ht`                     | `OC(=O)C(F)(F)C(F)F \|Sg:n:3,4,5:n:ht\|` (PFAS) / `CCCCCCC \|Sg:n:3:n:ht\|` (alkyl chain) |
-  | Best-effort (no clean scaffold) | `m:` from the MCS, flagged lower-confidence | the six PFOS constitutional isomers                                                       |
+  | Positional isomers              | `m:<starIdx>:<pos1>.<pos2>.…`               | `c2ccc(cc2)-c1ccccc1.[*]Cl \|m:12:0.2.5\|` (monochlorobiphenyl isomers)                   |
+  | Variable-length repeat          | `Sg:n:<atomIndices>:n:ht`                   | `OC(=O)C(F)(F)C(F)F \|Sg:n:3,4,5:n:ht\|` (PFAS) / `CCCCCCC \|Sg:n:3:n:ht\|` (alkyl chain) |
+  | Best-effort (incomplete recall) | `m:` or `Sg:n:` from the largest cluster    | six structural isomers (`CC(C)(C)O` … `COCCC`)                                            |
 
-### Confidence
+### Recall
 
-The round-trip stage enumerates the generated CX-SMILES back into concrete
-structures and counts how many of the original inputs are recovered (**coverage =
-covered / total**). When every input re-expands, confidence is *clean* (100%);
-otherwise the construct is flagged as lower-confidence --- this is how the "no
-clean shared scaffold" constitutional-isomer case is surfaced.
+The round-trip step expands the generated CX-SMILES into concrete canonical structures and reports `covered / total`. When all inputs re-expand (`covered == total`), the construct is preserved as `Positional` or `Repeating`; otherwise it is downgraded to `BestEffort`.
 
-### 2D depiction is fully local
+### 2D depiction
 
-All molecule rendering uses the local `chem-depict` SVG engine (in-process 2D
-layout) --- no RDKit.js, no remote service, no network calls. The scaffold and
-each enumerated candidate are drawn inline in the results panel.
+Molecule structures render inline in the browser using `chem-depict` (`chematic::depict`), with no remote requests or external JavaScript runtime.
 
---------------------------------------------------------------------------------
-
-## Try it
+## Development
 
 ```bash
-# Run the domain and app test suites
+# Run domain and UI unit tests
 cargo nextest run -p cxsmiles-core -p cxsmiles-yoga
+
+# Serve in the browser
+dx serve --package cxsmiles-yoga
+
+# Production bundle
+dx build --profile wasm-release --platform web --package cxsmiles-yoga
 ```
 
-The headless core is exercised by unit and property suites in `crates/cxsmiles-core`,
-covering the six seed fixtures --- biphenyl-Cl, moving -OCH₃, the double-`m:` acetyl
-case, the PFAS repeat, the alkyl repeat, and the six constitutional PFOS isomers ---
-plus parse/write round-trip and ceiling tests.
+## Limitations
 
-### Run in the browser
-
-```bash
-./mk web-dev APP=cxsmiles-yoga
-# Production bundle (uses --profile wasm-release):
-./mk web-build APP=cxsmiles-yoga
-```
-
---------------------------------------------------------------------------------
-
-## Limitations & out of scope
-
-- **Aromatic equivalence.** The "Enumerate equivalent aromatic positions"
-  checkbox expands `m:` attachment lists across symmetry-equivalent positions
-  within each aromatic ring component of the shared scaffold (via graph
-  automorphisms restricted to `BondOrder::Aromatic` components).
-- **CX-SMILES hand-rolled.** Standard CX parsers do not handle arbitrary `m:` /
-  `Sg:n:` constructs alongside wildcard-atom indexing, so the base scaffold and
-  extension fields are serialized directly inside `cxsmiles-core`.
-- **Hashing / fingerprint library search.** Comparing a generated CX-SMILES
-  against an external fingerprint library (e.g., ECFP4/Tanimoto
-  nearest-neighbour lookup) to score or rank candidates is out of scope for this
-  app; only intra-input ECFP4 clustering is performed locally.
-
---------------------------------------------------------------------------------
+- **Aromatic equivalence.** Checking "Enumerate equivalent aromatic positions" expands each `m:` site across atoms in the same `BondOrder::Aromatic` connected component matching `(atomic_number, degree, formal_charge, implicit_H > 0)`. This local signature invariant avoids substituting quaternary ring junctions or charged heteroatoms but is not a full graph-automorphism computation.
+- **Serialization.** The base SMILES and `m:` / `Sg:n:` extension strings are formatted directly inside `cxsmiles-core`.
+- **Fingerprint search.** Comparing candidates against external fingerprint databases is out of scope.
 
 ## Dependencies
 
 - `cxsmiles-core` --- CX-SMILES clustering, MCS generation, and round-trip engine.
-- `chem-depict` --- panic-guarded local SVG structure depiction.
+- `chem-depict` --- size-guarded local SVG structure depiction.
 - [`dioxus`](https://dioxuslabs.com) `0.7` --- UI framework.
 - [`ui`](../../crates/ui/README.md) --- shared UI components and theme tokens.
-- `web-sys` --- clipboard API (`Window` + `Navigator` + `Clipboard` features).
-- `gloo-timers` --- async clipboard copy feedback timer.
-- [`crates/ui`](../../crates/ui) + [`crates/upload`](../../crates/upload) ---
-  shared UI components and upload/download helpers.
-- [`rustc-hash`](https://crates.io/crates/rustc-hash) --- `FxHashMap` for match
-  maps.
+- `web-sys` --- clipboard API (`Clipboard`, `Navigator`, `Window` features).
+- `wasm-bindgen-futures` & `gloo-timers` --- async clipboard Promise resolution and feedback timer.

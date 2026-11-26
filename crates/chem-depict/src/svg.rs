@@ -11,32 +11,40 @@ use chematic::depict::{depict_svg, depict_svg_highlighted};
 
 use crate::parse::parse_smiles_safe;
 
+const MAX_DEPICT_ATOMS: usize = 512;
+
 /// Standard fallback SVG rendered when depiction fails (`220x60`).
 #[must_use]
 pub(crate) fn empty_svg() -> String {
     r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60"><text x="50%" y="34" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="ui-system,system-ui,sans-serif">could not render</text></svg>"##.to_string()
 }
 
-/// Compact fallback SVG rendered for small gallery cards (`40x20`).
+/// Compact fallback SVG rendered for small gallery cards (`80x24`).
 #[must_use]
 pub fn empty_compact_svg() -> String {
-    r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 20"><text x="20" y="12" fill="#94a3b8" text-anchor="middle" font-family="system-ui" font-size="10">no structure</text></svg>"##.to_string()
+    r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 24"><text x="40" y="15" fill="#94a3b8" text-anchor="middle" font-family="system-ui" font-size="10">no structure</text></svg>"##.to_string()
 }
 
 fn validate_svg_or(
     candidate: Result<String, Box<dyn std::any::Any + Send>>,
     fallback: fn() -> String,
 ) -> String {
-    match candidate {
-        Ok(svg) if svg.trim_start().starts_with("<svg") => svg,
-        _ => fallback(),
-    }
+    candidate
+        .ok()
+        .filter(|svg| {
+            let trimmed = svg.trim();
+            trimmed.starts_with("<svg") && trimmed.ends_with("</svg>")
+        })
+        .unwrap_or_else(fallback)
 }
 
 /// Renders an already-parsed [`Molecule`] into a compact inline SVG, falling back
-/// to [`empty_compact_svg`] on layout panic or invalid output.
+/// to [`empty_compact_svg`] on empty/oversized graphs, layout panic, or invalid output.
 #[must_use]
 pub fn render_molecule_svg_compact(molecule: &Molecule) -> String {
+    if molecule.atom_count() == 0 || molecule.atom_count() > MAX_DEPICT_ATOMS {
+        return empty_compact_svg();
+    }
     let rendered = catch_unwind(AssertUnwindSafe(|| depict_svg(molecule)));
     validate_svg_or(rendered, empty_compact_svg)
 }
@@ -63,6 +71,9 @@ pub fn render_smiles_svg_highlighted(smiles: &str, highlight_atoms: &[usize]) ->
     let Ok(mol) = parse_smiles_safe(smiles) else {
         return empty_svg();
     };
+    if mol.atom_count() == 0 || mol.atom_count() > MAX_DEPICT_ATOMS {
+        return empty_svg();
+    }
     let rendered = catch_unwind(AssertUnwindSafe(|| {
         if highlight_atoms.is_empty() {
             return depict_svg(&mol);
