@@ -49,9 +49,23 @@ fn peak_validation_enforces_positive_mz_and_ignores_headers() {
         parse_peak_line("0.0 20.0").is_none(),
         "non-positive mz should be rejected"
     );
+    assert_eq!(
+        parse_peak_line("100.0 bad").and_then(|p| p.intensity),
+        None,
+        "non-numeric second field yields None intensity"
+    );
     assert!(
-        parse_peak_line("100.0 bad").is_some(),
-        "non-numeric second field still yields positive m/z peak"
+        parse_peak_line("NaN 20.0").is_none(),
+        "NaN mz must be rejected"
+    );
+    assert!(
+        parse_peak_line("inf 20.0").is_none(),
+        "infinite mz must be rejected"
+    );
+    assert_eq!(
+        parse_peak_line("100.0 NaN").and_then(|p| p.intensity),
+        None,
+        "non-finite intensity must yield None"
     );
     assert!(
         parse_peak_line("PEPMASS=100.0").is_none(),
@@ -123,5 +137,35 @@ fn exactmass_takes_precedence_over_moleculemass() -> Result<(), &'static str> {
         Some(120.0),
         "EXACTMASS should take precedence over MOLECULEMASS"
     );
+    Ok(())
+}
+
+#[test]
+fn non_finite_headers_and_malformed_precursor_do_not_clobber_valid_values()
+-> Result<(), &'static str> {
+    let mgf = "\
+BEGIN IONS
+PEPMASS=400.25 1000.0
+PRECURSOR_MZ=invalid
+EXACTMASS=NaN
+MOLECULEMASS=inf
+END IONS
+";
+    let blocks = parse_mgf_lines(mgf.lines());
+    let [block] = blocks.as_slice() else {
+        return Err("expected one block");
+    };
+    assert_eq!(
+        block.header.effective_precursor_mz(),
+        Some(400.25),
+        "malformed PRECURSOR_MZ must not overwrite valid PEPMASS"
+    );
+    assert_eq!(
+        block.header.reference_mass(),
+        None,
+        "non-finite EXACTMASS and MOLECULEMASS must be rejected"
+    );
+    assert_eq!(parse_leading_float("NaN"), None, "NaN must be rejected");
+    assert_eq!(parse_leading_float("inf"), None, "Inf must be rejected");
     Ok(())
 }

@@ -5,10 +5,14 @@
 
 use crate::types::{MgfBlock, MgfHeader, MgfPeak};
 
-/// Parses the first whitespace-separated float from an MGF header or peak field.
+/// Parses the first whitespace-separated finite float from an MGF header or peak field.
 #[must_use]
 pub fn parse_leading_float(text: &str) -> Option<f64> {
-    text.split_whitespace().next()?.parse::<f64>().ok()
+    text.split_whitespace()
+        .next()?
+        .parse::<f64>()
+        .ok()
+        .filter(|v| v.is_finite())
 }
 
 /// Returns `true` when `line` begins with `marker` (`"BEGIN IONS"` or `"END IONS"`)
@@ -35,7 +39,7 @@ pub fn extract_pepmass_from_line(line: &str) -> Option<f64> {
     }
 }
 
-/// Parses a single MS2 peak line requiring a positive `m/z` followed by whitespace.
+/// Parses a single MS2 peak line requiring a finite positive `m/z` followed by whitespace.
 #[must_use]
 pub(crate) fn parse_peak_line(line: &str) -> Option<MgfPeak> {
     let trimmed = line.trim();
@@ -43,30 +47,40 @@ pub(crate) fn parse_peak_line(line: &str) -> Option<MgfPeak> {
         return None;
     }
     let mut fields = trimmed.split_whitespace();
-    let mz = fields.next()?.parse::<f64>().ok()?;
-    if mz <= 0.0 {
-        return None;
-    }
-    let intensity = fields.next().and_then(|s| s.parse::<f64>().ok());
+    let mz = fields
+        .next()?
+        .parse::<f64>()
+        .ok()
+        .filter(|v| v.is_finite() && *v > 0.0)?;
+    let intensity = fields
+        .next()
+        .and_then(|s| s.parse::<f64>().ok())
+        .filter(|v| v.is_finite());
     Some(MgfPeak { mz, intensity })
 }
 
 fn assign_header_field(header: &mut MgfHeader, key: &str, value: &str) {
     let trimmed = value.trim();
     if key.eq_ignore_ascii_case("PEPMASS") {
-        let parsed = parse_leading_float(value);
-        header.pepmass = parsed;
-        header.latest_precursor_mz = parsed;
+        if let Some(parsed) = parse_leading_float(value) {
+            header.pepmass = Some(parsed);
+            header.latest_precursor_mz = Some(parsed);
+        }
     } else if key.eq_ignore_ascii_case("PRECURSOR_MZ") {
-        let parsed = parse_leading_float(value);
-        header.precursor_mz = parsed;
-        header.latest_precursor_mz = parsed;
+        if let Some(parsed) = parse_leading_float(value) {
+            header.precursor_mz = Some(parsed);
+            header.latest_precursor_mz = Some(parsed);
+        }
     } else if key.eq_ignore_ascii_case("EXACTMASS") {
-        if let Ok(parsed) = trimmed.parse::<f64>() {
+        if let Ok(parsed) = trimmed.parse::<f64>()
+            && parsed.is_finite()
+        {
             header.exact_mass = Some(parsed);
         }
     } else if key.eq_ignore_ascii_case("MOLECULEMASS") {
-        if let Ok(parsed) = trimmed.parse::<f64>() {
+        if let Ok(parsed) = trimmed.parse::<f64>()
+            && parsed.is_finite()
+        {
             header.molecule_mass = Some(parsed);
         }
     } else if key.eq_ignore_ascii_case("CHARGE") {
