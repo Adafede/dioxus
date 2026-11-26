@@ -6,7 +6,7 @@
 use dioxus::prelude::*;
 use lipid_core::{
     Analysis, ChemicalClass, ClassMatchSet, FilterCriteria, LipidFamily, LipidFormat,
-    collect_adduct_options, lmsd_classes_by_family,
+    collect_adduct_options, lmsd_classes_by_family, passes_item_filters,
 };
 use ui::{ColorScheme, StyleBuilder};
 
@@ -197,14 +197,37 @@ pub(super) fn SummaryPanel(
         return rsx! {};
     };
     let s = data.summary;
+    let adduct = filters.read_adduct();
+    let criteria = FilterCriteria {
+        selected_classes: *filters.selected_classes.read(),
+        mz_min: *filters.mz_min.read(),
+        mz_max: *filters.mz_max.read(),
+        precursor_min: *filters.precursor_min.read(),
+        precursor_max: *filters.precursor_max.read(),
+        adduct: &adduct,
+    };
+    let filtered_count = data
+        .blocks
+        .iter()
+        .filter(|block| {
+            block.is_lipid()
+                && passes_item_filters(
+                    block.class_matches(),
+                    block.exact_mass,
+                    block.precursor_mz,
+                    block.adduct.as_deref(),
+                    &criteria,
+                )
+        })
+        .count();
 
     rsx! {
         div {
             style: StyleBuilder::new().property("margin-top", "1.25rem").padding("1rem 1.1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").build(),
             h2 { style: section_subheading(), "Results" }
             div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.4rem").align_items("center").font_size("0.9rem").build(),
-                span { style: StyleBuilder::new().color("#16a34a").font_weight("700").build(), "{s.lipid_items} items matching selected classes" }
-                span { style: StyleBuilder::new().color("#475569").build(), "· out of {s.total_items} total" }
+                span { style: StyleBuilder::new().color("#16a34a").font_weight("700").build(), "{filtered_count} items matching filters" }
+                span { style: StyleBuilder::new().color("#475569").build(), "· {s.lipid_items} lipids out of {s.total_items} total" }
                 if s.skipped > 0 {
                     span { style: StyleBuilder::new().color("#94a3b8").build(), "(skipped {s.skipped} items without SMILES or formula)" }
                 }

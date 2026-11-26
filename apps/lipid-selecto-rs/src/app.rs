@@ -44,8 +44,8 @@ const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
                 label: "Lipids",
             },
             EdamTerm {
-                id: "topic_3520",
-                label: "Proteomics experiment",
+                id: "topic_2258",
+                label: "Cheminformatics",
             },
             EdamTerm {
                 id: "topic_3172",
@@ -121,6 +121,7 @@ pub fn app() -> Element {
     let busy = use_signal(|| false);
     let analysis = use_signal(|| None::<Analysis>);
     let input_format = use_signal(|| None::<LipidFormat>);
+    let generation = use_signal(|| 0u64);
     let filters = SummaryFilters {
         selected_classes: use_signal(|| ClassMatchSet::all(lmsd_classes().len())),
         mz_min: use_signal(|| 0.0f64),
@@ -136,6 +137,8 @@ pub fn app() -> Element {
         drag_active,
         analysis,
         input_format,
+        adduct_filter: filters.adduct_filter,
+        generation,
     };
 
     let on_file_change = move |evt: Event<FormData>| {
@@ -226,6 +229,8 @@ pub(super) struct UploadCtx {
     pub(super) drag_active: Signal<bool>,
     pub(super) analysis: Signal<Option<Analysis>>,
     pub(super) input_format: Signal<Option<LipidFormat>>,
+    pub(super) adduct_filter: Signal<String>,
+    pub(super) generation: Signal<u64>,
 }
 
 fn handle_uploaded_files(
@@ -258,6 +263,9 @@ fn process_file_upload(
     file: upload::ExtractedFile,
     format: Option<LipidFormat>,
 ) {
+    let next_gen = *ctx.generation.read() + 1;
+    ctx.generation.set(next_gen);
+    ctx.adduct_filter.set(String::new());
     ctx.input_format.set(format);
     ctx.file_name.set(file.name);
     ctx.analysis.set(None);

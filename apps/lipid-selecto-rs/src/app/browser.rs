@@ -24,13 +24,22 @@ pub(super) fn start_analysis(
     ctx: UploadCtx,
     initial_format: Option<LipidFormat>,
 ) {
+    let expected_gen = begin_new_upload(ctx);
     spawn(async move {
-        run_source(BlobSource::new(&blob), source_name, ctx, initial_format).await;
+        run_source(
+            BlobSource::new(&blob),
+            source_name,
+            ctx,
+            initial_format,
+            expected_gen,
+        )
+        .await;
     });
 }
 
 /// Loads the curated 204-lipid dataset directly from memory via [`SliceSource`].
 pub(super) fn load_example_dataset(mut ctx: UploadCtx) {
+    let expected_gen = begin_new_upload(ctx);
     let fmt = Some(LipidFormat::Smiles);
     ctx.input_format.set(fmt);
     let text = example_smiles().join("\n");
@@ -40,9 +49,21 @@ pub(super) fn load_example_dataset(mut ctx: UploadCtx) {
             "example_lipids.smi".to_string(),
             ctx,
             fmt,
+            expected_gen,
         )
         .await;
     });
+}
+
+fn begin_new_upload(mut ctx: UploadCtx) -> u64 {
+    let next_gen = *ctx.generation.read() + 1;
+    ctx.generation.set(next_gen);
+    ctx.adduct_filter.set(String::new());
+    next_gen
+}
+
+fn is_stale(ctx: UploadCtx, expected_gen: u64) -> bool {
+    *ctx.generation.read() != expected_gen
 }
 
 #[expect(
@@ -54,34 +75,48 @@ async fn run_source<S: ChunkSource>(
     source_name: String,
     mut ctx: UploadCtx,
     initial_format: Option<LipidFormat>,
+    expected_gen: u64,
 ) {
+    if is_stale(ctx, expected_gen) {
+        return;
+    }
     let total_bytes = source.total_bytes();
     ctx.file_name.set(source_name);
     ctx.status.set(format!("Reading {total_bytes} bytes…"));
     ctx.busy.set(true);
 
     let mut reader = BlobLines::new(source, move |processed, total| {
-        ctx.status.set(format!(
-            "Reading file… {}/{} bytes",
-            processed.min(total),
-            total
-        ));
+        if !is_stale(ctx, expected_gen) {
+            ctx.status.set(format!(
+                "Reading file… {}/{} bytes",
+                processed.min(total),
+                total
+            ));
+        }
     });
     let mut extractor = BlockExtractor::with_format(initial_format);
     let mut line_count = 0usize;
     loop {
         match reader.next_line().await {
             Ok(Some(line)) => {
+                if is_stale(ctx, expected_gen) {
+                    return;
+                }
                 line_count += 1;
                 extractor.push_line(&line);
             }
             Ok(None) => break,
             Err(err) => {
-                ctx.status.set(format!("Error reading file: {err}"));
-                ctx.busy.set(false);
+                if !is_stale(ctx, expected_gen) {
+                    ctx.status.set(format!("Error reading file: {err}"));
+                    ctx.busy.set(false);
+                }
                 return;
             }
         }
+    }
+    if is_stale(ctx, expected_gen) {
+        return;
     }
 
     if initial_format.is_none()
@@ -103,16 +138,25 @@ async fn run_source<S: ChunkSource>(
     let total = blocks.len();
     let mut processed = 0usize;
     for chunk in blocks.chunks_mut(500) {
+        if is_stale(ctx, expected_gen) {
+            return;
+        }
         classify_blocks(chunk, all_classes);
         processed += chunk.len();
         ctx.status
             .set(format!("Classifying… {processed}/{total} entries"));
         TimeoutFuture::new(0).await;
+        if is_stale(ctx, expected_gen) {
+            return;
+        }
     }
     ctx.status
         .set(format!("Classified {total} entries — building gallery…"));
 
     let result = build_analysis_from_classified(blocks, MAX_GALLERY_ITEMS, all_classes);
+    if is_stale(ctx, expected_gen) {
+        return;
+    }
     let block_count = result.blocks.len();
     let gallery_count = result.gallery.len();
     ctx.analysis.set(Some(result));

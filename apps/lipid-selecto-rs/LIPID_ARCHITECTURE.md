@@ -47,7 +47,7 @@ Fatty acyl esters of glycerol (3-carbon backbone):
 - **DG(AA)**: Diglyceride (2 ester groups)
 - **MG(A)**: Monoglyceride (1 ester group)
 
-SMARTS core: `[CX4]([OX2][CX3](=[OX1])[#6])`
+SMARTS core: `[CH2X4]([OX2][CX3](=[OX1])[#6])[CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2][CX3](=[OX1])[#6]` (triacylglycerol backbone)
 
 ### Glycerophospholipids (GP)
 
@@ -81,8 +81,7 @@ Cholesterol and steroid-based molecules with 4-ring steroid core:
 
 - **ST**: Sterols, Steroids, Cholesterol derivatives
 
-SMARTS: `[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6]` (4-ring steroid
-core)
+SMARTS: `[#6]1~[#6]~[#6]~[#6]2~[#6](~[#6]~1)~[#6]~[#6]~[#6]3~[#6]~2~[#6]~[#6]~[#6]4~[#6]~3~[#6]~[#6]~[#6]~4` (tetracyclic steroid core)
 
 ### Prenol Lipids (PR)
 
@@ -98,7 +97,7 @@ Lipids with complex carbohydrate and phosphate linkages:
 
 - **SL**: Lipid A, Lipopolysaccharides, Peptidoglycans
 
-SMARTS: `[#6][OX2][PX4](=[OX1])[OX2][#6]` (phosphoester linkage)
+SMARTS: `[CX3](=[OX1])[NX3][CHX4]1[CHX4]([OX2])[CHX4]([OX2])[CHX4]([OX2])[CHX4]([CH2X4][OX2])[OX2]1` (2-acylamido hexopyranose core)
 
 ### Polyketides (PK)
 
@@ -118,23 +117,23 @@ Palmitic acid (FA, C16:0)
   → 16 carbons, 0 double bonds → FA
 
 Oleic acid (MUFA, C18:1)
-  CCCCCCCC=CCCCCCCCCC(=O)O
+  CCCCCCCC=CCCCCCCCC(=O)O
   → 18 carbons, 1 double bond → MUFA
 
-Arachidonic (PUFA, C20:4)
-  CC=CCC=CCC=CCC=CCCCCCCC(=O)O
+Arachidonic acid (PUFA, C20:4)
+  CCCCCC=CCC=CCC=CCC=CCCCC(=O)O
   → 20 carbons, 4 double bonds → PUFA
 ```
 
 ### Glycerophospholipids - Acyl Count
 
 ```
-PC (Phosphatidylcholine)
-  CCCCCCCCCCCCCCCC(=O)O-C(CO-P-OCC[N+(C)(C)C])-OC(=O)CCCCCCCC=C...
+PC (Phosphatidylcholine, 16:0/18:1)
+  CCCCCCCCCCCCCCCC(=O)OCC(COP(=O)([O-])OCC[N+](C)(C)C)OC(=O)CCCCCCCC=CCCCCCCCC
   → Glycerol + Phosphate + Choline + 2 acyl chains → PC
 
-LPC (Lysophosphatidylcholine)
-  CCCCCCCCCCCCCCCC(=O)O-C(CO-P-OCC[N+(C)(C)C])(-CO)-OH
+LPC (Lysophosphatidylcholine, 16:0)
+  CCCCCCCCCCCCCCCC(=O)OCC(O)COP(=O)([O-])OCC[N+](C)(C)C
   → Glycerol + Phosphate + Choline + 1 acyl chain → LPC (lyso)
 
 CL (Cardiolipin)

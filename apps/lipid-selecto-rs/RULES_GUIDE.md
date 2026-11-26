@@ -38,25 +38,25 @@ This document explains the SMARTS classification rules compiled into
 
 #### Glycerolipids (GL)
 
-  | Rule        | Acyl Count | SMARTS                                                                        | Example              |
-  | ---         | ---        | ---                                                                           | ---                  |
-  | **TG(AAA)** | 3          | `[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]` | Triolein             |
-  | **DG(AA)**  | 2          | `[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]`                         | 1,2-Dioleoylglycerol |
-  | **MG(A)**   | 1          | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]`                                  | 1-Oleoylglycerol     |
+  | Rule        | Acyl Count | SMARTS                                                                                       | Example              |
+  | ---         | ---        | ---                                                                                          | ---                  |
+  | **TG(AAA)** | 3          | `[CH2X4]([OX2][CX3](=[OX1])[#6])[CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2][CX3](=[OX1])[#6]` | Triolein             |
+  | **DG(AA)**  | 2          | `[CH2X4]([OX2][CX3](=[OX1])[#6])[CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2H]`                 | 1,2-Dioleoylglycerol |
+  | **MG(A)**   | 1          | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]`                                                 | 1-Oleoylglycerol     |
 
 #### Glycerophospholipids (GP)
 
-  | Rule         | Headgroup      | Acyls | SMARTS                                                                              |
-  | ---          | ---            | ---   | ---                                                                                 |
-  | **PC(AA)**   | Choline        | 2     | `[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]`                              |
-  | **PE(AA)**   | Ethanolamine   | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CH2X4][NX3;H2,H1,H0]`                           |
-  | **PS(AA)**   | Serine         | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([CX3](=[OX1])[OX2H,OX1-])[NX3]`           |
-  | **PI(AA)**   | Inositol       | 2     | `[PX4](=[OX1])([OX2])([OX2])[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1`            |
-  | **PG(AA)**   | Glycerol       | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]`           |
-  | **PA(AA)**   | Phosphate      | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4][CH2X4][OX2H,OX1-]`                        |
-  | **LPC(A)**   | Choline        | 1     | `[CH2X4][CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2][PX4](=[OX1])[OX2][CH2X4][N+;X4]` |
-  | **LPE(A)**   | Ethanolamine   | 1     | `[CH2X4][CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2][PX4](=[OX1])[OX2][CH2X4][NX3]`   |
-  | **CL(AAAA)** | Diphosphatidyl | 4     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2])[CH2X4][OX2]`                       |
+  | Rule         | Headgroup      | Acyls | SMARTS                                                                                                         |
+  | ---          | ---            | ---   | ---                                                                                                            |
+  | **PC(AA)**   | Choline        | 2     | `[CH2X4][CHX4]([OX2])[CH2X4][OX2][PX4](=[OX1])([OX2H,OX1-])[OX2][CH2X4][CH2X4][NX4+]([CH3])([CH3])[CH3]`       |
+  | **PE(AA)**   | Ethanolamine   | 2     | `[PX4](=[OX1])([OX2H,OX1-])([OX2])[OX2][CH2X4][CH2X4][NX3;H2,H1,H0]`                                           |
+  | **PS(AA)**   | Serine         | 2     | `[PX4](=[OX1])([OX2H,OX1-])([OX2])[OX2][CH2X4][CHX4]([CX3](=[OX1])[OX2H,OX1-])[NX3]`                           |
+  | **PI(AA)**   | Inositol       | 2     | `[PX4](=[OX1])([OX2H,OX1-])([OX2])[OX2][C;R1]1[CH;R1]([OX2])[CH;R1]([OX2])[CH;R1]([OX2])[CH;R1]([OX2])[CH;R1]1[OX2]` |
+  | **PG(AA)**   | Glycerol       | 2     | `[PX4](=[OX1])([OX2H,OX1-])([OX2])[OX2][CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]`                           |
+  | **PA(AA)**   | Phosphate      | 2     | `[CH2X4][CHX4]([OX2])[CH2X4][OX2][PX4](=[OX1])([OX2H,OX1-])[OX2H,OX1-]`                                        |
+  | **LPC(A)**   | Choline        | 1     | `[CH2X4][CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2][PX4](=[OX1])[OX2][CH2X4][N+;X4]`                            |
+  | **LPE(A)**   | Ethanolamine   | 1     | `[CH2X4][CHX4]([OX2][CX3](=[OX1])[#6])[CH2X4][OX2][PX4](=[OX1])[OX2][CH2X4][NX3]`                              |
+  | **CL(AAAA)** | Diphosphatidyl | 4     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2])[CH2X4][OX2]`                                                  |
 
 #### Sphingolipids (SP)
 
@@ -68,12 +68,12 @@ This document explains the SMARTS classification rules compiled into
 
 #### Sterol Lipids (ST), Prenol Lipids (PR), Saccharolipids (SL), Polyketides (PK)
 
-  | Rule   | Category       | SMARTS                                                                                             |
-  | ---    | ---            | ---                                                                                                |
-  | **ST** | Sterol Lipids  | `[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6]`                                             |
-  | **PR** | Prenol Lipids  | `[#6]=[#6][#6]=[#6][#6]`                                                                           |
-  | **SL** | Saccharolipids | `[#6][OX2][PX4](=[OX1])[OX2][#6]`                                                                  |
-  | **PK** | Polyketides    | `[#6;R]1[#6]([#6](=[OX1])[#6])[#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R]1` |
+  | Rule   | Category       | SMARTS                                                                                                         |
+  | ---    | ---            | ---                                                                                                            |
+  | **ST** | Sterol Lipids  | `[#6]1~[#6]~[#6]~[#6]2~[#6](~[#6]~1)~[#6]~[#6]~[#6]3~[#6]~2~[#6]~[#6]~[#6]4~[#6]~3~[#6]~[#6]~[#6]~4`          |
+  | **PR** | Prenol Lipids  | `[#6]=[#6][#6]=[#6][#6]`                                                                                       |
+  | **SL** | Saccharolipids | `[CX3](=[OX1])[NX3][CHX4]1[CHX4]([OX2])[CHX4]([OX2])[CHX4]([OX2])[CHX4]([CH2X4][OX2])[OX2]1`                  |
+  | **PK** | Polyketides    | `[#6;R]1[#6]([#6](=[OX1])[#6])[#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R]1`       |
 
 ## Understanding SMARTS Patterns
 

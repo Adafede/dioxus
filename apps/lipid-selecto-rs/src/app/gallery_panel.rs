@@ -4,7 +4,7 @@
 //! Filtered lipid gallery card grid.
 
 use dioxus::prelude::*;
-use lipid_core::{Analysis, FilterCriteria, GalleryItem, passes_item_filters};
+use lipid_core::{Analysis, FilterCriteria, GalleryItem, build_filtered_gallery};
 use ui::{ColorScheme, StyleBuilder};
 
 use super::types::SummaryFilters;
@@ -97,6 +97,8 @@ fn gallery_card(item: &GalleryItem) -> Element {
     }
 }
 
+const MAX_GALLERY_ITEMS: usize = 96;
+
 /// Displays filtered gallery cards matching selected classes, mass/m/z ranges, and adduct.
 #[component]
 pub(super) fn GalleryPanel(analysis: Signal<Option<Analysis>>, filters: SummaryFilters) -> Element {
@@ -113,33 +115,27 @@ pub(super) fn GalleryPanel(analysis: Signal<Option<Analysis>>, filters: SummaryF
         precursor_max: *filters.precursor_max.read(),
         adduct: &adduct,
     };
-    let filtered: Vec<&GalleryItem> = data
-        .gallery
-        .iter()
-        .filter(|item| {
-            passes_item_filters(
-                item.class_matches,
-                item.exact_mass,
-                item.precursor_mz,
-                item.adduct.as_deref(),
-                &criteria,
-            )
-        })
-        .collect();
+    let filtered = build_filtered_gallery(
+        &data.blocks,
+        &data.gallery,
+        &criteria,
+        MAX_GALLERY_ITEMS,
+        data.all_classes,
+    );
     let count = filtered.len();
 
     rsx! {
         div { style: StyleBuilder::new().property("margin-top", "1.25rem").build(),
             h2 { style: StyleBuilder::new().margin("0 0 0.5rem").font_size("1.05rem").color(ColorScheme::LIGHT.text).build(),
-                "Structures matching selected classes ({count} shown)"
+                "Structures matching filters ({count} shown)"
             }
             if count == 0 {
                 p { style: StyleBuilder::new().color(ColorScheme::LIGHT.text3).build(),
-                    "Select one or more chemical families to see matching structures."
+                    "Select one or more chemical families or adjust filters to see matching structures."
                 }
             } else {
                 div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fill, minmax(320px, 1fr))").gap("0.75rem").build(),
-                    for item in filtered {
+                    for item in &filtered {
                         { gallery_card(item) }
                     }
                 }

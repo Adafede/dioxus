@@ -13,13 +13,16 @@ lipidmaps/
     ├── Cargo.lock
     ├── README.md
     └── src/
+        ├── cli/                  subcommand handlers and report/ordering helpers
+        ├── download/             SDF-to-TSV stream converter (`sdf.rs`)
         ├── download.rs           fetch LMSD.sdf.zip and convert to TSV
+        ├── error.rs              CLI error types
+        ├── lib.rs                library exports
         ├── splitting.rs          split TSV into per-class +/- SMILES pairs
         ├── evolve.rs             run smarts-evolution GA per class
         ├── manifest.rs           CSV manifest I/O
         ├── main.rs               CLI binary (download / split / evolve / all)
-        ├── results_io.rs         result CSV readers, writers, and resume filter
-        └── lipidsdl/             vendored SDF/TSV download & conversion module
+        └── results_io.rs         result CSV readers, writers, and resume filter
 ```
 
 Downloaded `LMSD.sdf.zip` and `LMSD.sdf.tsv` artifacts are gitignored and never

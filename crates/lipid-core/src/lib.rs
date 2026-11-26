@@ -52,7 +52,8 @@ pub use filter::{
 pub use format::LipidFormat;
 pub use lipids::types::LipidClassification;
 pub use parser::analysis::{
-    Analysis, GalleryItem, Summary, build_analysis_from_classified, classify_blocks,
+    Analysis, GalleryItem, Summary, build_analysis_from_classified, build_filtered_gallery,
+    classify_blocks,
 };
 pub use parser::block::SpectrumBlock;
 pub use parser::extractor::BlockExtractor;

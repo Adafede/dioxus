@@ -11,6 +11,7 @@ use crate::chemical_class::ChemicalClass;
 #[cfg(test)]
 use crate::chemical_class::lmsd::lmsd_classes;
 use crate::family::LipidFamily;
+use crate::filter::{FilterCriteria, passes_item_filters};
 use crate::lipids::types::LipidClassification;
 
 /// Aggregate counts produced by collection summarization.
@@ -165,6 +166,43 @@ pub(crate) fn build_gallery(
         .collect()
 }
 
+/// Build up to `limit` [`GalleryItem`] cards from `blocks` matching `criteria`.
+///
+/// Filters all blocks before applying the `limit` cap so lipids outside the
+/// unfiltered top `limit` remain visible when narrowing classes, mass, or adducts.
+/// Reuses pre-rendered items from `cached_gallery` (ordered ascending by
+/// `block_index`) before rendering additional blocks on demand.
+#[must_use]
+pub fn build_filtered_gallery(
+    blocks: &[SpectrumBlock],
+    cached_gallery: &[GalleryItem],
+    criteria: &FilterCriteria<'_>,
+    limit: usize,
+    classes: &[ChemicalClass],
+) -> Vec<GalleryItem> {
+    blocks
+        .iter()
+        .filter(|block| {
+            block.is_lipid()
+                && passes_item_filters(
+                    block.class_matches(),
+                    block.exact_mass,
+                    block.precursor_mz,
+                    block.adduct.as_deref(),
+                    criteria,
+                )
+        })
+        .take(limit)
+        .map(|block| {
+            cached_gallery
+                .binary_search_by_key(&block.index, |g| g.block_index)
+                .ok()
+                .and_then(|pos| cached_gallery.get(pos))
+                .map_or_else(|| gallery_item(block, classes), Clone::clone)
+        })
+        .collect()
+}
+
 /// Complete analysis bundle produced from uploaded spectra.
 #[derive(Clone, Debug)]
 pub struct Analysis {
@@ -219,4 +257,55 @@ pub(crate) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     classify_blocks(&mut blocks, lmsd_classes());
     let summary = summarize(&blocks);
     (blocks, summary)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bitset::ClassMatchSet;
+    use crate::example_smiles;
+
+    #[test]
+    fn filtered_gallery_includes_classes_beyond_initial_cache_cap() {
+        let input = example_smiles().join("\n");
+        let mut blocks = extract_blocks(&input);
+        let classes = lmsd_classes();
+        classify_blocks(&mut blocks, classes);
+        let analysis = build_analysis_from_classified(blocks, 16, classes);
+        let first_st_block = analysis.blocks.iter().find(|b| {
+            b.classification
+                .as_ref()
+                .is_some_and(|c| c.family == LipidFamily::SterolLipids)
+        });
+        assert!(
+            first_st_block.is_some_and(|b| b.index > 16),
+            "example dataset must contain a sterol lipid beyond cap 16"
+        );
+        let st_only = classes
+            .iter()
+            .filter(|c| c.family == LipidFamily::SterolLipids)
+            .fold(ClassMatchSet::empty(), |mut set, c| {
+                set.insert(c.index);
+                set
+            });
+        let criteria = FilterCriteria {
+            selected_classes: st_only,
+            mz_min: 0.0,
+            mz_max: 5000.0,
+            precursor_min: 0.0,
+            precursor_max: 5000.0,
+            adduct: "",
+        };
+        let filtered = build_filtered_gallery(
+            &analysis.blocks,
+            &analysis.gallery,
+            &criteria,
+            16,
+            analysis.all_classes,
+        );
+        assert!(
+            !filtered.is_empty(),
+            "sterols beyond cap 16 must appear when filtering by ST"
+        );
+    }
 }
