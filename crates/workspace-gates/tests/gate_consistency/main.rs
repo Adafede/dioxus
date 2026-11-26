@@ -43,7 +43,7 @@ use std::path::PathBuf;
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 /// The `id` every app's `<main>` must carry, because it is the `href`
-/// `ui::skip_link` hardcodes. Duplicated from `crates/ui/src/common.rs` on
+/// `ui::skip_link` hardcodes. Duplicated from `crates/ui/src/a11y.rs` on
 /// purpose: this test reads app source as text and cannot import the constant
 /// out of the component that renders it.
 const MAIN_LANDMARK_ID: &str = "id: \"main-content\"";

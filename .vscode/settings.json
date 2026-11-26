@@ -14,7 +14,7 @@
 
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer",
-    "editor.rustfmt.run": "onSave"
+    "editor.formatOnSave": true
   },
 
   "files.exclude": {

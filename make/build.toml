@@ -30,6 +30,8 @@ dependencies = [
   "check-wasm-smellfish-core",
   "check-wasm-smellfish-rs",
   "check-wasm-stream-io",
+  "check-wasm-ui",
+  "check-wasm-upload",
 ]
 
 [tasks."check-wasm-cxsmiles-core"]
@@ -101,6 +103,16 @@ script = "cargo check -p mgf-analysis-core --target wasm32-unknown-unknown --loc
 cwd = "${REPO_ROOT}"
 description = "Type-check smellfish-core for wasm32-unknown-unknown."
 script = "cargo check -p smellfish-core --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-ui"]
+cwd = "${REPO_ROOT}"
+description = "Type-check ui for wasm32-unknown-unknown."
+script = "cargo check -p ui --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-upload"]
+cwd = "${REPO_ROOT}"
+description = "Type-check upload for wasm32-unknown-unknown."
+script = "cargo check -p upload --target wasm32-unknown-unknown --locked"
 
 # Every feature combination in the workspace.
 #

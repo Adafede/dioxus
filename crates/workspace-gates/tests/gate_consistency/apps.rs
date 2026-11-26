@@ -106,7 +106,7 @@ fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
 /// all: it imported `smiles_parser`, which is not in its manifest, and the root
 /// `Cargo.toml` claimed it "builds when the line above is uncommented".
 ///
-/// Neither claim is checkable from here -- building it needs its three git
+/// Neither claim is checkable from here -- building it needs its two git
 /// dependencies and a network -- so what this asserts is the part that is: that
 /// it is *excluded* rather than half-membered, that it declares itself a
 /// standalone workspace (without which Cargo refuses to build it at all), and

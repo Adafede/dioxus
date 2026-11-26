@@ -84,17 +84,18 @@ script = """
 set -euo pipefail
 found=0
 bad=0
-while IFS=@ read -r repo sha; do
-  [ -n "$repo" ] || continue
+while IFS=@ read -r action_path sha; do
+  [ -n "$action_path" ] || continue
+  IFS=/ read -r owner repo_name _ <<< "$action_path"
+  repo="$owner/$repo_name"
   found=$((found + 1))
   if ! gh api "repos/$repo/commits/$sha" --jq .sha > /dev/null 2>&1; then
-    echo "$repo@$sha does not resolve in $repo" >&2
+    echo "$action_path@$sha does not resolve in $repo" >&2
     bad=$((bad + 1))
   else
-    echo "ok  $repo@$sha"
+    echo "ok  $action_path@$sha"
   fi
-done < <(grep -rhoE 'uses: [a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+@[0-9a-f]{40}' .github/workflows/ \
-         | sed 's/uses: //' | sort -u)
+done < <(grep -rhoE 'uses: [a-zA-Z0-9_.-]+(/[a-zA-Z0-9_.-]+)+@[0-9a-f]{40}' .github/workflows/ .github/actions/ | sed 's/uses: //' | sort -u)
 if [ "$found" -eq 0 ]; then
   echo "no action pins found: the grep matched nothing" >&2
   exit 1

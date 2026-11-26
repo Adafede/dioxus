@@ -75,7 +75,7 @@ cargo nextest run --workspace --profile live --run-ignored only \\
 cwd = "${REPO_ROOT}"
 description = "Coverage report for the logic crates, via nextest."
 script = """
-cargo llvm-cov nextest run --locked \\
+cargo llvm-cov nextest --locked \\
   -p json-count-core -p cxsmiles-core -p stream-io -p upload \\
   --profile ci --no-fail-fast
 """
@@ -84,7 +84,7 @@ cargo llvm-cov nextest run --locked \\
 [tasks."cov-summary"]
 cwd = "${REPO_ROOT}"
 description = "Print the coverage summary table without writing HTML."
-script = "cargo llvm-cov nextest run --locked --summary-only --workspace"
+script = "cargo llvm-cov nextest --locked --summary-only --workspace"
 
 # Mutation testing is the standard `./mk mutants` gate: mk's bounded runner
 # over MUTANTS_PACKAGES (mk.local), with nextest, the timeouts and the

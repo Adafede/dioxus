@@ -64,7 +64,7 @@ root=$(pwd)
 # second being `1`, where the empty slot was. An empty version is how an
 # inherited one is reported, so the field has to survive.
 #
-# The eight workspace members leave it empty — they say
+# The seventeen workspace members leave it empty — they say
 # `version.workspace = true` and take the number from `[workspace.package]` —
 # and they are also the only crates whose manifest is inside this repository,
 # so the empty field and the location cannot disagree without the workspace
@@ -135,7 +135,8 @@ total_uses=0
 crates_with_unsafe=0
 crates_forbidding=0
 
-for root_of_crate in $crate_roots; do
+while IFS= read -r root_of_crate; do
+    [ -n "$root_of_crate" ] || continue
     IFS='|' read -r name version < <(read_crate "$root_of_crate")
     [ -n "$name" ] || continue
     if [ -z "$version" ]; then version=$workspace_version; fi
@@ -168,7 +169,7 @@ for root_of_crate in $crate_roots; do
         -not -path '*/target/*' -not -path '*/.git/*' -print 2>/dev/null | wc -l) || true
 
     forbid=""
-    if grep -q "${scan[@]}" -E '#![[:space:]]*\[[[:space:]]*forbid[[:space:]]*\([[:space:]]*unsafe_code\s*\)' \
+    if grep -q "${scan[@]}" -E '#![[:space:]]*\[[[:space:]]*forbid[[:space:]]*\([[:space:]]*unsafe_code[[:space:]]*\)' \
         -- "$crate_dir" 2>/dev/null; then
         forbid="  #![forbid(unsafe_code)]"
         crates_forbidding=$((crates_forbidding + 1))
@@ -179,7 +180,7 @@ for root_of_crate in $crate_roots; do
 
     total_uses=$((total_uses + uses))
     if [ "$uses" -gt 0 ]; then crates_with_unsafe=$((crates_with_unsafe + 1)); fi
-done
+done < <(printf '%s\n' "$crate_roots")
 
 # Most unsafe first, then alphabetically, so the interesting rows are the ones on
 # screen and a big number is not hidden behind a big name. One `awk` does the
