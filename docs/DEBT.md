@@ -17,7 +17,7 @@ reason, owner, and removal condition.
 
 ## Ratchet Floors (`mk.local`)
 
-- `COVERAGE_FAIL_UNDER_LINES="73"`
+- `COVERAGE_FAIL_UNDER_LINES="80"`
 - `ECHOES_MAX_APPROXIMATE=0`
 - `ECHOES_MAX_REUSE=0`
 - `Cargo.toml` lint `allow` count: `3`
