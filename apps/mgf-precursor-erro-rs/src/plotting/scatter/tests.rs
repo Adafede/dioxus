@@ -110,3 +110,45 @@ fn render_absolute_mass_bias_svg_valid_points_returns_ok() {
         "expected SVG with scatter points, got {result:?}"
     );
 }
+
+#[test]
+fn plotting_data_helpers_downsample_format_and_stay_monotonic() {
+    use super::super::data::{
+        build_ecdf_points, display_error_value_for_point, fallback_y_limit_for_unit,
+        format_threshold_value, sample_scatter_points,
+    };
+
+    let pt = sample_point(0.002, 4.0);
+    assert!(
+        (display_error_value_for_point(&pt, "ppm") - 4.0).abs() < 1e-12,
+        "ppm selector"
+    );
+    assert!(
+        (display_error_value_for_point(&pt, "mDa") - 2.0).abs() < 1e-12,
+        "mDa selector"
+    );
+    assert!(
+        (fallback_y_limit_for_unit("ppm") - 10.0).abs() < 1e-12,
+        "ppm fallback y_limit"
+    );
+    assert!(
+        (fallback_y_limit_for_unit("mDa") - 5.0).abs() < 1e-12,
+        "mDa fallback y_limit"
+    );
+    assert_eq!(format_threshold_value(0.5), "0.5", "trim trailing zeros");
+    assert_eq!(format_threshold_value(10.0), "10", "integer formatting");
+
+    let raw: Vec<(f64, f64)> = (0..100).map(|i| (f64::from(i), f64::from(i))).collect();
+    let down = sample_scatter_points(raw, 10);
+    assert_eq!(down.len(), 10, "downsampled len");
+    assert_eq!(down.first().copied(), Some((0.0, 0.0)), "first kept");
+    assert_eq!(down.last().copied(), Some((99.0, 99.0)), "last kept");
+
+    let large_vals: Vec<f64> = (1..=60_000).map(|i| f64::from(i) * 0.001).collect();
+    let ecdf = build_ecdf_points(&large_vals, 0.001, 50.0);
+    assert!(ecdf.len() > 100, "ecdf emitted steps");
+    assert!(
+        ecdf.is_sorted_by(|a, b| a.0 <= b.0 && a.1 <= b.1),
+        "ecdf must be non-decreasing in both axes"
+    );
+}

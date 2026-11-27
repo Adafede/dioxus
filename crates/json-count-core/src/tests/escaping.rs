@@ -211,4 +211,17 @@ fn trailing_backslash_and_invalid_utf8_are_rejected() {
         unescape_json_string(&[b'a', 0xFF, b'b']),
         Err(JsonCountError::InvalidUtf8)
     );
+    assert_eq!(
+        unescape_json_string(&[b'a', b'\\', b'n', 0x80]),
+        Err(JsonCountError::InvalidUtf8)
+    );
+    assert_eq!(
+        unescape_json_string(&[b'a', b'\\', b'n', b'x', 0x01]),
+        Err(JsonCountError::UnescapedControlChar)
+    );
+    assert_eq!(
+        unescape_json_string(br"\u0041\u0042\ud83d\udc00"),
+        Ok("AB\u{1F400}".to_string()),
+        "mixed BMP and supplementary surrogate escapes"
+    );
 }

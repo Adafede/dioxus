@@ -86,3 +86,35 @@ fn edge_cases_non_finite_negligible_error_and_clamping() {
         "nan lambda",
     );
 }
+
+#[test]
+fn lambda_monotonicity_and_orbitrap_self_calibration_invariant() {
+    let ms1 = 500.0;
+    let ms2 = 500.025;
+    let mut prev_shift = 0.0;
+    for lambda in [0.0, 0.25, 0.5, 0.75, 1.0] {
+        for model in [
+            CalibrationModel::tof(lambda),
+            CalibrationModel::orbitrap(lambda),
+        ] {
+            let mut frags = vec![Peak::new(250.0, 100.0), Peak::new(ms2, 500.0)];
+            recalibrate_fragments(&mut frags, ms1, ms2, model);
+            let shift = (250.0 - frags[0].mz).abs();
+            assert!(
+                shift >= prev_shift - 1e-12 || lambda == 0.0,
+                "shift must grow with lambda={lambda}"
+            );
+            if (lambda - 1.0).abs() < 1e-12 {
+                assert_close(
+                    frags[1].mz,
+                    ms1,
+                    1e-12,
+                    "exact self-calibration at lambda=1",
+                );
+            }
+            if matches!(model, CalibrationModel::OrbitrapPPM { .. }) {
+                prev_shift = shift;
+            }
+        }
+    }
+}

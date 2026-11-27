@@ -234,3 +234,34 @@ O=C=O";
     assert_eq!(forward.scaffold_smiles, reversed.scaffold_smiles);
     assert_eq!(forward.enumerated, reversed.enumerated);
 }
+
+#[test]
+fn permutation_invariance_holds_across_positional_and_repeating_series() {
+    for series in [
+        [
+            "Clc1ccccc1-c2ccccc2",
+            "Clc1cccc(-c2ccccc2)c1",
+            "Clc1ccc(-c2ccccc2)cc1",
+        ],
+        [
+            "OC(=O)C(F)(F)C(F)F",
+            "OC(=O)C(F)(F)C(F)(F)C(F)F",
+            "OC(=O)C(F)(F)C(F)(F)C(F)(F)C(F)F",
+        ],
+    ] {
+        let base_in: Vec<String> = series.iter().map(|s| (*s).to_string()).collect();
+        let base = generate(&base_in).expect("series must synthesize");
+        for perm in [[0, 2, 1], [1, 0, 2], [2, 0, 1], [2, 1, 0]] {
+            let perm_in: Vec<String> = perm.iter().map(|&i| series[i].to_string()).collect();
+            let res = generate(&perm_in).expect("permuted series must synthesize");
+            assert_eq!(res.construct, base.construct, "construct mismatch");
+            assert_eq!(res.cx_smiles, base.cx_smiles, "cx_smiles mismatch");
+            assert_eq!(
+                res.scaffold_smiles, base.scaffold_smiles,
+                "scaffold mismatch"
+            );
+            assert_eq!(res.coverage, base.coverage, "coverage mismatch");
+            assert_eq!(res.enumerated, base.enumerated, "enumerated mismatch");
+        }
+    }
+}

@@ -119,15 +119,31 @@ fn progress_message_and_callback_invocation() {
 
     let events = Rc::new(RefCell::new(Vec::<(u64, u64)>::new()));
     let sink = Rc::clone(&events);
-    let doc = format!(r#"{{"k":"{}"}}"#, "a".repeat(256));
+    let doc = format!(r#"{{"k":"{}"}}"#, "a".repeat(5 * 1024 * 1024));
     let mut cur = BlobCursor::new(
         SliceSource::new(doc.as_bytes()),
         doc.len() as u64,
         move |p, t| sink.borrow_mut().push((p, t)),
     )
-    .with_chunk_size(16);
+    .with_chunk_size(1_048_576);
     let res = block_on(scan_columns(&mut cur));
     assert!(res.is_ok(), "chunked scan should succeed");
+    let recorded = events.borrow();
+    assert!(
+        !recorded.is_empty(),
+        "progress callback must fire on multi-megabyte stream"
+    );
+    assert!(
+        recorded.is_sorted_by_key(|&(p, _)| p),
+        "progress byte counts must be monotonic: {recorded:?}"
+    );
+    assert!(
+        recorded
+            .last()
+            .copied()
+            .is_some_and(|(p, t)| p >= 4 * 1024 * 1024 && p <= t && t == doc.len() as u64),
+        "progress event must cross 4 MiB threshold with matching total: {recorded:?}"
+    );
 
     let on_progress: fn(u64, u64) = |_, _| {};
     let err = block_on(scan_source_with_progress(

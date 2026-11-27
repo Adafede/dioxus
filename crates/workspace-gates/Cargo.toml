@@ -11,5 +11,16 @@ keywords = ["ci", "governance", "lint", "testing", "workspace"]
 categories = ["development-tools::testing"]
 publish = false
 
+[dev-dependencies]
+cxsmiles-core = { path = "../cxsmiles-core", version = "0.1" }
+futures-executor = { workspace = true }
+json-count-core = { path = "../json-count-core", version = "0.1" }
+lipid-core = { path = "../lipid-core", version = "0.1" }
+mgf = { path = "../mgf", version = "0.1" }
+mgf-analysis-core = { path = "../mgf-analysis-core", version = "0.1" }
+mgf-precursor-erro-rs = { path = "../../apps/mgf-precursor-erro-rs", version = "0.1" }
+smellfish-core = { path = "../smellfish-core", version = "0.1" }
+stream-io = { path = "../stream-io", version = "0.1" }
+
 [lints]
 workspace = true

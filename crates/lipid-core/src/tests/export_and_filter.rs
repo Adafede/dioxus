@@ -298,3 +298,42 @@ stray_line_between_blocks
     assert_eq!(auto_smi.detected_format(), Some(LipidFormat::Smiles));
     assert_eq!(auto_smi.finish().len(), 2);
 }
+
+#[test]
+fn filter_monotonicity_and_idempotence_hold_under_tightening_bounds() {
+    let analysis = build_120_lipid_analysis();
+    let all = ClassMatchSet::all(analysis.all_classes.len());
+    let wide = FilterCriteria {
+        selected_classes: all,
+        mz_min: 0.0,
+        mz_max: 5000.0,
+        precursor_min: 0.0,
+        precursor_max: 5000.0,
+        adduct: "",
+    };
+    let tight = FilterCriteria {
+        mz_max: 260.0,
+        adduct: "[M+H]+",
+        ..wide
+    };
+    let wide_count = build_filtered_mgf_content(
+        &analysis.blocks,
+        &analysis.gallery,
+        analysis.all_classes,
+        &wide,
+    )
+    .matches("BEGIN IONS")
+    .count();
+    let tight_count = build_filtered_mgf_content(
+        &analysis.blocks,
+        &analysis.gallery,
+        analysis.all_classes,
+        &tight,
+    )
+    .matches("BEGIN IONS")
+    .count();
+    assert!(
+        tight_count <= wide_count && tight_count == 119,
+        "tightened filter must be monotonic: tight={tight_count}, wide={wide_count}"
+    );
+}

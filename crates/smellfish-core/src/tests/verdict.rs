@@ -279,3 +279,102 @@ fn non_finite_scores_do_not_classify_as_fishy_and_decorations_do_not_penalize_na
         VerdictCategory::Likely
     );
 }
+
+#[test]
+fn classification_enums_and_verdict_monotonicity_hold() {
+    use crate::model::{CheckStatus, InChIKey14, MotifContext, RingFamily};
+
+    assert_eq!(
+        RingFamily::default(),
+        RingFamily::Acyclic,
+        "default ring family is acyclic"
+    );
+    for fam in [
+        RingFamily::Steroid,
+        RingFamily::Sugar,
+        RingFamily::Macrolide,
+        RingFamily::Flavonoid,
+        RingFamily::Heteroaromatic,
+        RingFamily::Polyaromatic,
+        RingFamily::MixedAromaticAliphatic,
+        RingFamily::Polycyclic,
+        RingFamily::CompactRing,
+        RingFamily::Acyclic,
+    ] {
+        assert_eq!(fam.to_string(), fam.as_str(), "Display matches as_str");
+        assert!(!fam.emoji().is_empty(), "emoji marker non-empty");
+    }
+
+    for ctx in [
+        MotifContext::ErtlCoreWithSupport,
+        MotifContext::ErtlCore,
+        MotifContext::KingdomEnrichedStructural,
+        MotifContext::NaturalStructural,
+        MotifContext::StructuralSupport,
+        MotifContext::KingdomEnriched,
+        MotifContext::NaturalLeaning,
+        MotifContext::SyntheticLeaning,
+        MotifContext::DecorationOnly,
+        MotifContext::NoneDetected,
+    ] {
+        assert_eq!(ctx.to_string(), ctx.as_str(), "Display matches as_str");
+        assert_eq!(
+            ctx.is_detected(),
+            ctx != MotifContext::NoneDetected,
+            "is_detected matches NoneDetected"
+        );
+    }
+
+    for cat in [
+        VerdictCategory::Likely,
+        VerdictCategory::Neutral,
+        VerdictCategory::Caution,
+        VerdictCategory::Skeptical,
+        VerdictCategory::Fishy,
+    ] {
+        assert!(
+            cat.css_class().starts_with("verdict-"),
+            "CSS class prefix for {cat:?}"
+        );
+    }
+
+    for st in [CheckStatus::Pass, CheckStatus::Warn, CheckStatus::Fail] {
+        assert_eq!(st.to_string(), st.as_str(), "CheckStatus Display");
+    }
+    for sc in [
+        SourceClass::Natural,
+        SourceClass::Synthetic,
+        SourceClass::Unknown,
+    ] {
+        assert_eq!(sc.to_string(), sc.as_str(), "SourceClass Display");
+        assert_eq!(
+            SourceClass::from(sc.as_str()),
+            sc,
+            "SourceClass str roundtrip"
+        );
+    }
+    let Some(key) = InChIKey14::from_inchikey("RYYVLZVUVIJVGH-UHFFFAOYSA-N") else {
+        unreachable!("valid 27-char InChIKey must parse");
+    };
+    assert_eq!(key.to_string(), "RYYVLZVUVIJVGH", "InChIKey14 Display");
+
+    let rank = |cat: VerdictCategory| -> u8 {
+        match cat {
+            VerdictCategory::Fishy => 0,
+            VerdictCategory::Caution => 1,
+            VerdictCategory::Skeptical => 2,
+            VerdictCategory::Neutral => 3,
+            VerdictCategory::Likely => 4,
+        }
+    };
+    let mut prev = 0u8;
+    for score in [-3.0, -2.0, -0.5, 0.5, 1.5, 2.5] {
+        let v = classify_np_evidence(&ev(score, false, false, 0, counts(2, 1, 0, 4, 0, 1)));
+        let r = rank(v.category);
+        assert!(
+            r >= prev,
+            "verdict rank regressed at score={score}: {prev} -> {r}"
+        );
+        prev = r;
+    }
+}

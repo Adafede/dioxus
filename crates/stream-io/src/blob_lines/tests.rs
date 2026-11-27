@@ -13,10 +13,14 @@ fn drain(text: &str, chunk: usize) -> Vec<String> {
         let mut reader =
             BlobLines::new(SliceSource::new(text.as_bytes()), |_, _| {}).with_chunk_size(chunk);
         let mut lines = Vec::new();
-        while lines.len() < 64 {
+        loop {
             match reader.next_line().await {
                 Ok(Some(line)) => lines.push(line),
-                Ok(None) | Err(_) => break,
+                Ok(None) => break,
+                Err(err) => {
+                    lines.push(format!("<StreamError: {err}>"));
+                    break;
+                }
             }
         }
         lines
@@ -82,6 +86,25 @@ fn strips_carriage_returns() {
 #[test]
 fn keeps_multibyte_characters_intact_across_a_boundary() {
     assert_eq!(drain("résumé\nαβγ\n", 2), ["résumé", "αβγ"]);
+}
+
+#[test]
+fn chunk_size_invariance_holds_for_long_crlf_and_multibyte_lines() {
+    let long_a = "A".repeat(150);
+    let long_b = "β".repeat(90);
+    let doc = format!("{long_a}\r\n{long_b}\n\ntail");
+    let baseline = drain(&doc, 4096);
+    assert_eq!(
+        baseline,
+        [long_a, long_b, String::new(), "tail".to_string()]
+    );
+    for chunk in [1, 2, 3, 7, 16, 64] {
+        assert_eq!(
+            drain(&doc, chunk),
+            baseline,
+            "chunk size {chunk} changed parsed lines"
+        );
+    }
 }
 
 #[test]

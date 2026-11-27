@@ -134,3 +134,54 @@ fn counts_and_spectrum_fallback_work_as_expected() {
     assert!((gp.double_bond_equivalent() - 2.5).abs() < 1e-12);
     assert_eq!(classify_formula("C7H6O2"), None);
 }
+
+#[test]
+fn lipid_family_and_class_match_set_invariants() {
+    use crate::ClassMatchSet;
+    for (rank, fam) in LipidFamily::ALL.iter().enumerate() {
+        assert_eq!(fam.rank(), rank, "rank matches index");
+        assert_eq!(fam.code().len(), 2, "two-letter family code");
+        assert!(!fam.name().is_empty(), "non-empty display name");
+        assert!(
+            fam.category().contains(fam.code()),
+            "category contains family code"
+        );
+        assert!(
+            fam.fallback_code().contains(fam.code()),
+            "fallback code contains family code"
+        );
+        assert_eq!(fam.palette().len(), 5, "five-shade palette");
+    }
+
+    assert!(ClassMatchSet::empty().is_empty(), "empty set is empty");
+    assert_eq!(ClassMatchSet::empty().len(), 0, "empty set length is 0");
+    assert_eq!(ClassMatchSet::all(0).len(), 0, "all(0) is empty");
+    assert_eq!(ClassMatchSet::all(86).len(), 86, "all(86) sets 86 bits");
+    assert_eq!(
+        ClassMatchSet::all(200).len(),
+        128,
+        "all(200) clamps at 128 bits"
+    );
+
+    let mut mask = ClassMatchSet::empty();
+    mask.insert(3);
+    mask.insert(130);
+    assert!(
+        mask.contains(3) && !mask.contains(130),
+        "out-of-range insert is ignored"
+    );
+    mask.toggle(3);
+    assert!(!mask.contains(3), "toggle clears present bit");
+    mask.toggle(5);
+    assert!(mask.contains(5), "toggle sets absent bit");
+    mask.remove(5);
+    assert!(mask.is_empty(), "remove clears last bit");
+    assert!(
+        !ClassMatchSet::from_indices([1, 2]).intersects(ClassMatchSet::from_indices([3, 4])),
+        "disjoint sets do not intersect"
+    );
+    assert!(
+        ClassMatchSet::from_indices([1, 2]).intersects(ClassMatchSet::from_indices([2, 4])),
+        "overlapping sets intersect"
+    );
+}

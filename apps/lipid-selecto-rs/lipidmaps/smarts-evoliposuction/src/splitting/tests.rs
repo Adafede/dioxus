@@ -215,4 +215,22 @@ mod cases {
                 .any(|c| c.category == "Glycerolipids [GL]" && c.positive_count() == 25)
         );
     }
+
+    #[test]
+    fn parse_lmsd_tsv_handles_empty_missing_columns_and_optional_category() {
+        assert!(matches!(
+            crate::parse_lmsd_tsv(""),
+            Err(crate::CliError::EmptyInput)
+        ));
+        assert!(matches!(
+            crate::parse_lmsd_tsv("SMILES\tCATEGORY\nCCO\tFA\n"),
+            Err(crate::CliError::MissingColumn("MAIN_CLASS"))
+        ));
+        let tsv = "SMILES\tMAIN_CLASS\tSUB_CLASS\n  CCO  \t FA01 \t \n \t FA01 \t \n CCC \t \t \n";
+        let ds = crate::parse_lmsd_tsv(tsv).unwrap();
+        assert_eq!(ds.rows.len(), 1);
+        assert_eq!(ds.rows[0].smiles, "CCO");
+        assert_eq!(ds.rows[0].category, "");
+        assert_eq!(ds.rows[0].main_class, "FA01");
+    }
 }

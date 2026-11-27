@@ -140,3 +140,61 @@ fn record_error_updates_buckets_moments_median_and_sorting_helpers() {
         "SplitMix64 reservoir_index must hit both parities for even stream lengths: even={even_hits}, odd={odd_hits}"
     );
 }
+
+#[test]
+fn error_unit_buckets_and_sorted_warning_ties_are_deterministic() {
+    use crate::ErrorUnit;
+    assert_eq!(ErrorUnit::Mda.as_str(), "mDa", "mDa label");
+    assert_eq!(ErrorUnit::Ppm.as_str(), "ppm", "ppm label");
+    assert_eq!(
+        ErrorUnit::Mda.plot_thresholds(),
+        &[0.1, 0.5, 1.0, 5.0],
+        "mDa thresholds"
+    );
+    assert_eq!(
+        ErrorUnit::Ppm.plot_thresholds(),
+        &[0.5, 1.0, 5.0, 10.0],
+        "ppm thresholds"
+    );
+
+    for (idx, bucket) in ErrorBucket::ALL.iter().enumerate() {
+        assert!(!bucket.label().is_empty(), "bucket label non-empty");
+        assert_eq!(
+            bucket.severity_level(),
+            idx % 5,
+            "severity level cycles 0..=4"
+        );
+    }
+
+    let mut stats = PrecursorStats::default();
+    stats.unparsed_smiles_warnings.insert(
+        "Z".to_string(),
+        crate::WarningDetail {
+            count: 2,
+            formula: None,
+        },
+    );
+    stats.unparsed_smiles_warnings.insert(
+        "A".to_string(),
+        crate::WarningDetail {
+            count: 2,
+            formula: Some("CH4".to_string()),
+        },
+    );
+    stats.unrecognized_adducts.insert("[M+B]+".to_string(), 3);
+    stats.unrecognized_adducts.insert("[M+A]+".to_string(), 3);
+    assert_eq!(
+        stats
+            .sorted_unparsed_warnings()
+            .iter()
+            .map(|(k, _)| *k)
+            .collect::<Vec<_>>(),
+        vec!["A", "Z"],
+        "tied warning counts sort lexicographically"
+    );
+    assert_eq!(
+        stats.sorted_unrecognized_adducts(),
+        vec![("[M+A]+", 3), ("[M+B]+", 3)],
+        "tied adduct counts sort lexicographically"
+    );
+}

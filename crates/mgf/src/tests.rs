@@ -169,3 +169,70 @@ END IONS
     assert_eq!(parse_leading_float("inf"), None, "Inf must be rejected");
     Ok(())
 }
+
+#[test]
+fn golden_corpus_handles_nested_begin_ions_empty_and_multiblock() -> Result<(), &'static str> {
+    assert!(
+        parse_mgf_lines("".lines()).is_empty(),
+        "empty MGF yields no blocks"
+    );
+    assert!(
+        parse_mgf_lines("COM=header\n100.0 10.0\n".lines()).is_empty(),
+        "header-only MGF yields no blocks"
+    );
+
+    let nested = "\
+BEGIN IONS
+TITLE=unclosed_first
+PEPMASS=300.0
+110.0 10.0
+BEGIN IONS
+TITLE=closed_second
+PEPMASS=450.25 5000
+CHARGE=2+
+ADDUCT=[M+2H]2+
+FORMULA=C10H12N2O
+SMILES=c1ccccc1
+EXACTMASS=176.09496
+120.5 250.0
+200.0 900.0
+END IONS
+";
+    let blocks = parse_mgf_lines(nested.lines());
+    let [first, second] = blocks.as_slice() else {
+        return Err("expected two blocks from nested BEGIN IONS");
+    };
+    assert_eq!(
+        first.header.title.as_deref(),
+        Some("unclosed_first"),
+        "first block title"
+    );
+    assert_eq!(first.peaks.len(), 1, "first block peak count");
+    assert_eq!(
+        second.header.title.as_deref(),
+        Some("closed_second"),
+        "second block title"
+    );
+    assert_eq!(
+        second.header.effective_precursor_mz(),
+        Some(450.25),
+        "second block precursor mz"
+    );
+    assert_eq!(
+        second.header.charge.as_deref(),
+        Some("2+"),
+        "second block charge"
+    );
+    assert_eq!(
+        second.header.adduct.as_deref(),
+        Some("[M+2H]2+"),
+        "second block adduct"
+    );
+    assert_eq!(
+        second.header.formula.as_deref(),
+        Some("C10H12N2O"),
+        "second block formula"
+    );
+    assert_eq!(second.peaks.len(), 2, "second block peak count");
+    Ok(())
+}
