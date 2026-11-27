@@ -3,7 +3,7 @@
 
 //! Compact fixed-size bitset for LMSD chemical class membership (`<= 128` classes).
 
-/// Membership mask over indexed [`crate::ChemicalClass`] entries.
+/// Membership mask over [`crate::ChemicalClass`] entries keyed by [`crate::ChemicalClass::index`].
 ///
 /// Replaces per-spectrum `HashMap<String, bool>` allocations with a single `Copy`
 /// 128-bit integer covering all 86 LMSD main classes.

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
 
-use super::{EXAMPLE_MGF, analyze, build_analysis, extract_blocks};
+use super::{EXAMPLE_MGF, analyze, build_analysis, extract_blocks, wide_criteria};
 use crate::parser::analysis::summarize;
 use crate::{
-    BlockExtractor, ClassMatchSet, FilterCriteria, LipidFamily, LipidFormat,
+    BlockExtractor, ClassMatchSet, LipidFamily, LipidFormat, build_filtered_gallery,
     build_filtered_mgf_content, example_smiles, lmsd_classes,
 };
 
@@ -34,14 +34,7 @@ fn extracts_analyzes_and_summarizes_mgf() {
     assert!(!full.gallery[0].class_matches.is_empty());
 
     let all_mask = ClassMatchSet::all(full.all_classes.len());
-    let criteria = FilterCriteria {
-        selected_classes: all_mask,
-        mz_min: 0.0,
-        mz_max: 5000.0,
-        precursor_min: 0.0,
-        precursor_max: 5000.0,
-        adduct: "",
-    };
+    let criteria = wide_criteria(all_mask);
     let filtered =
         build_filtered_mgf_content(&full.blocks, &full.gallery, full.all_classes, &criteria);
     assert!(filtered.contains("palmitic_acid"));
@@ -146,19 +139,47 @@ END IONS
 
     let analysis = build_analysis(blocks, 16);
     assert_eq!(summarize(&analysis.blocks).lipid_items, 3);
-    let criteria = FilterCriteria {
-        selected_classes: ClassMatchSet::all(classes.len()),
-        mz_min: 0.0,
-        mz_max: 5000.0,
-        precursor_min: 0.0,
-        precursor_max: 5000.0,
-        adduct: "",
-    };
+    let criteria = wide_criteria(ClassMatchSet::all(classes.len()));
     let filtered =
         build_filtered_mgf_content(&analysis.blocks, &analysis.gallery, classes, &criteria);
     assert!(
         filtered.contains("TITLE=fa_only")
             && filtered.contains("TITLE=gl_only")
             && filtered.contains("TITLE=gp_only")
+    );
+}
+
+#[test]
+fn filtered_gallery_includes_classes_beyond_initial_cache_cap() {
+    let input = example_smiles().join("\n");
+    let analysis = build_analysis(extract_blocks(&input), 16);
+    let first_st_block = analysis.blocks.iter().find(|b| {
+        b.classification
+            .as_ref()
+            .is_some_and(|c| c.family == LipidFamily::SterolLipids)
+    });
+    assert!(
+        first_st_block.is_some_and(|b| b.index > 16),
+        "example dataset must contain a sterol lipid beyond cap 16"
+    );
+    let st_only = analysis
+        .all_classes
+        .iter()
+        .filter(|c| c.family == LipidFamily::SterolLipids)
+        .fold(ClassMatchSet::empty(), |mut set, c| {
+            set.insert(c.index);
+            set
+        });
+    let criteria = wide_criteria(st_only);
+    let filtered = build_filtered_gallery(
+        &analysis.blocks,
+        &analysis.gallery,
+        &criteria,
+        16,
+        analysis.all_classes,
+    );
+    assert!(
+        !filtered.is_empty(),
+        "sterols beyond cap 16 must appear when filtering by ST"
     );
 }

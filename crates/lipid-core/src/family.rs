@@ -100,18 +100,18 @@ impl LipidFamily {
         }
     }
 
-    /// Fallback `[XX00]` class code used when classifying from molecular formula alone.
+    /// Fallback `XX00` class code used when classifying from molecular formula alone.
     #[must_use]
     pub(crate) const fn fallback_code(self) -> &'static str {
         match self {
-            Self::FattyAcyls => "[FA00]",
-            Self::Glycerolipids => "[GL00]",
-            Self::Glycerophospholipids => "[GP00]",
-            Self::Sphingolipids => "[SP00]",
-            Self::SterolLipids => "[ST00]",
-            Self::PrenolLipids => "[PR00]",
-            Self::Saccharolipids => "[SL00]",
-            Self::Polyketides => "[PK00]",
+            Self::FattyAcyls => "FA00",
+            Self::Glycerolipids => "GL00",
+            Self::Glycerophospholipids => "GP00",
+            Self::Sphingolipids => "SP00",
+            Self::SterolLipids => "ST00",
+            Self::PrenolLipids => "PR00",
+            Self::Saccharolipids => "SL00",
+            Self::Polyketides => "PK00",
         }
     }
 

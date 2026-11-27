@@ -63,6 +63,7 @@ pub fn lmsd_classes() -> &'static [ChemicalClass] {
                 let index = result.len();
                 result.push(ChemicalClass::new(
                     index,
+                    entry.code,
                     full_name,
                     entry.smarts,
                     shade,

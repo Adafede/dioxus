@@ -3,6 +3,7 @@
 
 //! Spectrum/SMILES record representation and single-pass SMARTS + formula classification.
 
+use std::collections::HashMap;
 use std::fmt;
 
 use chematic::chem;
@@ -12,7 +13,7 @@ use mgf::parse_leading_float;
 use crate::bitset::ClassMatchSet;
 use crate::chemical_class::ChemicalClass;
 use crate::family::LipidFamily;
-use crate::lipids::classify::{classify_acyclic_molecule, classify_formula, is_acyclic};
+use crate::lipids::classify::{classify_acyclic_molecule, classify_formula_map, is_acyclic};
 use crate::lipids::types::LipidClassification;
 
 /// One `BEGIN IONS ... END IONS` MGF spectrum or SMILES row.
@@ -165,35 +166,38 @@ impl SpectrumBlock {
             }
             self.classification = smiles_classification;
         } else {
-            if self.exact_mass <= 0.0
-                && let Some(formula_str) = self.formula.as_deref()
-            {
-                self.exact_mass = formula_exact_mass(formula_str);
-            }
-
-            self.classification = self.formula.as_deref().and_then(|formula_str| {
-                let family = classify_formula(formula_str)?;
-                if let Some(idx) = formula_fallback_class_index(classes, family) {
-                    matches.insert(idx);
+            let parsed_formula = self
+                .formula
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .and_then(|s| chem::parse_formula(s).ok());
+            if let Some(counts) = parsed_formula.as_ref() {
+                if self.exact_mass <= 0.0 {
+                    self.exact_mass = formula_exact_mass(counts);
                 }
-                Some(LipidClassification {
-                    family,
-                    derived_from_smiles: false,
-                })
-            });
+                self.classification = classify_formula_map(counts).map(|family| {
+                    if let Some(idx) = formula_fallback_class_index(classes, family) {
+                        matches.insert(idx);
+                    }
+                    LipidClassification {
+                        family,
+                        derived_from_smiles: false,
+                    }
+                });
+            } else {
+                self.classification = None;
+            }
         }
         self.gallery_item_matches = Some(matches);
     }
 }
 
-fn formula_exact_mass(formula_str: &str) -> f64 {
-    let Ok(counts) = chem::parse_formula(formula_str) else {
-        return 0.0;
-    };
+fn formula_exact_mass(counts: &HashMap<String, u32, impl std::hash::BuildHasher>) -> f64 {
     counts
-        .into_iter()
-        .filter_map(|(symbol, count)| {
-            let element = Element::from_symbol(&symbol)?;
+        .iter()
+        .filter_map(|(symbol, &count)| {
+            let element = Element::from_symbol(symbol)?;
             Some(element.atomic_mass() * f64::from(count))
         })
         .sum()
@@ -203,7 +207,7 @@ fn formula_fallback_class_index(classes: &[ChemicalClass], family: LipidFamily) 
     let code = family.fallback_code();
     classes
         .iter()
-        .find(|class| class.name.contains(code))
+        .find(|class| class.code == code)
         .or_else(|| classes.iter().find(|class| class.family == family))
         .map(|class| class.index)
 }

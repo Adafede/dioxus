@@ -18,6 +18,8 @@ use crate::family::LipidFamily;
 pub struct ChemicalClass {
     /// Deterministic bit index in [`lmsd::lmsd_classes`] (`0..86`).
     pub index: usize,
+    /// LMSD subclass identifier (e.g. `"FA01"`).
+    pub(crate) code: &'static str,
     /// Display name (e.g. `"Fatty Acids and Conjugates [FA01]"`).
     pub name: String,
     /// Raw SMARTS pattern string.
@@ -34,6 +36,7 @@ impl ChemicalClass {
     #[must_use]
     pub(crate) fn new(
         index: usize,
+        code: &'static str,
         name: impl Into<String>,
         smarts: &'static str,
         color: &'static str,
@@ -42,6 +45,7 @@ impl ChemicalClass {
         let compiled = smarts::parse_smarts(smarts).ok();
         Self {
             index,
+            code,
             name: name.into(),
             smarts,
             color,

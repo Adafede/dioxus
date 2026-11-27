@@ -38,7 +38,7 @@ impl ElementCounts {
 }
 
 /// Result of classifying a single spectrum.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LipidClassification {
     /// Broad LIPID MAPS family assignment.
     pub family: LipidFamily,

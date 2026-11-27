@@ -3,7 +3,7 @@
 
 use std::fmt::Write as _;
 
-use super::{analyze, build_analysis, extract_blocks};
+use super::{analyze, build_analysis, extract_blocks, wide_criteria};
 use crate::export::{
     ClassTags, block_class_tags, class_tags_from_block, class_tags_from_gallery,
     insert_class_comment,
@@ -157,14 +157,7 @@ fn build_filtered_mgf_and_smiles_apply_filters_and_preserve_untitled_rows() {
     let analysis = build_analysis(extract_blocks(smi_input), 16);
     let classes = lmsd_classes();
     let all_mask = ClassMatchSet::all(classes.len());
-    let criteria = FilterCriteria {
-        selected_classes: all_mask,
-        mz_min: 0.0,
-        mz_max: 5000.0,
-        precursor_min: 0.0,
-        precursor_max: 5000.0,
-        adduct: "",
-    };
+    let criteria = wide_criteria(all_mask);
     let exported =
         build_filtered_smiles_content(&analysis.blocks, &analysis.gallery, classes, &criteria);
     let lines: Vec<&str> = exported.lines().collect();
@@ -226,14 +219,7 @@ fn export_and_adduct_options_stay_consistent_past_gallery_cap() {
     let tags_105 = block_class_tags(block_105, &analysis.gallery, analysis.all_classes);
     assert_eq!(tags_105, tags_1);
 
-    let all_criteria = FilterCriteria {
-        selected_classes: ClassMatchSet::all(analysis.all_classes.len()),
-        mz_min: 0.0,
-        mz_max: 5000.0,
-        precursor_min: 0.0,
-        precursor_max: 5000.0,
-        adduct: "",
-    };
+    let all_criteria = wide_criteria(ClassMatchSet::all(analysis.all_classes.len()));
     let smi = build_filtered_smiles_content(
         &analysis.blocks,
         &analysis.gallery,
@@ -301,15 +287,7 @@ stray_line_between_blocks
 #[test]
 fn filter_monotonicity_and_idempotence_hold_under_tightening_bounds() {
     let analysis = build_120_lipid_analysis();
-    let all = ClassMatchSet::all(analysis.all_classes.len());
-    let wide = FilterCriteria {
-        selected_classes: all,
-        mz_min: 0.0,
-        mz_max: 5000.0,
-        precursor_min: 0.0,
-        precursor_max: 5000.0,
-        adduct: "",
-    };
+    let wide = wide_criteria(ClassMatchSet::all(analysis.all_classes.len()));
     let tight = FilterCriteria {
         mz_max: 260.0,
         adduct: "[M+H]+",

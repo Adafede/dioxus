@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
+#[cfg(test)]
 use chematic::chem;
 use chematic::core::Molecule;
 use chematic::smarts::{self, QueryMolecule};
@@ -67,10 +68,7 @@ fn has_query(molecule: &Molecule, query: &LazyLock<Option<QueryMolecule>>) -> bo
 /// Returns `true` when `molecule` contains no ring atoms.
 #[must_use]
 pub(crate) fn is_acyclic(molecule: &Molecule) -> bool {
-    let Some(query) = Q_RING.as_ref() else {
-        return true;
-    };
-    !smarts::has_match_with_config(query, molecule, &smarts::MatchConfig::default())
+    !has_query(molecule, &Q_RING)
 }
 
 /// Structural broad lipid classification for an already-confirmed acyclic molecule.
@@ -177,7 +175,17 @@ fn classify_from_counts(counts: &ElementCounts) -> Option<LipidFamily> {
     None
 }
 
+/// Conservative formula-only classifier from an already-parsed element count map.
+#[must_use]
+pub(crate) fn classify_formula_map(
+    map: &HashMap<String, u32, impl std::hash::BuildHasher>,
+) -> Option<LipidFamily> {
+    let counts = formula_counts(map);
+    classify_from_counts(&counts)
+}
+
 /// Conservative formula-only fallback classifier when SMILES is missing or invalid.
+#[cfg(test)]
 #[must_use]
 pub(crate) fn classify_formula(formula: &str) -> Option<LipidFamily> {
     let trimmed = formula.trim();
@@ -185,8 +193,7 @@ pub(crate) fn classify_formula(formula: &str) -> Option<LipidFamily> {
         return None;
     }
     let map = chem::parse_formula(trimmed).ok()?;
-    let counts = formula_counts(&map);
-    classify_from_counts(&counts)
+    classify_formula_map(&map)
 }
 
 pub(crate) fn formula_counts(

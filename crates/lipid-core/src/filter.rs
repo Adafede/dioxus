@@ -28,6 +28,10 @@ pub struct FilterCriteria<'a> {
     pub adduct: &'a str,
 }
 
+fn in_finite_range(value: f64, min: f64, max: f64) -> bool {
+    value.is_finite() && min.is_finite() && max.is_finite() && value >= min && value <= max
+}
+
 /// Shared filter predicate used across gallery rendering and MGF/SMILES exports.
 #[must_use]
 pub fn passes_item_filters(
@@ -37,23 +41,13 @@ pub fn passes_item_filters(
     adduct: Option<&str>,
     criteria: &FilterCriteria<'_>,
 ) -> bool {
-    if !class_matches.intersects(criteria.selected_classes) {
-        return false;
-    }
-    if !exact_mass.is_finite()
-        || !criteria.mz_min.is_finite()
-        || !criteria.mz_max.is_finite()
-        || exact_mass < criteria.mz_min
-        || exact_mass > criteria.mz_max
+    if !class_matches.intersects(criteria.selected_classes)
+        || !in_finite_range(exact_mass, criteria.mz_min, criteria.mz_max)
     {
         return false;
     }
     if let Some(pmz) = precursor_mz
-        && (!pmz.is_finite()
-            || !criteria.precursor_min.is_finite()
-            || !criteria.precursor_max.is_finite()
-            || pmz < criteria.precursor_min
-            || pmz > criteria.precursor_max)
+        && !in_finite_range(pmz, criteria.precursor_min, criteria.precursor_max)
     {
         return false;
     }
@@ -63,16 +57,15 @@ pub fn passes_item_filters(
 /// Collect unique adduct values across lipid blocks, sorted with `+` adducts first.
 #[must_use]
 pub fn collect_adduct_options(blocks: &[SpectrumBlock]) -> Vec<String> {
-    let adduct_values: BTreeSet<String> = blocks
+    let adduct_values: BTreeSet<&str> = blocks
         .iter()
         .filter(|block| block.is_lipid())
-        .filter_map(|block| block.adduct.as_ref())
+        .filter_map(|block| block.adduct.as_deref())
         .filter(|a| !a.is_empty())
-        .cloned()
         .collect();
-    let mut options: Vec<String> = adduct_values.into_iter().collect();
+    let mut options: Vec<&str> = adduct_values.into_iter().collect();
     options.sort_by(|a, b| b.contains('+').cmp(&a.contains('+')).then_with(|| a.cmp(b)));
-    options
+    options.into_iter().map(str::to_string).collect()
 }
 
 /// Group chemical classes by [`LipidFamily`] in canonical LIPID MAPS rank order without cloning.

@@ -120,19 +120,17 @@ fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
     let (smiles_str, id_str, parsed) = second.map_or_else(
         || (first, "", try_parse_smiles(first)),
         |sec| {
-            let first_mol = try_parse_smiles(first);
-            let sec_mol = try_parse_smiles(sec);
-            match (first_mol, sec_mol) {
-                (Some(mol), None) => (first, sec, Some(mol)),
-                (None, Some(mol)) => (sec, first, Some(mol)),
-                (Some(f_mol), Some(s_mol)) => {
-                    if looks_like_id(first) && !looks_like_id(sec) {
-                        (sec, first, Some(s_mol))
-                    } else {
-                        (first, sec, Some(f_mol))
-                    }
-                }
-                (None, None) => (first, sec, None),
+            let Some(first_mol) = try_parse_smiles(first) else {
+                return try_parse_smiles(sec)
+                    .map_or((first, sec, None), |mol| (sec, first, Some(mol)));
+            };
+            if looks_like_id(first)
+                && !looks_like_id(sec)
+                && let Some(sec_mol) = try_parse_smiles(sec)
+            {
+                (sec, first, Some(sec_mol))
+            } else {
+                (first, sec, Some(first_mol))
             }
         },
     );

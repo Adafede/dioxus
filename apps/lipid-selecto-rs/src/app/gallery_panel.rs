@@ -10,7 +10,7 @@ use ui::{ColorScheme, StyleBuilder};
 use super::types::SummaryFilters;
 
 fn gallery_class_badge(item: &GalleryItem) -> Element {
-    let bg_color = &item.primary_class_color;
+    let bg_color = item.primary_class_color;
     let badge_label = item
         .primary_class_name
         .as_deref()
@@ -43,7 +43,7 @@ fn gallery_card(item: &GalleryItem) -> Element {
         .precursor_mz
         .map_or_else(|| "—".to_string(), |mz| format!("{mz:.3}"));
     let adduct_text = item.adduct.as_deref().unwrap_or("-");
-    let bg_color = &item.primary_class_color;
+    let bg_color = item.primary_class_color;
     let card_style = StyleBuilder::new()
         .property(
             "background",

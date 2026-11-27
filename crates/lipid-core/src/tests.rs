@@ -9,9 +9,20 @@ mod lipids;
 
 use crate::parser::analysis::{Summary, summarize};
 use crate::{
-    Analysis, BlockExtractor, SpectrumBlock, build_analysis_from_classified, classify_blocks,
-    lmsd_classes,
+    Analysis, BlockExtractor, ClassMatchSet, FilterCriteria, SpectrumBlock,
+    build_analysis_from_classified, classify_blocks, lmsd_classes,
 };
+
+pub(super) fn wide_criteria(selected_classes: ClassMatchSet) -> FilterCriteria<'static> {
+    FilterCriteria {
+        selected_classes,
+        mz_min: 0.0,
+        mz_max: 5000.0,
+        precursor_min: 0.0,
+        precursor_max: 5000.0,
+        adduct: "",
+    }
+}
 
 pub(super) fn extract_blocks(content: &str) -> Vec<SpectrumBlock> {
     let mut extractor = BlockExtractor::default();

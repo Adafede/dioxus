@@ -6,8 +6,6 @@
 use super::block::SpectrumBlock;
 use crate::bitset::ClassMatchSet;
 use crate::chemical_class::ChemicalClass;
-#[cfg(test)]
-use crate::chemical_class::lmsd::lmsd_classes;
 use crate::family::LipidFamily;
 use crate::filter::{FilterCriteria, passes_item_filters};
 use crate::lipids::types::LipidClassification;
@@ -72,7 +70,7 @@ pub struct GalleryItem {
     /// Compact bitset of matched LMSD classes.
     pub class_matches: ClassMatchSet,
     /// Microshades color of the highest-priority matched class.
-    pub primary_class_color: String,
+    pub primary_class_color: &'static str,
     /// Display name of the highest-priority matched class.
     pub primary_class_name: Option<String>,
     /// Broad lipid classification assignment.
@@ -114,14 +112,25 @@ pub(crate) fn primary_class(
         })
 }
 
+/// Look up a pre-rendered [`GalleryItem`] in an ascending `block_index` slice.
+#[must_use]
+pub(crate) fn find_gallery_item(
+    gallery: &[GalleryItem],
+    block_index: usize,
+) -> Option<&GalleryItem> {
+    gallery
+        .binary_search_by_key(&block_index, |item| item.block_index)
+        .ok()
+        .and_then(|pos| gallery.get(pos))
+}
+
 /// Project one classified [`SpectrumBlock`] into a [`GalleryItem`] without re-parsing SMILES.
 #[must_use]
 pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
     let class_matches = block.class_matches();
-    let broad = block.classification.as_ref().map(|c| c.family);
+    let broad = block.classification.map(|c| c.family);
     let first_class = primary_class(classes, class_matches, broad);
-    let primary_class_color =
-        first_class.map_or_else(|| "#f1f5f9".to_string(), |c| c.color.to_string());
+    let primary_class_color = first_class.map_or("#f1f5f9", |c| c.color);
     let primary_class_name = first_class.map(|c| c.name.clone());
 
     let svg = block.parsed_molecule.as_ref().map_or_else(
@@ -145,7 +154,7 @@ pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> 
         class_matches,
         primary_class_color,
         primary_class_name,
-        classification: block.classification.clone(),
+        classification: block.classification,
     }
 }
 
@@ -192,10 +201,7 @@ pub fn build_filtered_gallery(
         })
         .take(limit)
         .map(|block| {
-            cached_gallery
-                .binary_search_by_key(&block.index, |g| g.block_index)
-                .ok()
-                .and_then(|pos| cached_gallery.get(pos))
+            find_gallery_item(cached_gallery, block.index)
                 .map_or_else(|| gallery_item(block, classes), Clone::clone)
         })
         .collect()
@@ -235,56 +241,5 @@ pub fn build_analysis_from_classified(
         gallery,
         blocks,
         all_classes,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::bitset::ClassMatchSet;
-    use crate::example_smiles;
-
-    #[test]
-    fn filtered_gallery_includes_classes_beyond_initial_cache_cap() {
-        let input = example_smiles().join("\n");
-        let mut blocks = crate::tests::extract_blocks(&input);
-        let classes = lmsd_classes();
-        classify_blocks(&mut blocks, classes);
-        let analysis = build_analysis_from_classified(blocks, 16, classes);
-        let first_st_block = analysis.blocks.iter().find(|b| {
-            b.classification
-                .as_ref()
-                .is_some_and(|c| c.family == LipidFamily::SterolLipids)
-        });
-        assert!(
-            first_st_block.is_some_and(|b| b.index > 16),
-            "example dataset must contain a sterol lipid beyond cap 16"
-        );
-        let st_only = classes
-            .iter()
-            .filter(|c| c.family == LipidFamily::SterolLipids)
-            .fold(ClassMatchSet::empty(), |mut set, c| {
-                set.insert(c.index);
-                set
-            });
-        let criteria = FilterCriteria {
-            selected_classes: st_only,
-            mz_min: 0.0,
-            mz_max: 5000.0,
-            precursor_min: 0.0,
-            precursor_max: 5000.0,
-            adduct: "",
-        };
-        let filtered = build_filtered_gallery(
-            &analysis.blocks,
-            &analysis.gallery,
-            &criteria,
-            16,
-            analysis.all_classes,
-        );
-        assert!(
-            !filtered.is_empty(),
-            "sterols beyond cap 16 must appear when filtering by ST"
-        );
     }
 }
