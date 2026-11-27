@@ -3,7 +3,7 @@
 Baseline commit: `2bab1111` (safety-net commit: `1d65b8d1`).
 Hardware & toolchain: Apple M1 Pro (8 cores, 16 GiB RAM, macOS arm64), Rust `1.100.0` (edition 2024, resolver 3), `dx 0.7.10`.
 
-## 1. Coverage Ledger (406 / 406 `git ls-files`)
+## 1. Coverage Ledger (407 / 407 `git ls-files`)
 
 | File | Reviewed | Debt Items |
 | --- | --- | ---: |
@@ -22,6 +22,7 @@ Hardware & toolchain: Apple M1 Pro (8 cores, 16 GiB RAM, macOS arm64), Rust `1.1
 | `.github/RELEASE_CHECKLIST.md` | y | 1 |
 | `.github/SECURITY.md` | y | 0 |
 | `.github/SUPPORT.md` | y | 0 |
+| `.github/actions/setup-dx/action.yml` | y | 0 |
 | `.github/actions/setup/action.yml` | y | 1 |
 | `.github/ai/AI_AGENT_GUIDE.md` | y | 0 |
 | `.github/ai/AI_EFFICIENCY_GUIDE.md` | y | 0 |
@@ -56,6 +57,7 @@ Hardware & toolchain: Apple M1 Pro (8 cores, 16 GiB RAM, macOS arm64), Rust `1.1
 | `CHANGELOG.md` | y | 0 |
 | `Cargo.lock` | N/A (generated Cargo lockfile) | 0 |
 | `Cargo.toml` | y | 0 |
+| `DEBT.md` | y (this ledger) | 0 |
 | `LICENSE` | N/A (verbatim GNU AGPL v3.0 text) | 0 |
 | `Makefile.toml` | y | 1 |
 | `README.md` | y | 1 |
@@ -241,7 +243,6 @@ Hardware & toolchain: Apple M1 Pro (8 cores, 16 GiB RAM, macOS arm64), Rust `1.1
 | `crates/lipid-core/README.tpl` | y | 0 |
 | `crates/lipid-core/src/bitset.rs` | y | 0 |
 | `crates/lipid-core/src/chemical_class.rs` | y | 1 |
-| `crates/lipid-core/src/chemical_class/defaults.rs` | y | 1 |
 | `crates/lipid-core/src/chemical_class/lmsd.rs` | y | 0 |
 | `crates/lipid-core/src/chemical_class/lmsd_part1.rs` | y | 0 |
 | `crates/lipid-core/src/chemical_class/lmsd_part2.rs` | y | 0 |
@@ -418,133 +419,143 @@ Hardware & toolchain: Apple M1 Pro (8 cores, 16 GiB RAM, macOS arm64), Rust `1.1
 
 | ID | Cat | Location | Evidence | Fix | Risk | Status | Commit |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TD-CD-01 | deps | `crates/chem-depict/Cargo.toml:15` | Unused `chem` feature on `chematic` | Remove `"chem"` feature | low | open | — |
-| TD-CD-02 | hygiene | `crates/chem-depict/src/lib.rs:8-9` | Doc claims wasm32 uses `panic="abort"` (`wasm-release` uses `unwind`) | Clarify doc and regenerate README | low | open | — |
-| TD-CD-03 | SOLID | `crates/chem-depict/src/parse.rs:16` | Helper only used inside `parse.rs` marked `pub(crate)` | Narrow to private `fn` | low | open | — |
-| TD-CD-04 | DRY | `crates/chem-depict/src/svg.rs:44-93` | Duplicated atom guard, `catch_unwind`, `depict_svg`, SVG check | Extract `render_molecule_guarded` | low | open | — |
-| TD-CD-05 | DRY | `crates/chem-depict/src/tests.rs:93,100` | Hardcoded `16_385` and `513` instead of constants | Reference `MAX_SMILES_LEN + 1` / `MAX_DEPICT_ATOMS + 1` | low | open | — |
-| TD-CX-01 | deps | `crates/cxsmiles-core/Cargo.toml:15` | Unused `chem` feature on `chematic` | Remove `"chem"` feature | low | open | — |
-| TD-CX-02 | perf | `crates/cxsmiles-core/src/aromatic.rs:50-81` | Linear `targets.contains` inside loops (`O(V*k)`) | Use `FxHashSet` and skip non-aromatic atoms | low | open | — |
-| TD-CX-03 | hygiene | `crates/cxsmiles-core/src/aromatic.rs:88-94` | Test-only helper inside production module | Move helper into test module | low | open | — |
-| TD-CX-04 | perf | `crates/cxsmiles-core/src/fragment.rs:37-104` | Unconditional atom/bond clones even when `attachment == 0` | Borrow directly when `attachment == 0`, mutate in place | low | open | — |
-| TD-CX-05 | perf | `crates/cxsmiles-core/src/fragment.rs:127-133` | Linear `subset.contains` beside existing `FxHashMap` | Use `map.contains_key` | low | open | — |
-| TD-CX-06 | perf | `crates/cxsmiles-core/src/fragment.rs:58-74` | Allocates `Vec<String>` before `.join(".")` | Build directly into `String` | low | open | — |
-| TD-CX-07 | DRY | `crates/cxsmiles-core/src/graph.rs:18-24` | `try_from().unwrap_or(MAX)` repeated 14+ times | Extract `u32_to_usize` / `usize_to_u32` | low | open | — |
-| TD-CX-08 | perf | `crates/cxsmiles-core/src/graph.rs:111-133` | Un-sized `FxHashSet` allocations in hot match loop | Pre-size `FxHashSet::with_capacity_and_hasher` | low | open | — |
-| TD-CX-09 | perf | `crates/cxsmiles-core/src/parse.rs:34-69`, `pipeline.rs:45-55` | Clones all `Molecule`s per cluster and on fallback | Index-based clustering + `Cow` borrow | low | open | — |
-| TD-CX-10 | perf | `crates/cxsmiles-core/src/pipeline.rs:40-66`, `repeating.rs:45-52` | Recomputes canonical SMILES up to 5x per molecule | Precompute canonical SMILES once and pass down | low | open | — |
-| TD-CX-11 | perf | `crates/cxsmiles-core/src/positional.rs:43-168` | Clones `FloatingDef`/positions/targets and formats `m:` via `Vec` | Move owned collections, precompute frag SMILES, `fmt::Write` | low | open | — |
-| TD-CX-12 | SOLID | `crates/cxsmiles-core/src/positional.rs:170-285` | Oversized 55/59-line fns, redundant `matched_mask`, 1-atom subgraph extract | Direct 1-atom extraction, derive mask from `rev`, split helpers | low | open | — |
-| TD-CX-13 | perf | `crates/cxsmiles-core/src/positional.rs:287-302` | Clones floating component `Vec<u32>`s from owned input | Pass `Vec<Vec<u32>>` by value | low | open | — |
-| TD-CX-14 | perf | `crates/cxsmiles-core/src/repeating.rs:19-120` | Clones `Vec<Molecule>`, `Vec<u32>`, `FxHashMap<u8,_>`, `Vec<String>` | Sort `&Molecule`, `swap_remove`, `[usize;128]`, `fmt::Write` | low | open | — |
-| TD-CX-15 | perf | `crates/cxsmiles-core/src/repeating.rs:139-273` | Allocates `next_ext` `Vec` per DFS step + `state.best` clones | Reusable `ext_stack` slice indices + `clone_from`, split helper | med | open | — |
-| TD-CX-16 | perf | `crates/cxsmiles-core/src/roundtrip.rs:43-171` | Recomputes `scaffold.implicit_hydrogen_count` per arrangement | Precompute `base_rem_h` once before loop + scratch `Vec` | low | open | — |
-| TD-CX-17 | DRY | `crates/cxsmiles-core/src/roundtrip.rs:188-202` | Duplicate `ExpansionOverflow` construction | Chain `checked_mul`/`checked_add` | low | open | — |
-| TD-CX-18 | DRY | `crates/cxsmiles-core/src/splice.rs:107-192` | `u32::MAX` sentinels and 3x copied scaffold atoms | Extract `copy_scaffold_atoms` and `skip_bonds: &[(u32, u32)]` | low | open | — |
-| TD-CX-19 | perf | `crates/cxsmiles-core/src/splice.rs:10-44,195-201` | `O(E * |unit|)` linear scans in `unit` | Precompute `unit_pos: Vec<Option<usize>>` | low | open | — |
-| TD-CX-20 | DRY | `crates/cxsmiles-core/src/tests/{e2e,positional_helpers}.rs` | Repeated biphenyl/PFAS literals and split import | Extract test constants and merge import | low | open | — |
-| TD-LP-01 | deps | `crates/lipid-core/Cargo.toml:16` | Unused `smiles` feature on `chematic` in prod | Remove `"smiles"`, use `chem_depict` in tests | low | open | — |
-| TD-LP-02 | hygiene | `crates/lipid-core/src/chemical_class/defaults.rs`, `family.rs` | ~200 lines `#[cfg(test)]`-only legacy defaults module | Delete legacy defaults module and narrow palette constants | low | open | — |
-| TD-LP-03 | hygiene | `crates/lipid-core/src/format.rs:42-78` | Unused `#[cfg(test)]` detector and unused `extension()` | Delete dead detector; call `extension()` in app download | low | open | — |
-| TD-LP-04 | hygiene | `crates/lipid-core/src/lipids/{types,classify}.rs` | `#[cfg(test)]`-only helpers + divergent spectrum fallback | Delete dead helpers; test fallback via `SpectrumBlock` | low | open | — |
-| TD-LP-05 | SOLID | `crates/lipid-core/src/lipids/types.rs:65-71` | 2-byte `LipidClassification` lacks `Copy` | Derive `Copy` and remove `.clone()` | low | open | — |
-| TD-LP-06 | DRY | `crates/lipid-core/src/lipids/classify.rs:69-74` | Duplicate SMARTS ring-check helper | Delegate to `!has_query(...)` | low | open | — |
-| TD-LP-07 | DRY | `crates/lipid-core/src/filter.rs:43-76` | Duplicate finite range predicate and O(N) adduct `String` clones | Extract `in_finite_range`; dedup `&str` in `BTreeSet` | low | open | — |
-| TD-LP-08 | perf | `crates/lipid-core/src/export.rs:71-241` | 3x comment loop, intermediate `Vec`s, 2x TSV `String` allocs | `impl Iterator`, `write_class_comments`, `Cow` `sanitize_tsv`, zero-vec tags | low | open | — |
-| TD-LP-09 | perf | `crates/lipid-core/src/parser/analysis.rs:77-311` | Heap `String` for static color hex, dup lookup, inline test | `&'static str` color, `find_gallery_item`, consolidate tests | low | open | — |
-| TD-LP-10 | perf | `crates/lipid-core/src/parser/block.rs:132-209` | Double formula parse + stringly `contains("[FA00]")` | Parse formula once, add `code` field on `ChemicalClass`, split helpers | low | open | — |
-| TD-LP-11 | perf | `crates/lipid-core/src/parser/extractor.rs:108-158` | Unnecessary `try_parse_smiles(sec)` + test helper in prod | Guard `sec` parse on condition; move test helper | low | open | — |
-| TD-LP-12 | hygiene | `crates/lipid-core/src/tests/{analysis,export_and_filter}.rs` | 5x `FilterCriteria` literals + crate->app `include_str!` | Extract `wide_criteria`; move asset parity check to app | low | open | — |
-| TD-ST-01 | perf | `crates/stream-io/src/{blob_lines,buffer}.rs` | Redundant half-compaction `memmove` + `O(k^2)` multi-chunk scan | Remove half-compaction and track `scan_offset` | low | open | — |
-| TD-ST-02 | SOLID | `crates/stream-io/src/blob_lines.rs:22-149` | Duplicate `processed` field + test-only `expect` suppressions | Read `inner.source_read`, gate `#[cfg(test)]`, `Result` tests | low | open | — |
-| TD-ST-03 | DRY | `crates/stream-io/src/blob_cursor.rs:19-193` | Redundant `total_bytes` param, EOF flag, byte-by-byte `skip_ws` | Read `source.total_bytes()`, add `remaining()`, slice-scan `skip_ws` | low | open | — |
-| TD-ST-04 | SOLID | `crates/stream-io/src/bytes.rs:84-96` | `thread_local!` clock epoch drifts across threads | Replace with `OnceLock<Instant>` | low | open | — |
-| TD-ST-05 | hygiene | `crates/stream-io/README.tpl:10` | Inconsistent LICENSE URL vs sibling core crates | Standardize LICENSE link across templates + `readme-write` | low | open | — |
-| TD-MG-01 | perf | `crates/mgf/src/parser.rs:44-158` | 4x `.trim()` and redundant `'='`/ws scans per MS2 peak line | Add trimmed internal path; infer 2nd token from `split_whitespace` | low | open | — |
-| TD-MG-02 | SOLID | `crates/mgf/src/parser.rs:62-131` | 12-branch header chain, `usize` BOM counter, incomplete doc | Extract `parse_finite_f64`, use `seen_first_line: bool`, fix doc | low | open | — |
-| TD-MG-03 | hygiene | `crates/mgf/src/types.rs:20-25` | `pepmass`/`precursor_mz` written in parser, never read | Prune or document DTO fields (check test constructors) | low | open | — |
-| TD-MA-01 | SOLID | `crates/mgf-analysis-core/src/diagnostics/{model,stats}.rs` | 20 unused `pub` fields + 6 unused `RunningStats` in `RecalibrationStats` | Remove unused fields and accumulators | low | open | — |
-| TD-MA-02 | DRY | `crates/mgf-analysis-core/src/diagnostics/stats.rs:23-176` | Duplicate reservoir logic, 20k `family.to_string()`, 4-pass fallback | Shared `ReservoirAction`, `get_mut(family)`, 1-pass fold | low | open | — |
-| TD-MA-03 | SOLID | `crates/mgf-analysis-core/src/adduct.rs:12-225` | Unbounded `thread_local!` adduct cache + 10-arm branch chain | Move cache to `LineIngestor`; table-driven `CANONICAL_ADDUCTS` | low | open | — |
-| TD-MA-04 | perf | `crates/mgf-analysis-core/src/ingestor.rs:69-225` | Resolves adduct spec twice per block; 3x skip increment | Pass resolved spec once; `metrics.record_skipped()` | low | open | — |
-| TD-MA-05 | SOLID | `crates/mgf-analysis-core/src/adduct/parse.rs:55-286` | 6-param helper, 3x `String` allocs, duplicate digit split | `AdductAccumulator`, byte slicing, `split_leading_count`, early check | low | open | — |
-| TD-MA-06 | DRY | `crates/mgf-analysis-core/src/mass.rs:14-56` | Identical SMILES/formula cache lookup functions | Extract `cached_mass_lookup` | low | open | — |
-| TD-MA-07 | hygiene | `crates/mgf-analysis-core/src/metrics/stats.rs:11-92` | 5 unused `pub` fields; doc inaccurately claims bounded memory | Remove 5 dead fields; document `O(N)` median heaps | low | open | — |
-| TD-MA-08 | DRY | `crates/mgf-analysis-core/src/metrics.rs`, `record.rs` | Duplicate thresholds, double `String` alloc on max error, 4x ppm math | Shared threshold constants, branch fix, `da_to_ppm` | low | open | — |
-| TD-MA-09 | SOLID | `crates/mgf-analysis-core/src/recalibration/{generator,calibration}.rs` | 7-param writer + redundant `!mz.is_finite()` | `RecalibrationParams` struct (7->4 params), drop redundant check | low | open | — |
-| TD-MA-10 | DRY | `crates/mgf-analysis-core/src/tests/diagnostics.rs:78-130` | 3x repeated 12-field `ErrorMeasurement` literals | Extract `sample_measurement` helper | low | open | — |
-| TD-JC-01 | hygiene | `crates/json-count-core/src/error.rs:81-83` | Dead error variant never constructed | Remove unused variant | low | open | — |
-| TD-JC-02 | perf | `crates/json-count-core/src/container.rs:187-248` | Copies `StringValidator` by value per byte; byte-by-byte ASCII | Match `&mut` in-place; slice-scan plain ASCII runs | low | open | — |
-| TD-JC-03 | perf | `crates/json-count-core/src/scanner.rs:47-96` | `HashSet<usize>` cleared & SipHashed per row | Generation-counter `row_gen` + `Vec<u64>` | low | open | — |
-| TD-JC-04 | perf | `crates/json-count-core/src/strings.rs:36-58`, `unescape.rs:167-174` | Double-validates every unescaped JSON key | Track `has_backslash` to skip redundant scans | low | open | — |
-| TD-JC-05 | DRY | `crates/json-count-core/src/{container,scanner,strings,unescape,model}.rs` | 4x loop glue, dup comma/close, dup escape list, non-`const` sort | Use `remaining()`, `expect_comma_or_close`, reuse `single_char_escape`, `const fn` | low | open | — |
-| TD-JC-06 | DRY | `crates/json-count-core/src/tests/{boundaries,streaming}.rs` | Duplicate 1 MiB `MAX_KEY_BYTES` test fixtures | Consolidate boundary test into `boundaries.rs` | low | open | — |
-| TD-SF-01 | DRY | `crates/smellfish-core/src/evidence/{chemist,ring_family}.rs` | 18 motif keywords duplicated across both modules | Share `RING_FAMILY_MOTIFS` table | low | open | — |
-| TD-SF-02 | DRY | `crates/smellfish-core/src/{query,qlever}.rs` | WDQS/QLever queries duplicated; unused `rdfs:`; string dispatch | Unify via `LotusDialect` enum; drop unused `PREFIX` | low | open | — |
-| TD-SF-03 | DRY | `crates/smellfish-core/src/csv.rs:28-359` | Duplicate header lists, `Cow::Owned(format!)`, test `expect`, 3x join | Hoist header constants, direct `'`, `#[cfg(test)]`, `push_csv_row` | low | open | — |
-| TD-SF-04 | SOLID | `crates/smellfish-core/src/{model,classification,pipeline}.rs` | Dead marker method, excess `pub` fields, duplicate `motifs` `Vec<String>` | Remove dead method, narrow to `pub(crate)`, read `motif_hits` | low | open | — |
-| TD-SF-05 | perf | `crates/smellfish-core/src/{pipeline,qlever,svg}.rs` | 4-tuple accumulator, double `kingdoms` clone, 2x SVG copy | `struct MotifAcc`, `InChIKey14::into_string`, `Cow` `is_safe_svg` | low | open | — |
-| TD-SF-06 | DRY | `crates/smellfish-core/src/evidence/{verdict,assessment,chemist}.rs` | Bare Ertl cutoffs (`2.0`/`1.0`/`0.0`/`-2.0`) + dead `else` branch | Shared `ERTL_*` constants; simplify `classify_unbacked` | low | open | — |
-| TD-UI-01 | DRY | `crates/ui/src/{webmcp,document}.rs` | Duplicate 6-field EDAM serialization, 3-pass escape, double `eval` | Single EDAM writer, single-pass `escape_script_json`, drop dup `use_effect` | low | open | — |
-| TD-UI-02 | DRY | `crates/ui/src/{theme,components}.rs`, `components/*.rs` | 12+ `format!` allocs for `StyleBuilder`, 3x body/flex style chains | Add `StyleBuilder::property_fmt`, `body_text_style`, `flex_row_wrap` | low | open | — |
-| TD-UI-03 | hygiene | `crates/ui/src/{webmcp,signals,theme}.rs`, `components/*.rs` | Dead `EdamTerm` helpers, `"true"` sentinel, `"{var}"` allocs | Prune dead helpers, `Option<&'static str>`, pass `String` directly | low | open | — |
-| TD-UP-01 | hygiene | `crates/upload/src/{lib,bytes,download}.rs` | 5x `#[cfg]` in `bytes.rs`, zero-fill buffer, MIME sniffing, 2x alloc | Gate `mod bytes;`, `array.to_vec()`, explicit fallback, in-place truncate | low | open | — |
-| TD-WG-01 | DRY | `crates/workspace-gates/tests/gate_consistency/*.rs` | 3x dir walk, 2x `app_dirs`, split single-owner constants, `Vec<String>` | Unify `collect_dir`/`make_toml_files`, co-locate items, `Vec<&str>` | low | open | — |
-| TD-AP-01 | DRY | `apps/{json-count-rs,lipid-selecto-rs,mgf-precursor-erro-rs,smellfish-rs}` | 4x upload generation counter & file-extraction error/host glue | Add `UploadGen` + `dispatch_file_upload` in `crates/upload` | low | open | — |
-| TD-AP-02 | hygiene | `apps/index/src/main.rs:85-106`, `json-count-rs`, `smellfish-rs` | Inline `WebMcpConfig`, hardcoded hex chrome, unused `shared_signal!` | Hoist `const`, use `ColorScheme` tokens, plain `use_signal` | low | open | — |
-| TD-AP-03 | perf | `apps/cxsmiles-yoga/src/app/*.rs` | Eager all-SVG depiction, keystroke root re-render, timer race | Lazy page depiction, `use_memo(empty)`, copy gen counter, split `ResultsPanel` | low | open | — |
-| TD-AP-04 | DRY | `apps/lipid-selecto-rs/src/**`, `Cargo.toml` | Dup `96` cap, 3x filter read, redundant `web-sys`, no-op yield, missing `key` | Centralize cap/`with_criteria`/styles, `upload::Blob`, memoize, `key:` | low | open | — |
-| TD-AP-05 | DRY | `apps/mgf-precursor-erro-rs/src/app/*.rs` | 2x compliance grid, 3x chart box, 7-param panels, full stats clone | Shared grid/card helpers, `UploadSignals`, `SummaryMetrics` `Copy` struct, `&str` SVG | low | open | — |
-| TD-AP-06 | DRY | `apps/mgf-precursor-erro-rs/src/plotting/*.rs` | Stringly `unit: &str`, dup ECDF/downsample/mesh/palette/`</svg>`, 2x `unwrap` | Use `ErrorUnit`, shared helpers/palette, `Result` tests, `prismatica` no-default | low | open | — |
-| TD-AP-07 | SOLID | `apps/smellfish-rs/{src/**,assets/*,public/*,build.rs}` | Oversized cards, dead JS/CSS/empty `.txt` fetches, `MoleculeRow::clone`, `build.rs` `curl` | Split cards, prune dead JS/CSS fields, lazy yield, offline `build.rs` | low | open | — |
-| TD-SE-01 | hygiene | `apps/.../smarts-evoliposuction/{Cargo.toml,src/**}` | Missing restriction lints, unfulfilled `#[expect]`, mixed SPDX, 86 `pub` | Align lints, standardize SPDX, narrow `pub` surface | low | open | — |
-| TD-SE-02 | DRY | `apps/.../smarts-evoliposuction/src/{cli*,results_io,splitting/slug}.rs` | Dup CLI args, seq/par loops, positional CSV arrays, 2x category map | `CommonEvolveArgs`, `LevelFilter`, `evolve_one_row`, `serde::Serialize`, 1 table | low | open | — |
-| TD-SE-03 | perf | `apps/.../smarts-evoliposuction/src/{download*,splitting*,cli/ordering}.rs` | 19x `$$$$` scan, 3x cell `.replace()`, full zip RAM, 90-line test-only CSV parser | Scan `$$$$` once, fast-path TSV write, stream zip, remove dead test parser | low | open | — |
-| TD-CI-01 | DRY | `make/{build,lint,web,format,test,supply-chain,readme}.toml`, `mk.local`, `.github/*` | 16x wasm check/lint, 3 redundant builds, uncached `panache`, CLI untested in CI | Unified wasm clippy, `wasm=lint-wasm`, cache `panache`, CI job, `setup-dx`, prune docs | low | open | — |
+| TD-CD-01 | deps | `crates/chem-depict/Cargo.toml:15` | Unused `chem` feature on `chematic` | Remove `"chem"` feature | low | done | `88f94a64` |
+| TD-CD-02 | hygiene | `crates/chem-depict/src/lib.rs:8-9` | Doc claims wasm32 uses `panic="abort"` (`wasm-release` uses `unwind`) | Clarify doc and regenerate README | low | done | `88f94a64` |
+| TD-CD-03 | SOLID | `crates/chem-depict/src/parse.rs:16` | Helper only used inside `parse.rs` marked `pub(crate)` | Narrow to private `fn` | low | done | `88f94a64` |
+| TD-CD-04 | DRY | `crates/chem-depict/src/svg.rs:44-93` | Duplicated atom guard, `catch_unwind`, `depict_svg`, SVG check | Extract `render_molecule_guarded` | low | done | `88f94a64` |
+| TD-CD-05 | DRY | `crates/chem-depict/src/tests.rs:93,100` | Hardcoded `16_385` and `513` instead of constants | Reference `MAX_SMILES_LEN + 1` / `MAX_DEPICT_ATOMS + 1` | low | done | `88f94a64` |
+| TD-CX-01 | deps | `crates/cxsmiles-core/Cargo.toml:15` | Unused `chem` feature on `chematic` | Remove `"chem"` feature | low | done | `261379e8` |
+| TD-CX-02 | perf | `crates/cxsmiles-core/src/aromatic.rs:50-81` | Linear `targets.contains` inside loops (`O(V*k)`) | Use `FxHashSet` and skip non-aromatic atoms | low | done | `261379e8` |
+| TD-CX-03 | hygiene | `crates/cxsmiles-core/src/aromatic.rs:88-94` | Test-only helper inside production module | Move helper into test module | low | done | `261379e8` |
+| TD-CX-04 | perf | `crates/cxsmiles-core/src/fragment.rs:37-104` | Unconditional atom/bond clones even when `attachment == 0` | Borrow directly when `attachment == 0`, mutate in place | low | done | `261379e8` |
+| TD-CX-05 | perf | `crates/cxsmiles-core/src/fragment.rs:127-133` | Linear `subset.contains` beside existing `FxHashMap` | Use `map.contains_key` | low | done | `261379e8` |
+| TD-CX-06 | perf | `crates/cxsmiles-core/src/fragment.rs:58-74` | Allocates `Vec<String>` before `.join(".")` | Build directly into `String` | low | done | `261379e8` |
+| TD-CX-07 | DRY | `crates/cxsmiles-core/src/graph.rs:18-24` | `try_from().unwrap_or(MAX)` repeated 14+ times | Extract `u32_to_usize` / `usize_to_u32` | low | done | `261379e8` |
+| TD-CX-08 | perf | `crates/cxsmiles-core/src/graph.rs:111-133` | Un-sized `FxHashSet` allocations in hot match loop | Pre-size `FxHashSet::with_capacity_and_hasher` | low | done | `261379e8` |
+| TD-CX-09 | perf | `crates/cxsmiles-core/src/parse.rs:34-69`, `pipeline.rs:45-55` | Clones all `Molecule`s per cluster and on fallback | Index-based clustering + `Cow` borrow | low | done | `261379e8` |
+| TD-CX-10 | perf | `crates/cxsmiles-core/src/pipeline.rs:40-66`, `repeating.rs:45-52` | Recomputes canonical SMILES up to 5x per molecule | Precompute canonical SMILES once and pass down | low | done | `261379e8` |
+| TD-CX-11 | perf | `crates/cxsmiles-core/src/positional.rs:43-168` | Clones `FloatingDef`/positions/targets and formats `m:` via `Vec` | Move owned collections, precompute frag SMILES, `fmt::Write` | low | done | `261379e8` |
+| TD-CX-12 | SOLID | `crates/cxsmiles-core/src/positional.rs:170-285` | Oversized 55/59-line fns, redundant `matched_mask`, 1-atom subgraph extract | Direct 1-atom extraction, derive mask from `rev`, split helpers | low | done | `261379e8` |
+| TD-CX-13 | perf | `crates/cxsmiles-core/src/positional.rs:287-302` | Clones floating component `Vec<u32>`s from owned input | Pass `Vec<Vec<u32>>` by value | low | done | `261379e8` |
+| TD-CX-14 | perf | `crates/cxsmiles-core/src/repeating.rs:19-120` | Clones `Vec<Molecule>`, `Vec<u32>`, `FxHashMap<u8,_>`, `Vec<String>` | Sort `&Molecule`, `swap_remove`, `[usize;128]`, `fmt::Write` | low | done | `261379e8` |
+| TD-CX-15 | perf | `crates/cxsmiles-core/src/repeating.rs:139-273` | Allocates `next_ext` `Vec` per DFS step + `state.best` clones | Reusable `ext_stack` slice indices + `clone_from`, split helper | med | done | `261379e8` |
+| TD-CX-16 | perf | `crates/cxsmiles-core/src/roundtrip.rs:43-171` | Recomputes `scaffold.implicit_hydrogen_count` per arrangement | Precompute `base_rem_h` once before loop + scratch `Vec` | low | done | `261379e8` |
+| TD-CX-17 | DRY | `crates/cxsmiles-core/src/roundtrip.rs:188-202` | Duplicate `ExpansionOverflow` construction | Chain `checked_mul`/`checked_add` | low | done | `261379e8` |
+| TD-CX-18 | DRY | `crates/cxsmiles-core/src/splice.rs:107-192` | `u32::MAX` sentinels and 3x copied scaffold atoms | Extract `copy_scaffold_atoms` and `skip_bonds: &[(u32, u32)]` | low | done | `261379e8` |
+| TD-CX-19 | perf | `crates/cxsmiles-core/src/splice.rs:10-44,195-201` | `O(E * |unit|)` linear scans in `unit` | Precompute `unit_pos: Vec<Option<usize>>` | low | done | `261379e8` |
+| TD-CX-20 | DRY | `crates/cxsmiles-core/src/tests/{e2e,positional_helpers}.rs` | Repeated biphenyl/PFAS literals and split import | Extract test constants and merge import | low | done | `261379e8` |
+| TD-LP-01 | deps | `crates/lipid-core/Cargo.toml:16` | Unused `smiles` feature on `chematic` in prod | Remove `"smiles"`, use `chem_depict` in tests | low | done | `5d9600e1` |
+| TD-LP-02 | hygiene | `crates/lipid-core/src/chemical_class/defaults.rs`, `family.rs` | ~200 lines `#[cfg(test)]`-only legacy defaults module | Delete legacy defaults module and narrow palette constants | low | done | `5d9600e1` |
+| TD-LP-03 | hygiene | `crates/lipid-core/src/format.rs:42-78` | Unused `#[cfg(test)]` detector and unused `extension()` | Delete dead detector; call `extension()` in app download | low | done | `5d9600e1` |
+| TD-LP-04 | hygiene | `crates/lipid-core/src/lipids/{types,classify}.rs` | `#[cfg(test)]`-only helpers + divergent spectrum fallback | Delete dead helpers; test fallback via `SpectrumBlock` | low | done | `5d9600e1` |
+| TD-LP-05 | SOLID | `crates/lipid-core/src/lipids/types.rs:65-71` | 2-byte `LipidClassification` lacks `Copy` | Derive `Copy` and remove `.clone()` | low | done | `fa28ee8b` |
+| TD-LP-06 | DRY | `crates/lipid-core/src/lipids/classify.rs:69-74` | Duplicate SMARTS ring-check helper | Delegate to `!has_query(...)` | low | done | `fa28ee8b` |
+| TD-LP-07 | DRY | `crates/lipid-core/src/filter.rs:43-76` | Duplicate finite range predicate and O(N) adduct `String` clones | Extract `in_finite_range`; dedup `&str` in `BTreeSet` | low | done | `fa28ee8b` |
+| TD-LP-08 | perf | `crates/lipid-core/src/export.rs:71-241` | 3x comment loop, intermediate `Vec`s, 2x TSV `String` allocs | `impl Iterator`, `write_class_comments`, `Cow` `sanitize_tsv`, zero-vec tags | low | done | `fa28ee8b` |
+| TD-LP-09 | perf | `crates/lipid-core/src/parser/analysis.rs:77-311` | Heap `String` for static color hex, dup lookup, inline test | `&'static str` color, `find_gallery_item`, consolidate tests | low | done | `fa28ee8b` |
+| TD-LP-10 | perf | `crates/lipid-core/src/parser/block.rs:132-209` | Double formula parse + stringly `contains("[FA00]")` | Parse formula once, add `code` field on `ChemicalClass`, split helpers | low | done | `fa28ee8b` |
+| TD-LP-11 | perf | `crates/lipid-core/src/parser/extractor.rs:108-158` | Unnecessary `try_parse_smiles(sec)` + test helper in prod | Guard `sec` parse on condition; move test helper | low | done | `fa28ee8b` |
+| TD-LP-12 | hygiene | `crates/lipid-core/src/tests/{analysis,export_and_filter}.rs` | 5x `FilterCriteria` literals + crate->app `include_str!` | Extract `wide_criteria`; move asset parity check to app | low | done | `fa28ee8b` |
+| TD-ST-01 | perf | `crates/stream-io/src/{blob_lines,buffer}.rs` | Redundant half-compaction `memmove` + `O(k^2)` multi-chunk scan | Remove half-compaction and track `scan_offset` | low | done | `3a74a8b0` |
+| TD-ST-02 | SOLID | `crates/stream-io/src/blob_lines.rs:22-149` | Duplicate `processed` field + test-only `expect` suppressions | Read `inner.source_read`, gate `#[cfg(test)]`, `Result` tests | low | done | `2b92d1b2` |
+| TD-ST-03 | DRY | `crates/stream-io/src/blob_cursor.rs:19-193` | Redundant `total_bytes` param, EOF flag, byte-by-byte `skip_ws` | Read `source.total_bytes()`, add `remaining()`, slice-scan `skip_ws` | low | done | `2b92d1b2` |
+| TD-ST-04 | SOLID | `crates/stream-io/src/bytes.rs:84-96` | `thread_local!` clock epoch drifts across threads | Replace with `OnceLock<Instant>` | low | done | `2b92d1b2` |
+| TD-ST-05 | hygiene | `crates/stream-io/README.tpl:10` | Inconsistent LICENSE URL vs sibling core crates | Standardize LICENSE link across templates + `readme-write` | low | done | `16fab669` |
+| TD-MG-01 | perf | `crates/mgf/src/parser.rs:44-158` | 4x `.trim()` and redundant `'='`/ws scans per MS2 peak line | Add trimmed internal path; infer 2nd token from `split_whitespace` | low | done | `3a74a8b0` |
+| TD-MG-02 | SOLID | `crates/mgf/src/parser.rs:62-131` | 12-branch header chain, `usize` BOM counter, incomplete doc | Extract `parse_finite_f64`, use `seen_first_line: bool`, fix doc | low | done | `3a74a8b0` |
+| TD-MG-03 | hygiene | `crates/mgf/src/types.rs:20-25` | `pepmass`/`precursor_mz` written in parser, never read | Prune or document DTO fields (check test constructors) | low | done | `3a74a8b0` |
+| TD-MA-01 | SOLID | `crates/mgf-analysis-core/src/diagnostics/{model,stats}.rs` | 20 unused `pub` fields + 6 unused `RunningStats` in `RecalibrationStats` | Remove unused fields and accumulators | low | done | `726c0b7a` |
+| TD-MA-02 | DRY | `crates/mgf-analysis-core/src/diagnostics/stats.rs:23-176` | Duplicate reservoir logic, 20k `family.to_string()`, 4-pass fallback | Shared `ReservoirAction`, `get_mut(family)`, 1-pass fold | low | done | `427d9341` |
+| TD-MA-03 | SOLID | `crates/mgf-analysis-core/src/adduct.rs:12-225` | Unbounded `thread_local!` adduct cache + 10-arm branch chain | Move cache to `LineIngestor`; table-driven `CANONICAL_ADDUCTS` | low | done | `427d9341` |
+| TD-MA-04 | perf | `crates/mgf-analysis-core/src/ingestor.rs:69-225` | Resolves adduct spec twice per block; 3x skip increment | Pass resolved spec once; `metrics.record_skipped()` | low | done | `427d9341` |
+| TD-MA-05 | SOLID | `crates/mgf-analysis-core/src/adduct/parse.rs:55-286` | 6-param helper, 3x `String` allocs, duplicate digit split | `AdductAccumulator`, byte slicing, `split_leading_count`, early check | low | done | `427d9341` |
+| TD-MA-06 | DRY | `crates/mgf-analysis-core/src/mass.rs:14-56` | Identical SMILES/formula cache lookup functions | Extract `cached_mass_lookup` | low | done | `427d9341` |
+| TD-MA-07 | hygiene | `crates/mgf-analysis-core/src/metrics/stats.rs:11-92` | 5 unused `pub` fields; doc inaccurately claims bounded memory | Remove 5 dead fields; document `O(N)` median heaps | low | done | `726c0b7a` |
+| TD-MA-08 | DRY | `crates/mgf-analysis-core/src/metrics.rs`, `record.rs` | Duplicate thresholds, double `String` alloc on max error, 4x ppm math | Shared threshold constants, branch fix, `da_to_ppm` | low | done | `427d9341` |
+| TD-MA-09 | SOLID | `crates/mgf-analysis-core/src/recalibration/{generator,calibration}.rs` | 7-param writer + redundant `!mz.is_finite()` | `RecalibrationParams` struct (7->4 params), drop redundant check | low | done | `726c0b7a` |
+| TD-MA-10 | DRY | `crates/mgf-analysis-core/src/tests/diagnostics.rs:78-130` | 3x repeated 12-field `ErrorMeasurement` literals | Extract `sample_measurement` helper | low | done | `427d9341` |
+| TD-JC-01 | hygiene | `crates/json-count-core/src/error.rs:81-83` | Dead error variant never constructed | Remove unused variant | low | done | `fa139c6a` |
+| TD-JC-02 | perf | `crates/json-count-core/src/container.rs:187-248` | Copies `StringValidator` by value per byte; byte-by-byte ASCII | Match `&mut` in-place; slice-scan plain ASCII runs | low | done | `2512df2b` |
+| TD-JC-03 | perf | `crates/json-count-core/src/scanner.rs:47-96` | `HashSet<usize>` cleared & SipHashed per row | Generation-counter `row_gen` + `Vec<u64>` | low | done | `2512df2b` |
+| TD-JC-04 | perf | `crates/json-count-core/src/strings.rs:36-58`, `unescape.rs:167-174` | Double-validates every unescaped JSON key | Track `has_backslash` to skip redundant scans | low | done | `2512df2b` |
+| TD-JC-05 | DRY | `crates/json-count-core/src/{container,scanner,strings,unescape,model}.rs` | 4x loop glue, dup comma/close, dup escape list, non-`const` sort | Use `remaining()`, `expect_comma_or_close`, reuse `single_char_escape`, `const fn` | low | done | `2512df2b` |
+| TD-JC-06 | DRY | `crates/json-count-core/src/tests/{boundaries,streaming}.rs` | Duplicate 1 MiB `MAX_KEY_BYTES` test fixtures | Consolidate boundary test into `boundaries.rs` | low | done | `2512df2b` |
+| TD-SF-01 | DRY | `crates/smellfish-core/src/evidence/{chemist,ring_family}.rs` | 18 motif keywords duplicated across both modules | Share `RING_FAMILY_MOTIFS` table | low | done | `c2164f79` |
+| TD-SF-02 | DRY | `crates/smellfish-core/src/{query,qlever}.rs` | WDQS/QLever queries duplicated; unused `rdfs:`; string dispatch | Unify via `LotusDialect` enum; drop unused `PREFIX` | low | done | `c2164f79` |
+| TD-SF-03 | DRY | `crates/smellfish-core/src/csv.rs:28-359` | Duplicate header lists, `Cow::Owned(format!)`, test `expect`, 3x join | Hoist header constants, direct `'`, `#[cfg(test)]`, `push_csv_row` | low | done | `c2164f79` |
+| TD-SF-04 | SOLID | `crates/smellfish-core/src/{model,classification,pipeline}.rs` | Dead marker method, excess `pub` fields, duplicate `motifs` `Vec<String>` | Remove dead method, narrow to `pub(crate)`, read `motif_hits` | low | done | `0fbb7c14` |
+| TD-SF-05 | perf | `crates/smellfish-core/src/{pipeline,qlever,svg}.rs` | 4-tuple accumulator, double `kingdoms` clone, 2x SVG copy | `struct MotifAcc`, `InChIKey14::into_string`, `Cow` `is_safe_svg` | low | done | `c2164f79` |
+| TD-SF-06 | DRY | `crates/smellfish-core/src/evidence/{verdict,assessment,chemist}.rs` | Bare Ertl cutoffs (`2.0`/`1.0`/`0.0`/`-2.0`) + dead `else` branch | Shared `ERTL_*` constants; simplify `classify_unbacked` | low | done | `c2164f79` |
+| TD-UI-01 | DRY | `crates/ui/src/{webmcp,document}.rs` | Duplicate 6-field EDAM serialization, 3-pass escape, double `eval` | Single EDAM writer, single-pass `escape_script_json`, drop dup `use_effect` | low | done | `0370a141` |
+| TD-UI-02 | DRY | `crates/ui/src/{theme,components}.rs`, `components/*.rs` | 12+ `format!` allocs for `StyleBuilder`, 3x body/flex style chains | Add `StyleBuilder::property_fmt`, `body_text_style`, `flex_row_wrap` | low | done | `0370a141` |
+| TD-UI-03 | hygiene | `crates/ui/src/{webmcp,signals,theme}.rs`, `components/*.rs` | Dead `EdamTerm` helpers, `"true"` sentinel, `"{var}"` allocs | Prune dead helpers, `Option<&'static str>`, pass `String` directly | low | done | `fa139c6a` |
+| TD-UP-01 | hygiene | `crates/upload/src/{lib,bytes,download}.rs` | 5x `#[cfg]` in `bytes.rs`, zero-fill buffer, MIME sniffing, 2x alloc | Gate `mod bytes;`, `array.to_vec()`, explicit fallback, in-place truncate | low | done | `2b92d1b2` |
+| TD-WG-01 | DRY | `crates/workspace-gates/tests/gate_consistency/*.rs` | 3x dir walk, 2x `app_dirs`, split single-owner constants, `Vec<String>` | Unify `collect_dir`/`make_toml_files`, co-locate items, `Vec<&str>` | low | done | `ab937ae2` |
+| TD-AP-01 | DRY | `apps/{json-count-rs,lipid-selecto-rs,mgf-precursor-erro-rs,smellfish-rs}` | 4x upload generation counter & file-extraction error/host glue | Add `UploadGen` + `dispatch_file_upload` in `crates/upload` | low | done | `2b92d1b2` |
+| TD-AP-02 | hygiene | `apps/index/src/main.rs:85-106`, `json-count-rs`, `smellfish-rs` | Inline `WebMcpConfig`, hardcoded hex chrome, unused `shared_signal!` | Hoist `const`, use `ColorScheme` tokens, plain `use_signal` | low | done | `10af8ddb` |
+| TD-AP-03 | perf | `apps/cxsmiles-yoga/src/app/*.rs` | Eager all-SVG depiction, keystroke root re-render, timer race | Lazy page depiction, `use_memo(empty)`, copy gen counter, split `ResultsPanel` | low | done | `3291c9b3` |
+| TD-AP-04 | DRY | `apps/lipid-selecto-rs/src/**`, `Cargo.toml` | Dup `96` cap, 3x filter read, redundant `web-sys`, no-op yield, missing `key` | Centralize cap/`with_criteria`/styles, `upload::Blob`, memoize, `key:` | low | done | `ec6213fb` |
+| TD-AP-05 | DRY | `apps/mgf-precursor-erro-rs/src/app/*.rs` | 2x compliance grid, 3x chart box, 7-param panels, full stats clone | Shared grid/card helpers, `UploadSignals`, `SummaryMetrics` `Copy` struct, `&str` SVG | low | done | `8ff9d06d` |
+| TD-AP-06 | DRY | `apps/mgf-precursor-erro-rs/src/plotting/*.rs` | Stringly `unit: &str`, dup ECDF/downsample/mesh/palette/`</svg>`, 2x `unwrap` | Use `ErrorUnit`, shared helpers/palette, `Result` tests, `prismatica` no-default | low | done | `8ff9d06d` |
+| TD-AP-07 | SOLID | `apps/smellfish-rs/{src/**,assets/*,public/*,build.rs}` | Oversized cards, dead JS/CSS/empty `.txt` fetches, `MoleculeRow::clone`, `build.rs` `curl` | Split cards, prune dead JS/CSS fields, lazy yield, offline `build.rs` | low | done | `ef76c5f9` |
+| TD-SE-01 | hygiene | `apps/.../smarts-evoliposuction/{Cargo.toml,src/**}` | Missing restriction lints, unfulfilled `#[expect]`, mixed SPDX, 86 `pub` | Align lints, standardize SPDX, narrow `pub` surface | low | done | `a35ca4e6` |
+| TD-SE-02 | DRY | `apps/.../smarts-evoliposuction/src/{cli*,results_io,splitting/slug}.rs` | Dup CLI args, seq/par loops, positional CSV arrays, 2x category map | `CommonEvolveArgs`, `LevelFilter`, `evolve_one_row`, `serde::Serialize`, 1 table | low | done | `a35ca4e6` |
+| TD-SE-03 | perf | `apps/.../smarts-evoliposuction/src/{download*,splitting*,cli/ordering}.rs` | 19x `$$$$` scan, 3x cell `.replace()`, full zip RAM, 90-line test-only CSV parser | Scan `$$$$` once, fast-path TSV write, stream zip, remove dead test parser | low | done | `a35ca4e6` |
+| TD-CI-01 | DRY | `make/{build,lint,web,format,test,supply-chain,readme}.toml`, `mk.local`, `.github/*` | 16x wasm check/lint, 3 redundant builds, uncached `panache`, CLI untested in CI | Unified wasm clippy, `wasm=lint-wasm`, cache `panache`, CI job, `setup-dx`, prune docs | low | done | `4fc3cc05` |
 
 ## 3. Metrics Before → After
 
-| Metric | Before (Baseline) | After | Delta |
+| Metric | Before (Baseline `2bab1111`) | After (`4fc3cc05`) | Delta |
 | --- | --- | --- | --- |
-| Tracked files (`git ls-files`) | 404 (406 w/ bench_smoke) | TBD | TBD |
-| Rust LOC (`tokei` total / code) | 31,781 / 28,386 | TBD | TBD |
-| Exact 6-line normalized clone ratio | 2.61% (601 / 23,040 lines) | TBD | TBD |
-| Function length (max / mean / >40 / >60) | 151 / 18.4 / 119 / 50 | TBD | TBD |
-| Approx branch complexity (max / mean / >15) | 36 / 3.0 / 15 | TBD | TBD |
-| Non-`pub(crate)` `pub` items (`.rs`) | 674 | TBD | TBD |
-| `#[expect]` / `#[allow]` sites (`.rs`) | 15 / 0 | TBD | TBD |
-| `TODO` / `FIXME` / `unsafe` / prod `unwrap` | 0 / 0 / 0 / 0 | TBD | TBD |
-| External crates (workspace instances / unique / dups) | 415 / 383 / 30 | TBD | TBD |
-| External crates (`smarts-evoliposuction`) | 407 / 376 / 27 | TBD | TBD |
-| `./mk check` / `./mk test` | 2.52 s / 18.20 s (366+14) | TBD | TBD |
-| `smarts-evoliposuction` clippy + test (`--locked`) | 26.45 s / 34.49 s (32+6) | TBD | TBD |
-| `./mk local:lint-wasm` vs unified wasm clippy | 14.68 s / 22.82 s (cold) | TBD | TBD |
-| Workspace line coverage (`llvm-cov`) | 81.06% (7,656 / 9,445 lines) | TBD | TBD |
-| WASM bundle `cxsmiles-yoga` | 1,341,229 bytes | TBD | TBD |
-| WASM bundle `index` | 416,439 bytes | TBD | TBD |
-| WASM bundle `json-count-rs` | 516,401 bytes | TBD | TBD |
-| WASM bundle `lipid-selecto-rs` | 1,274,570 bytes | TBD | TBD |
-| WASM bundle `mgf-precursor-erro-rs` | 1,314,643 bytes | TBD | TBD |
-| WASM bundle `smellfish-rs` | 927,777 bytes | TBD | TBD |
-| WASM bundle total (all 6 apps) | 5,791,059 bytes | TBD | TBD |
-| Bench `stream_io_500k_lines` | 23.087 ms | TBD | TBD |
-| Bench `mgf_parse_10k_spectra` | 19.372 ms | TBD | TBD |
-| Bench `json_count_50k_rows` | 69.049 ms | TBD | TBD |
-| Bench `cxsmiles_pos_and_repeat` | 494.866 ms | TBD | TBD |
-| Bench `lipid_core_204_classify_export` | 11,995.530 ms | TBD | TBD |
-| Bench `mgf_analysis_5k_ingest_recalibrated` | 201.218 ms | TBD | TBD |
-| Bench `smellfish_200_pipeline_csv_svg` | 0.537 ms | TBD | TBD |
-| Bench `mgf_plotting_diag_and_hist` | 16.267 ms | TBD | TBD |
-| Bench `evoliposuction_sdf_zip_2k_to_tsv` | 9.898 ms | TBD | TBD |
-| Bench `evoliposuction_split_2k_tsv` | 1.240 ms | TBD | TBD |
+| Tracked files (`git ls-files`) | 404 (406 w/ bench_smoke) | 407 | +3 (+1 w/ bench_smoke) |
+| Rust LOC (`tokei -C -t Rust apps crates` total / code) | 31,781 / 28,386 | 32,459 / 28,994 | +678 / +608 (incl. safety-net tests) |
+| Duplication (`./mk echoes`; 6-line script all `.rs`) | 2.61% (601 / 23,040 lines) | 0 dup / 0 approx / 0 reuse groups; 3.14% (906 / 28,893) | 0 echoes groups across 1,155 fns |
+| Function length (max / mean / >40 / >60) | 151 / 18.4 / 119 / 50 | 121 / 18.0 / 122 / 54 | max -30, mean -0.4 |
+| Approx branch complexity (max / mean / >15) | 36 / 3.0 / 15 | 30 / 2.5 / 7 | max -6, mean -0.5, >15 -8 |
+| Non-`pub(crate)` `pub` items (`apps` + `crates`) | 674 | 743 (1,354 total incl. `pub(crate)`) | +69 (safety-net helpers & test exports) |
+| `#![expect]` / `#[expect]` / `#[allow]` sites (`.rs`) | 15 / 0 | 56 / 0 (`Cargo.toml` `= "allow"`: 3) | +41 / 0 (restricted `smarts-evoliposuction` lints) |
+| `TODO` / `FIXME` / `unsafe` / prod `unwrap` | 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 | 0 |
+| External crates (workspace instances / unique / dups) | 415 / 383 / 30 | 415 / 383 / 32 | +0 / +0 / +2 |
+| External crates (`smarts-evoliposuction`) | 407 / 376 / 27 | 407 / 376 / 31 | +0 / +0 / +4 |
+| `./mk check` / `./mk test` | 2.52 s / 18.20 s (366+14) | 2.19 s / 24.07 s (377+14) | -13.1% / +5.87 s (+11 tests) |
+| `smarts-evoliposuction` clippy + test (`--locked`) | 26.45 s / 34.49 s (32+6) | 0.93 s / 2.44 s (29+6, warm) | warm runs (-3 dead tests) |
+| `./mk local:lint-wasm` vs unified wasm clippy | 14.68 s / 22.82 s (cold) | 1.78 s (`./mk wasm`, warm) | -87.9% vs old loop (1 pass vs 16) |
+| Workspace line coverage (`llvm-cov`) | 81.06% (7,656 / 9,445 lines) | 82.51% (7,980 / 9,671 lines) | +1.45 pp (`COVERAGE_FAIL_UNDER_LINES` 73 → 80) |
+| WASM bundle `cxsmiles-yoga` | 1,341,229 bytes | 1,356,478 bytes | +15,249 B (+1.14%) |
+| WASM bundle `index` | 416,439 bytes | 407,731 bytes | -8,708 B (-2.09%) |
+| WASM bundle `json-count-rs` | 516,401 bytes | 512,344 bytes | -4,057 B (-0.79%) |
+| WASM bundle `lipid-selecto-rs` | 1,274,570 bytes | 1,281,684 bytes | +7,114 B (+0.56%) |
+| WASM bundle `mgf-precursor-erro-rs` | 1,314,643 bytes | 1,304,370 bytes | -10,273 B (-0.78%) |
+| WASM bundle `smellfish-rs` | 927,777 bytes | 909,186 bytes | -18,591 B (-2.00%) |
+| WASM bundle total (all 6 apps) | 5,791,059 bytes | 5,771,793 bytes | -19,266 B (-0.33%) |
+| Bench `stream_io_500k_lines` | 23.087 ms | 19.759 ms | -14.4% |
+| Bench `mgf_parse_10k_spectra` | 19.372 ms | 15.249 ms | -21.3% |
+| Bench `json_count_50k_rows` | 69.049 ms | 60.254 ms | -12.7% |
+| Bench `cxsmiles_pos_and_repeat` | 494.866 ms | 293.274 ms | -40.7% |
+| Bench `lipid_core_204_classify_export` | 11,995.530 ms | 2,673.234 ms | -77.7% |
+| Bench `mgf_analysis_5k_ingest_recalibrated` | 201.218 ms | 22.124 ms | -89.0% |
+| Bench `smellfish_200_pipeline_csv_svg` | 0.537 ms | 0.406 ms | -24.4% |
+| Bench `mgf_plotting_diag_and_hist` | 16.267 ms | 2.391 ms | -85.3% |
+| Bench `evoliposuction_sdf_zip_2k_to_tsv` | 9.898 ms | 3.157 ms | -68.1% |
+| Bench `evoliposuction_split_2k_tsv` | 1.240 ms | 0.888 ms | -28.4% |
 
 ## 4. Structural Changes
 
-*(Populated during Steps 2–6.)*
+- **Safety net & benchmark harness (`1d65b8d1`)**: Added cross-crate golden characterization suites, invariant property checks, and the standalone release `bench_smoke` runner in `crates/workspace-gates/examples/bench_smoke.rs`.
+- **Dead code & unused feature pruning**: Removed unused `chematic` `"chem"`/`"smiles"` features (`chem-depict`, `cxsmiles-core`, `lipid-core`), deleted test-only `lipid-core/src/chemical_class/defaults.rs`, pruned unused diagnostic/metrics/DTO fields (`mgf-analysis-core`, `mgf`, `json-count-core`, `ui`, `smellfish-core`), and eliminated `lipid-core`'s redundant `web-sys` dependency in `lipid-selecto-rs` in favor of `upload::Blob`.
+- **Single sources of truth & domain types**: Unified `RING_FAMILY_MOTIFS`, `ERTL_*` cutoffs, and `LotusDialect` SPARQL builders (`smellfish-core`); parameterized SVG plotting with `ErrorUnit`, shared ECDF/downsample/mesh/palette helpers, and `SummaryMetrics`/`UploadSignals` (`mgf-precursor-erro-rs`); centralized upload coordination (`UploadGen` + `dispatch_file_upload` in `crates/upload`) across all upload-enabled Dioxus apps; hoisted shared `WebMcpConfig`/theme tokens (`ui`, `index`, `json-count-rs`, `smellfish-rs`); unified CLI arg structs and serde CSV schemas in `smarts-evoliposuction`.
+- **Hot-path performance refactors**: Removed `stream-io` half-compaction `memmove` and added `scan_offset` cursor tracking; eliminated redundant trimming/scans in `mgf`; replaced per-byte `StringValidator` copies and `HashSet<usize>` row tracking with in-place matching + generation counters in `json-count-core`; precomputed canonical SMILES once, moved adduct cache out of `thread_local!`, removed O(V*k)/O(E*|unit|) scans and DFS scratch allocations in `cxsmiles-core` and `mgf-analysis-core`; eliminated redundant `try_parse_smiles` calls and intermediate export `Vec`s in `lipid-core`; switched `smellfish-rs` build script offline and cards to lazy depiction.
+- **CI, Make tasks & workspace gates**: Unified 16 per-crate wasm tasks into one `--workspace --target wasm32-unknown-unknown` clippy pass (`wasm=lint-wasm`), deduplicated `web-build-all`, added `bench-smoke` and `test-evoliposuction`, extracted `.github/actions/setup-dx/action.yml`, cached `panache`/`mk-tools`, added the `evoliposuction` CI job, and tightened `COVERAGE_FAIL_UNDER_LINES` to `80`.
 
 ## 5. API Changes and Migrations
 
-*(Populated during Steps 2–6; all workspace crates set `publish = false`.)*
+All workspace crates set `publish = false`; every internal public/crate API change was migrated atomically across all workspace callers in the corresponding commit:
+- `crates/upload`: Added `UploadGen` and `dispatch_file_upload` (`2b92d1b2`); migrated `json-count-rs`, `lipid-selecto-rs`, `mgf-precursor-erro-rs`, and `smellfish-rs`.
+- `crates/ui`: Consolidated EDAM serialization in `webmcp`, added `StyleBuilder::property_fmt`, `body_text_style`, and `flex_row_wrap`, narrowed `"true"` string sentinels to `Option<&'static str>`, and removed dead `EdamTerm` helpers (`fa139c6a`, `0370a141`).
+- `crates/mgf-analysis-core`: Removed unread diagnostic/metrics fields (`726c0b7a`), moved adduct caching into `LineIngestor` (`427d9341`), and grouped recalibration parameters into `RecalibrationParams`.
+- `crates/smellfish-core`: Narrowed internal row helpers to `pub(crate)`, removed the redundant per-row motif vector on `MoleculeRow` (`0fbb7c14`), and unified SPARQL generation under `LotusDialect` (`c2164f79`).
+- `crates/lipid-core`: Added `ChemicalClass::code` and derived `Copy` on `LipidClassification` (`fa28ee8b`); made `analysis` color metadata `&'static str`.
+- `apps/.../smarts-evoliposuction`: Restricted internal helper visibility (`pub(crate)` / private), unified CLI args under `CommonEvolveArgs`, and standardized `serde::Serialize` CSV output (`a35ca4e6`).
 
 ## 6. Findings Handed Off (Suspected Scientific / Correctness Issues — Not Fixed Here)
 
