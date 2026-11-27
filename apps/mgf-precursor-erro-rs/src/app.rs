@@ -97,7 +97,7 @@ pub(super) struct UploadSignals {
     pub(super) busy: Signal<bool>,
     pub(super) drag_active: Signal<bool>,
     pub(super) original_mgf_content: Signal<String>,
-    pub(super) analysis_generation: Signal<u64>,
+    pub(super) analysis_generation: upload::UploadGen,
 }
 
 /// Renders the MGF precursor-error analysis UI.
@@ -113,7 +113,7 @@ pub fn app() -> Element {
         busy: use_signal(|| false),
         drag_active: use_signal(|| false),
         original_mgf_content: use_signal(String::new),
-        analysis_generation: use_signal(|| 0u64),
+        analysis_generation: upload::use_upload_gen(),
     };
     let calibration_model = use_signal(|| CalibrationModel::None);
     let preferred_lambda = use_signal(ShrinkageLambda::default);

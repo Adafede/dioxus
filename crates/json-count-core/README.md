@@ -19,7 +19,6 @@ use stream_io::SliceSource;
 let doc = br#"{"a":1,"b":[null,"ok"]}"#;
 let cols = block_on(scan_source_with_progress(
     SliceSource::new(doc),
-    doc.len() as u64,
     |_, _| {},
 ));
 assert_eq!(

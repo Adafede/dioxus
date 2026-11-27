@@ -269,7 +269,7 @@ pub(crate) async fn scan_container<F: FnMut(u64, u64), S: ChunkSource>(
     let mut count = 0u64;
 
     loop {
-        let tail = cursor.buffer().get(cursor.pos()..).unwrap_or_default();
+        let tail = cursor.remaining();
         let (consumed, closed) = scan_container_chunk(tail, &mut state, bufs, &mut count)?;
         cursor.advance(consumed);
         if closed {
@@ -294,7 +294,7 @@ pub(crate) async fn scan_bare_scalar<F: FnMut(u64, u64), S: ChunkSource>(
     cursor.advance(1);
 
     loop {
-        let tail = cursor.buffer().get(cursor.pos()..).unwrap_or_default();
+        let tail = cursor.remaining();
         let mut consumed = 0usize;
         let mut at_delimiter = false;
         for &byte in tail {

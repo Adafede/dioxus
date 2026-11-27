@@ -6,15 +6,16 @@
 
 use crate::app::browser::ImportSignals;
 use crate::rdkit::{inspect_smiles, read_file_text};
-use dioxus::prelude::{ReadableExt, Signal, WritableExt, spawn};
+use dioxus::prelude::{Signal, WritableExt, spawn};
 use lotus_search::reqwest_client::ReqwestClient;
 use smellfish_core::csv::parse_csv_rows;
 use smellfish_core::model::{EndpointStatus, Enrichment, EnrichmentOutcome};
 use smellfish_core::pipeline::{ImportOutcome, RowInspection, finalize_pass2, prepare_pass1};
 use smellfish_core::qlever::enrich_sources;
+use upload::UploadGen;
 
 pub(crate) enum ImportSource {
-    Blob(web_sys::Blob),
+    Blob(upload::Blob),
     Text(String),
 }
 
@@ -23,11 +24,7 @@ pub(crate) fn begin_import(
     file_name_value: String,
     mut signals: ImportSignals,
 ) {
-    let expected_gen = {
-        let next = *signals.generation.peek() + 1;
-        signals.generation.set(next);
-        next
-    };
+    let expected_gen = signals.generation.advance();
 
     signals.file_name.set(file_name_value);
     signals.busy.set(true);
@@ -40,7 +37,7 @@ pub(crate) fn begin_import(
 
     spawn(async move {
         let outcome = run_import(source, signals.generation, expected_gen, signals.status).await;
-        if *signals.generation.peek() != expected_gen {
+        if !signals.generation.is_current(expected_gen) {
             return;
         }
         match outcome {
@@ -57,7 +54,7 @@ pub(crate) fn begin_import(
 )]
 async fn run_import(
     source: ImportSource,
-    generation: Signal<u64>,
+    generation: UploadGen,
     expected_gen: u64,
     status: Signal<String>,
 ) -> Result<ImportOutcome, String> {
@@ -76,7 +73,7 @@ async fn run_import(
     set_status_if_current(status, generation, expected_gen, "Loading RDKit module…");
     let mut inspections = Vec::with_capacity(total);
     for (idx, raw) in raw_rows.into_iter().enumerate() {
-        if *generation.peek() != expected_gen {
+        if !generation.is_current(expected_gen) {
             return Err("cancelled".to_string());
         }
         let current = idx + 1;
@@ -87,13 +84,13 @@ async fn run_import(
             &format!("Inspecting structure {current}/{total}…"),
         );
         let outcome = inspect_smiles(&raw.smiles).await;
-        if *generation.peek() != expected_gen {
+        if !generation.is_current(expected_gen) {
             return Err("cancelled".to_string());
         }
         inspections.push(RowInspection { raw, outcome });
     }
 
-    if *generation.peek() != expected_gen {
+    if !generation.is_current(expected_gen) {
         return Err("cancelled".to_string());
     }
     let batch = prepare_pass1(inspections);
@@ -123,7 +120,7 @@ async fn run_import(
         },
     };
 
-    if *generation.peek() != expected_gen {
+    if !generation.is_current(expected_gen) {
         return Err("cancelled".to_string());
     }
     set_status_if_current(status, generation, expected_gen, "Assessing NP evidence…");
@@ -132,11 +129,11 @@ async fn run_import(
 
 fn set_status_if_current(
     mut status: Signal<String>,
-    generation: Signal<u64>,
+    generation: UploadGen,
     expected_gen: u64,
     message: &str,
 ) {
-    if *generation.peek() == expected_gen {
+    if generation.is_current(expected_gen) {
         status.set(message.to_string());
     }
 }

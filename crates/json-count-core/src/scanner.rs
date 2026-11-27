@@ -189,9 +189,8 @@ pub(crate) async fn scan_columns<F: FnMut(u64, u64), S: ChunkSource>(
 /// Returns [`JsonCountError`] on malformed RFC 8259 JSON, invalid string escapes/UTF-8, or read errors.
 pub async fn scan_source_with_progress<F: FnMut(u64, u64), S: ChunkSource>(
     source: S,
-    total_bytes: u64,
     on_progress: F,
 ) -> Result<Vec<ColumnResult>, JsonCountError> {
-    let mut cur = BlobCursor::new(source, total_bytes, on_progress);
+    let mut cur = BlobCursor::new(source, on_progress);
     scan_columns(&mut cur).await
 }

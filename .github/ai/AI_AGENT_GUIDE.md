@@ -12,7 +12,7 @@
   (`ColorScheme`, `Radius`, `Shadow`, `Spacing`, `Typography`), and macros
   (`shared_signal!`, `shared_signals!`). Apps must use `StyleBuilder` or local
   style helpers instead of raw `style: "..."` strings.
-- `crates/stream-io` --- Portable async chunked byte and line streaming
+- `crates/stream-io` --- Portable async chunked byte and line readers
   (`BlobCursor`, `BlobLines`, `ChunkSource`, `SliceSource`, `StreamError`).
 - `crates/upload` --- Browser `BlobSource` (`wasm32`), Dioxus `FileData`
   extraction (`extract_blob_from_file_data`, `Blob`, `ExtractedFile`),

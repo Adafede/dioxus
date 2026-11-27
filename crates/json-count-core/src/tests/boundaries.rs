@@ -120,11 +120,9 @@ fn progress_message_and_callback_invocation() {
     let events = Rc::new(RefCell::new(Vec::<(u64, u64)>::new()));
     let sink = Rc::clone(&events);
     let doc = format!(r#"{{"k":"{}"}}"#, "a".repeat(5 * 1024 * 1024));
-    let mut cur = BlobCursor::new(
-        SliceSource::new(doc.as_bytes()),
-        doc.len() as u64,
-        move |p, t| sink.borrow_mut().push((p, t)),
-    )
+    let mut cur = BlobCursor::new(SliceSource::new(doc.as_bytes()), move |p, t| {
+        sink.borrow_mut().push((p, t));
+    })
     .with_chunk_size(1_048_576);
     let res = block_on(scan_columns(&mut cur));
     assert!(res.is_ok(), "chunked scan should succeed");
@@ -148,7 +146,6 @@ fn progress_message_and_callback_invocation() {
     let on_progress: fn(u64, u64) = |_, _| {};
     let err = block_on(scan_source_with_progress(
         SliceSource::new(b"not an object"),
-        13,
         on_progress,
     ));
     assert_eq!(

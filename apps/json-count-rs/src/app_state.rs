@@ -8,11 +8,14 @@
     reason = "Dioxus Props derive macro generates an empty helper enum"
 )]
 
+use dioxus::html::FileData;
 use dioxus::prelude::*;
 use json_count_core::{
     ColumnResult, SortColumn, SortSpec, aria_sort_for, next_sort_state, sorted_results,
 };
 use ui::{ColorScheme, Spacing, StyleBuilder, Typography};
+#[cfg(target_arch = "wasm32")]
+use upload::UploadGen;
 
 #[cfg(target_arch = "wasm32")]
 use crate::wasm_entry::begin_scan_from_blob;
@@ -29,29 +32,18 @@ pub(crate) struct JsonCountCtx {
     #[cfg(target_arch = "wasm32")]
     pub(crate) drag_active: Signal<bool>,
     #[cfg(target_arch = "wasm32")]
-    pub(crate) generation: Signal<u64>,
+    pub(crate) generation: UploadGen,
 }
 
 /// Dispatches an extracted browser file (or reports missing/error status).
-pub(crate) fn handle_uploaded_files(
-    mut ctx: JsonCountCtx,
-    result: Result<Option<upload::ExtractedFile>, upload::UploadError>,
-) {
-    match result {
-        Ok(Some(file)) => {
-            #[cfg(target_arch = "wasm32")]
-            begin_scan_from_blob(file.blob, file.name, ctx);
+pub(crate) fn handle_uploaded_files(ctx: JsonCountCtx, files: &[FileData]) {
+    upload::dispatch_file_upload(files, ctx.status, |file| {
+        #[cfg(target_arch = "wasm32")]
+        begin_scan_from_blob(file.blob, file.name, ctx);
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                ctx.file_name.set(file.name);
-                ctx.status
-                    .set("This app needs to run in a browser.".to_string());
-            }
-        }
-        Ok(None) => ctx.status.set("No file selected.".to_string()),
-        Err(err) => ctx.status.set(err.to_string()),
-    }
+        #[cfg(not(target_arch = "wasm32"))]
+        upload::report_browser_only_upload(ctx.file_name, ctx.status, file.name);
+    });
 }
 
 fn header_style(align: &str) -> String {

@@ -6,7 +6,7 @@
 use dioxus::html::FileData;
 use dioxus::prelude::WritableExt;
 #[cfg(target_arch = "wasm32")]
-use dioxus::prelude::{ReadableExt, spawn};
+use dioxus::prelude::spawn;
 
 use super::UploadSignals;
 
@@ -15,7 +15,7 @@ use mgf_analysis_core::{
     LineIngestor, MAX_RAW_RETENTION_BYTES, PrecursorStats, append_retained_line,
 };
 #[cfg(target_arch = "wasm32")]
-use stream_io::{BlobLines, ChunkSource};
+use stream_io::BlobLines;
 #[cfg(target_arch = "wasm32")]
 use upload::{BlobSource, UploadError};
 #[cfg(target_arch = "wasm32")]
@@ -148,7 +148,7 @@ async fn scan_blob_with_progress(
 fn start_analysis(blob: Blob, mut signals: UploadSignals, generation: u64) {
     spawn(async move {
         let total_bytes = BlobSource::new(&blob).total_bytes();
-        if *signals.analysis_generation.read() != generation {
+        if !signals.analysis_generation.is_current(generation) {
             return;
         }
         signals
@@ -156,7 +156,7 @@ fn start_analysis(blob: Blob, mut signals: UploadSignals, generation: u64) {
             .set(format!("Scanning {total_bytes} bytes..."));
 
         match scan_blob_with_progress(&blob, |processed, total| {
-            if *signals.analysis_generation.read() == generation {
+            if signals.analysis_generation.is_current(generation) {
                 signals.status.set(format!(
                     "Scanning... {}/{} bytes",
                     processed.min(total),
@@ -167,7 +167,7 @@ fn start_analysis(blob: Blob, mut signals: UploadSignals, generation: u64) {
         .await
         {
             Ok((result, raw_content)) => {
-                if *signals.analysis_generation.read() != generation {
+                if !signals.analysis_generation.is_current(generation) {
                     return;
                 }
                 signals
@@ -177,7 +177,7 @@ fn start_analysis(blob: Blob, mut signals: UploadSignals, generation: u64) {
                 signals.metrics.set(Some(result));
             }
             Err(error) => {
-                if *signals.analysis_generation.read() != generation {
+                if !signals.analysis_generation.is_current(generation) {
                     return;
                 }
                 signals.status.set(format!("Error scanning MGF: {error}"));
@@ -185,7 +185,7 @@ fn start_analysis(blob: Blob, mut signals: UploadSignals, generation: u64) {
                 signals.metrics.set(None);
             }
         }
-        if *signals.analysis_generation.read() == generation {
+        if signals.analysis_generation.is_current(generation) {
             signals.busy.set(false);
         }
     });
@@ -193,8 +193,7 @@ fn start_analysis(blob: Blob, mut signals: UploadSignals, generation: u64) {
 
 #[cfg(target_arch = "wasm32")]
 fn begin_analysis_from_blob(blob: Blob, file_name: String, mut signals: UploadSignals) {
-    let generation = signals.analysis_generation.read().wrapping_add(1);
-    signals.analysis_generation.set(generation);
+    let generation = signals.analysis_generation.advance();
     signals.file_name.set(file_name);
     signals.busy.set(true);
     signals.drag_active.set(false);
@@ -205,33 +204,26 @@ fn begin_analysis_from_blob(blob: Blob, file_name: String, mut signals: UploadSi
 }
 
 /// Dispatches uploaded file data on `wasm32` or displays browser-only notice on host.
-pub(super) fn attempt_analysis_from_files(files: &[FileData], mut signals: UploadSignals) {
-    match upload::extract_blob_from_file_data(files) {
-        Ok(Some(file)) => {
-            #[cfg(target_arch = "wasm32")]
-            begin_analysis_from_blob(file.blob, file.name, signals);
+pub(super) fn attempt_analysis_from_files(files: &[FileData], signals: UploadSignals) {
+    upload::dispatch_file_upload(files, signals.status, |file| {
+        #[cfg(target_arch = "wasm32")]
+        begin_analysis_from_blob(file.blob, file.name, signals);
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                signals.drag_active.set(false);
-                signals.original_mgf_content.set(String::new());
-                signals.file_name.set(file.name);
-                signals.metrics.set(None);
-                signals
-                    .status
-                    .set("This app needs to run in a browser.".to_string());
-                signals.busy.set(false);
-            }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mut signals = signals;
+            signals.drag_active.set(false);
+            signals.original_mgf_content.set(String::new());
+            signals.metrics.set(None);
+            signals.busy.set(false);
+            upload::report_browser_only_upload(signals.file_name, signals.status, file.name);
         }
-        Ok(None) => signals.status.set("No file selected.".to_string()),
-        Err(err) => signals.status.set(err.to_string()),
-    }
+    });
 }
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn load_example_mgf(mut signals: UploadSignals) {
-    let generation = signals.analysis_generation.read().wrapping_add(1);
-    signals.analysis_generation.set(generation);
+    let generation = signals.analysis_generation.advance();
     signals.original_mgf_content.set(String::new());
     spawn(async move {
         signals.status.set("Loading example MGF...".to_string());
@@ -240,14 +232,14 @@ pub(crate) fn load_example_mgf(mut signals: UploadSignals) {
 
         match fetch_remote_blob(EXAMPLE_MGF_URL).await {
             Ok(blob) => {
-                if *signals.analysis_generation.read() != generation {
+                if !signals.analysis_generation.is_current(generation) {
                     return;
                 }
                 signals.file_name.set("multims2_spectra.mgf".to_string());
                 start_analysis(blob, signals, generation);
             }
             Err(error) => {
-                if *signals.analysis_generation.read() != generation {
+                if !signals.analysis_generation.is_current(generation) {
                     return;
                 }
                 signals.status.set(error);

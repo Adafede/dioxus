@@ -19,7 +19,6 @@ pub struct BlobLines<F, S: ChunkSource> {
     total_bytes: u64,
     chunk_size: usize,
     max_line_bytes: usize,
-    processed: u64,
     progress: ProgressThrottler<F, fn() -> f64>,
 }
 
@@ -37,7 +36,6 @@ where
             total_bytes,
             chunk_size: DEFAULT_CHUNK_SIZE,
             max_line_bytes: DEFAULT_MAX_LINE_BYTES,
-            processed: 0,
             progress: ProgressThrottler::new(
                 on_progress,
                 S::clock(),
@@ -55,7 +53,7 @@ where
     }
 
     /// Overrides the maximum allowed line length in bytes, clamped to at least 1 byte.
-    #[cfg_attr(not(test), expect(dead_code, reason = "configured in unit tests"))]
+    #[cfg(test)]
     #[must_use]
     pub(crate) const fn with_max_line_bytes(mut self, bytes: usize) -> Self {
         self.max_line_bytes = if bytes == 0 { 1 } else { bytes };
@@ -131,14 +129,14 @@ where
 
     async fn load_next_chunk(&mut self) -> Result<(), StreamError> {
         self.inner.compact_all();
-        if let Some((start, end)) = self
+        if self
             .inner
             .pull_chunk(self.chunk_size, self.total_bytes)
             .await?
+            .is_some()
         {
-            self.processed = self.processed.saturating_add(end - start);
             self.inner
-                .report_and_yield(&mut self.progress, self.processed, self.total_bytes)
+                .report_and_yield(&mut self.progress, self.inner.source_read, self.total_bytes)
                 .await;
         }
         Ok(())

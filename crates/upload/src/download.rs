@@ -34,12 +34,8 @@ pub(crate) fn download_with_mime(
     content: &str,
     filename: &str,
     mime: &str,
+    fallback: &str,
 ) -> Result<(), UploadError> {
-    let fallback = if mime.starts_with("image/svg+xml") {
-        "download.svg"
-    } else {
-        "download.txt"
-    };
     let safe_name = sanitize_filename_with_fallback(filename, fallback);
     let url = blob_url_from_str(content, mime)?;
 
@@ -60,7 +56,12 @@ pub(crate) fn download_with_mime(
 /// # Errors
 /// Returns [`UploadError`] if the download cannot be triggered.
 pub fn download_text(content: &str, filename: &str) -> Result<(), UploadError> {
-    download_with_mime(content, filename, "text/plain;charset=utf-8")
+    download_with_mime(
+        content,
+        filename,
+        "text/plain;charset=utf-8",
+        "download.txt",
+    )
 }
 
 /// Triggers a browser download of SVG markup as an `image/svg+xml` file.
@@ -68,7 +69,12 @@ pub fn download_text(content: &str, filename: &str) -> Result<(), UploadError> {
 /// # Errors
 /// Returns [`UploadError`] if the download cannot be triggered.
 pub fn download_svg(content: &str, filename: &str) -> Result<(), UploadError> {
-    download_with_mime(content, filename, "image/svg+xml;charset=utf-8")
+    download_with_mime(
+        content,
+        filename,
+        "image/svg+xml;charset=utf-8",
+        "download.svg",
+    )
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -119,7 +125,7 @@ fn is_windows_reserved_stem(stem: &str) -> bool {
 }
 
 #[cfg(any(test, target_arch = "wasm32"))]
-fn truncate_utf8_filename(name: String, max_bytes: usize) -> String {
+fn truncate_utf8_filename(mut name: String, max_bytes: usize) -> String {
     if name.len() <= max_bytes {
         return name;
     }
@@ -138,12 +144,11 @@ fn truncate_utf8_filename(name: String, max_bytes: usize) -> String {
         }
     }
     let cut = name.floor_char_boundary(max_bytes);
-    let truncated = name.get(..cut).unwrap_or_default();
-    if truncated.is_empty() {
-        "download.txt".to_string()
-    } else {
-        truncated.to_string()
+    if cut == 0 {
+        return "download.txt".to_string();
     }
+    name.truncate(cut);
+    name
 }
 
 #[cfg(any(test, target_arch = "wasm32"))]
@@ -187,6 +192,7 @@ pub(crate) fn download_with_mime(
     _content: &str,
     _filename: &str,
     _mime: &str,
+    _fallback: &str,
 ) -> Result<(), UploadError> {
     Err(UploadError::BrowserOnly)
 }

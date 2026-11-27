@@ -12,7 +12,7 @@ use crate::pipeline::{ImportSource, begin_import};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ImportSignals {
-    pub(crate) generation: Signal<u64>,
+    pub(crate) generation: upload::UploadGen,
     pub(crate) file_name: Signal<String>,
     pub(crate) status: Signal<String>,
     pub(crate) busy: Signal<bool>,
@@ -24,27 +24,20 @@ pub(crate) struct ImportSignals {
 }
 
 /// Dispatches a file-drop or browse event into the import pipeline (wasm) or sets browser hint (host).
-pub(super) fn attempt_import(files: &[FileData], mut signals: ImportSignals) {
-    match upload::extract_blob_from_file_data(files) {
-        Ok(Some(file)) => {
-            #[cfg(target_arch = "wasm32")]
-            begin_import(ImportSource::Blob(file.blob), file.name, signals);
+pub(super) fn attempt_import(files: &[FileData], signals: &ImportSignals) {
+    let signals = *signals;
+    upload::dispatch_file_upload(files, signals.status, |file| {
+        #[cfg(target_arch = "wasm32")]
+        begin_import(ImportSource::Blob(file.blob), file.name, signals);
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                signals.file_name.set(file.name);
-                signals
-                    .status
-                    .set("This app needs to run in a browser.".to_string());
-            }
-        }
-        Ok(None) => signals.status.set("No file selected.".to_string()),
-        Err(err) => signals.status.set(err.to_string()),
-    }
+        #[cfg(not(target_arch = "wasm32"))]
+        upload::report_browser_only_upload(signals.file_name, signals.status, file.name);
+    });
 }
 
 /// Dispatches pasted SMILES lines into the import pipeline (wasm) or sets browser hint (host).
-pub(super) fn attempt_import_from_text(text: &str, mut signals: ImportSignals) {
+pub(super) fn attempt_import_from_text(text: &str, signals: &ImportSignals) {
+    let mut signals = *signals;
     if text.is_empty() {
         signals
             .status

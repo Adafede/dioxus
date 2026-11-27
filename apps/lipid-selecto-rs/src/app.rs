@@ -121,7 +121,7 @@ pub fn app() -> Element {
     let busy = use_signal(|| false);
     let analysis = use_signal(|| None::<Analysis>);
     let input_format = use_signal(|| None::<LipidFormat>);
-    let generation = use_signal(|| 0u64);
+    let generation = upload::use_upload_gen();
     let filters = SummaryFilters {
         selected_classes: use_signal(|| ClassMatchSet::all(lmsd_classes().len())),
         mz_min: use_signal(|| 0.0f64),
@@ -142,16 +142,10 @@ pub fn app() -> Element {
     };
 
     let on_file_change = move |evt: Event<FormData>| {
-        handle_uploaded_files(
-            ctx,
-            upload::extract_blob_from_file_data(&evt.data().files()),
-        );
+        handle_uploaded_files(ctx, &evt.data().files());
     };
     let on_drop = move |evt: Event<DragData>| {
-        handle_uploaded_files(
-            ctx,
-            upload::extract_blob_from_file_data(&evt.data().files()),
-        );
+        handle_uploaded_files(ctx, &evt.data().files());
     };
     let light = ColorScheme::LIGHT;
     let active_format = (*ctx.input_format.read()).unwrap_or(LipidFormat::Mgf);
@@ -230,21 +224,14 @@ pub(super) struct UploadCtx {
     pub(super) analysis: Signal<Option<Analysis>>,
     pub(super) input_format: Signal<Option<LipidFormat>>,
     pub(super) adduct_filter: Signal<String>,
-    pub(super) generation: Signal<u64>,
+    pub(super) generation: upload::UploadGen,
 }
 
-fn handle_uploaded_files(
-    mut ctx: UploadCtx,
-    result: Result<Option<upload::ExtractedFile>, upload::UploadError>,
-) {
-    match result {
-        Ok(Some(file)) => {
-            let detected_format = LipidFormat::from_path(&file.name);
-            process_file_upload(ctx, file, detected_format);
-        }
-        Ok(None) => ctx.status.set("No file selected.".to_string()),
-        Err(err) => ctx.status.set(err.to_string()),
-    }
+fn handle_uploaded_files(ctx: UploadCtx, files: &[dioxus::html::FileData]) {
+    upload::dispatch_file_upload(files, ctx.status, |file| {
+        let detected_format = LipidFormat::from_path(&file.name);
+        process_file_upload(ctx, file, detected_format);
+    });
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -263,8 +250,7 @@ fn process_file_upload(
     file: upload::ExtractedFile,
     format: Option<LipidFormat>,
 ) {
-    let next_gen = *ctx.generation.read() + 1;
-    ctx.generation.set(next_gen);
+    ctx.generation.advance();
     ctx.adduct_filter.set(String::new());
     ctx.input_format.set(format);
     ctx.file_name.set(file.name);

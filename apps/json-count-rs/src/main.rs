@@ -94,8 +94,9 @@ fn app() -> Element {
     let status = use_signal(|| "Choose a JSON file to begin.".to_string());
     let busy = use_signal(|| false);
     let drag_active = use_signal(|| false);
-    #[cfg(target_arch = "wasm32")]
-    let generation = use_signal(|| 0u64);
+    let generation = upload::use_upload_gen();
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = generation;
 
     let ctx = JsonCountCtx {
         file_name,
@@ -111,16 +112,10 @@ fn app() -> Element {
     };
 
     let on_file_change = move |evt: Event<FormData>| {
-        handle_uploaded_files(
-            ctx,
-            upload::extract_blob_from_file_data(&evt.data().files()),
-        );
+        handle_uploaded_files(ctx, &evt.data().files());
     };
     let on_drop = move |evt: Event<DragData>| {
-        handle_uploaded_files(
-            ctx,
-            upload::extract_blob_from_file_data(&evt.data().files()),
-        );
+        handle_uploaded_files(ctx, &evt.data().files());
     };
 
     rsx! {

@@ -26,7 +26,7 @@ pub(super) fn InputPanel(
     let ep_list = signals.endpoints.read();
 
     let on_file_change = move |evt: Event<FormData>| {
-        attempt_import(&evt.data().files(), signals);
+        attempt_import(&evt.data().files(), &signals);
     };
     let on_drag_activate = move |evt: Event<DragData>| {
         evt.prevent_default();
@@ -37,10 +37,10 @@ pub(super) fn InputPanel(
         signals.drag_active.set(false);
     };
     let on_drop = move |evt: Event<DragData>| {
-        attempt_import(&evt.data().files(), signals);
+        attempt_import(&evt.data().files(), &signals);
     };
     let submit_pasted = move |_| {
-        attempt_import_from_text(pasted_smiles.read().trim(), signals);
+        attempt_import_from_text(pasted_smiles.read().trim(), &signals);
     };
 
     rsx! {

@@ -5,6 +5,8 @@
 
 use std::fmt::Debug;
 #[cfg(not(target_arch = "wasm32"))]
+use std::sync::OnceLock;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
 use crate::error::StreamError;
@@ -82,17 +84,8 @@ impl ChunkSource for SliceSource<'_> {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn slice_clock() -> f64 {
-    thread_local! {
-        static EPOCH: std::cell::Cell<Option<Instant>> = const { std::cell::Cell::new(None) };
-    }
-    EPOCH.with(|epoch| {
-        let start = epoch.get().unwrap_or_else(|| {
-            let now = Instant::now();
-            epoch.set(Some(now));
-            now
-        });
-        start.elapsed().as_secs_f64() * 1000.0
-    })
+    static EPOCH: OnceLock<Instant> = OnceLock::new();
+    EPOCH.get_or_init(Instant::now).elapsed().as_secs_f64() * 1000.0
 }
 
 #[cfg(target_arch = "wasm32")]

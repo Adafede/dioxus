@@ -5,7 +5,7 @@
 
 use thiserror::Error;
 
-/// Error returned by [`crate::ChunkSource`], [`crate::BlobCursor`], and [`crate::BlobLines`].
+/// Error returned by [`crate::ChunkSource`], [`crate::BlobCursor`], and [`crate::BlobLines`] readers.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum StreamError {

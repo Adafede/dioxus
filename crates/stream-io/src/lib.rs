@@ -6,7 +6,7 @@
 //! Provides bounded-memory streaming readers over [`ChunkSource`] without
 //! coupling to browser or UI frameworks:
 //!
-//! - [`BlobCursor`] — byte-level chunked lookahead and cursor advancement.
+//! - [`BlobCursor`] — byte-level chunked lookahead, slice access, and cursor advancement.
 //! - [`BlobLines`] — line-oriented `\n`/`\r\n` streaming reader with line length caps.
 //! - [`SliceSource`] — in-memory [`ChunkSource`] for host execution and tests.
 //!

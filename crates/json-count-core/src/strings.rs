@@ -45,7 +45,7 @@ pub(crate) async fn read_json_key_into<F: FnMut(u64, u64), S: ChunkSource>(
     raw.clear();
     let mut validator = StringValidator::default();
     loop {
-        let tail = cursor.buffer().get(cursor.pos()..).unwrap_or_default();
+        let tail = cursor.remaining();
         let (consumed, closed) = scan_key_chunk(tail, raw, &mut validator)?;
         cursor.advance(consumed);
         if closed {
@@ -101,7 +101,7 @@ pub(crate) async fn skip_string_nonempty<F: FnMut(u64, u64), S: ChunkSource>(
     let mut validator = StringValidator::default();
     let mut any = false;
     loop {
-        let tail = cursor.buffer().get(cursor.pos()..).unwrap_or_default();
+        let tail = cursor.remaining();
         let (consumed, has_body, closed) = scan_skip_chunk(tail, &mut validator)?;
         if has_body {
             any = true;

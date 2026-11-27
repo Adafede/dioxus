@@ -55,14 +55,13 @@ pub(super) fn load_example_dataset(mut ctx: UploadCtx) {
 }
 
 fn begin_new_upload(mut ctx: UploadCtx) -> u64 {
-    let next_gen = *ctx.generation.read() + 1;
-    ctx.generation.set(next_gen);
+    let next_gen = ctx.generation.advance();
     ctx.adduct_filter.set(String::new());
     next_gen
 }
 
 fn is_stale(ctx: UploadCtx, expected_gen: u64) -> bool {
-    *ctx.generation.read() != expected_gen
+    !ctx.generation.is_current(expected_gen)
 }
 
 #[expect(

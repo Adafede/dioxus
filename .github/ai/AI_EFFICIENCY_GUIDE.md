@@ -19,7 +19,7 @@ Run checks from narrowest/fastest to broadest workspace gate:
 - Keep parsing, chemistry, scoring, and formatting logic free of browser APIs so
   it compiles and runs under native host `nextest` without a browser runtime.
 - Keep `#[cfg(target_arch = "wasm32")]` glue thin around pure Rust helpers (for
-  example, feeding `crates/upload`'s `BlobLines` via `ChunkSource` /
+  example, feeding `crates/stream-io`'s `BlobLines` via `ChunkSource` /
   `SliceSource` in host tests).
 - Batch related code edits before triggering full-workspace checks (`./mk ci`),
   and regenerate `//!`-backed `README.md` files once per documentation batch

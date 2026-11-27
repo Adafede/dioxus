@@ -91,7 +91,6 @@ fn bench_json_and_cxsmiles() {
     measure("json_count_50k_rows", || {
         block_on(json_count_core::scan_source_with_progress(
             SliceSource::new(json_corpus.as_bytes()),
-            u64::try_from(json_corpus.len()).unwrap_or(u64::MAX),
             |_, _| {},
         ))
         .map_or(0, |cols| cols.len())

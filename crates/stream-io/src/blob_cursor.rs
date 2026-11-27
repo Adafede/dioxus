@@ -16,7 +16,6 @@ pub struct BlobCursor<F, S: ChunkSource> {
     total_bytes: u64,
     chunk_size: usize,
     processed_before_buf: u64,
-    eof: bool,
     progress: ProgressThrottler<F, fn() -> f64>,
 }
 
@@ -27,13 +26,13 @@ where
 {
     /// Creates a new cursor reading from `source` with progress reporting.
     #[must_use]
-    pub fn new(source: S, total_bytes: u64, on_progress: F) -> Self {
+    pub fn new(source: S, on_progress: F) -> Self {
+        let total_bytes = source.total_bytes();
         Self {
             inner: ChunkBuffer::new(source),
             total_bytes,
             chunk_size: DEFAULT_CHUNK_SIZE,
             processed_before_buf: 0,
-            eof: false,
             progress: ProgressThrottler::new(
                 on_progress,
                 S::clock(),
@@ -76,21 +75,13 @@ where
             self.processed_before_buf += consumed;
         }
 
-        if self.eof {
-            return Ok(!self.inner.buf.is_empty());
-        }
-
-        let Some((_, end)) = self
+        if self
             .inner
             .pull_chunk(self.chunk_size, self.total_bytes)
             .await?
-        else {
-            self.eof = true;
+            .is_none()
+        {
             return Ok(!self.inner.buf.is_empty());
-        };
-
-        if end >= self.total_bytes {
-            self.eof = true;
         }
 
         let processed = self.processed();
@@ -152,17 +143,15 @@ where
     /// Returns [`StreamError`] if reading the next chunk from the source fails.
     pub async fn skip_ws(&mut self) -> Result<(), StreamError> {
         loop {
-            while self
-                .inner
-                .buf
-                .get(self.inner.pos)
-                .is_some_and(|b| matches!(b, b' ' | b'\t' | b'\n' | b'\r'))
+            let rest = self.remaining();
+            if let Some(non_ws) = rest
+                .iter()
+                .position(|b| !matches!(b, b' ' | b'\t' | b'\n' | b'\r'))
             {
-                self.inner.pos += 1;
-            }
-            if self.inner.pos < self.inner.buf.len() {
+                self.inner.pos += non_ws;
                 return Ok(());
             }
+            self.inner.pos = self.inner.buf.len();
             if !self.fill().await? {
                 return Ok(());
             }
@@ -175,6 +164,12 @@ where
         self.inner.pos
     }
 
+    /// Returns the unconsumed slice of the active buffer starting at `pos`.
+    #[must_use]
+    pub fn remaining(&self) -> &[u8] {
+        self.inner.buf.get(self.inner.pos..).unwrap_or_default()
+    }
+
     /// Returns the byte at the current buffer position, if buffered.
     #[must_use]
     pub fn current_byte(&self) -> Option<u8> {
@@ -184,12 +179,6 @@ where
     /// Advances the cursor position by `n`, clamped to the active buffer length.
     pub fn advance(&mut self, n: usize) {
         self.inner.pos = self.inner.pos.saturating_add(n).min(self.inner.buf.len());
-    }
-
-    /// Returns a slice of the active buffer.
-    #[must_use]
-    pub fn buffer(&self) -> &[u8] {
-        &self.inner.buf
     }
 }
 
@@ -265,14 +254,14 @@ mod tests {
                 bytes: b"abcdef",
                 max_per_read: 2,
             };
-            let mut cursor = BlobCursor::new(src, 6, |_, _| {}).with_chunk_size(5);
+            let mut cursor = BlobCursor::new(src, |_, _| {}).with_chunk_size(5);
             let mut out = Vec::new();
             while let Some(b) = cursor.next_byte().await? {
                 out.push(b);
             }
             assert_eq!(out, b"abcdef", "short reads must not skip unreturned bytes");
 
-            let mut empty_cursor = BlobCursor::new(EmptyChunkSource, 4, |_, _| {});
+            let mut empty_cursor = BlobCursor::new(EmptyChunkSource, |_, _| {});
             let outcome = empty_cursor.fill().await;
             assert!(
                 matches!(outcome, Err(StreamError::Io(_))),
@@ -285,7 +274,7 @@ mod tests {
     #[test]
     fn advance_saturates_at_buffer_length() {
         block_on(async {
-            let mut cursor = BlobCursor::new(SliceSource::new(b"abc"), 3, |_, _| {});
+            let mut cursor = BlobCursor::new(SliceSource::new(b"abc"), |_, _| {});
             assert!(matches!(cursor.fill().await, Ok(true)));
             cursor.advance(1);
             assert_eq!(cursor.pos(), 1);
@@ -298,8 +287,7 @@ mod tests {
     fn peek_and_next_byte_cross_chunk_boundaries() -> Result<(), crate::StreamError> {
         block_on(async {
             let data = b"hello!";
-            let mut cursor =
-                BlobCursor::new(SliceSource::new(data), 6, |_, _| {}).with_chunk_size(0);
+            let mut cursor = BlobCursor::new(SliceSource::new(data), |_, _| {}).with_chunk_size(0);
             let mut out = Vec::new();
             while let Some(peeked) = cursor.peek().await? {
                 let next = cursor.next_byte().await?;
@@ -318,8 +306,7 @@ mod tests {
     fn skip_ws_crosses_chunks_and_stops_at_eof() -> Result<(), crate::StreamError> {
         block_on(async {
             let data = b"  \t\r\n  xyz  \n";
-            let mut cursor = BlobCursor::new(SliceSource::new(data), data.len() as u64, |_, _| {})
-                .with_chunk_size(2);
+            let mut cursor = BlobCursor::new(SliceSource::new(data), |_, _| {}).with_chunk_size(2);
             cursor.skip_ws().await?;
             assert_eq!(cursor.peek().await?, Some(b'x'), "should stop at 'x'");
             for expected in *b"xyz" {

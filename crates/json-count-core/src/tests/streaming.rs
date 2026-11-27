@@ -191,7 +191,6 @@ fn malformed_json_and_limits_are_rejected() {
     assert_eq!(
         futures_executor::block_on(crate::scan_source_with_progress(
             stream_io::SliceSource::new(bad_utf8),
-            bad_utf8.len() as u64,
             |_, _| {}
         )),
         Err(JsonCountError::InvalidUtf8),

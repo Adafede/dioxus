@@ -3,41 +3,42 @@
 
 //! Browser `BlobSource` adapter implementing `stream_io::ChunkSource`.
 
-#[cfg(target_arch = "wasm32")]
 use stream_io::{ChunkSource, StreamError};
 
 /// A [`ChunkSource`] backed by a browser `Blob`.
-#[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone)]
 pub struct BlobSource {
     blob: web_sys::Blob,
 }
 
-#[cfg(target_arch = "wasm32")]
 impl BlobSource {
     /// Wraps a browser `Blob` as a byte source.
     #[must_use]
     pub fn new(blob: &web_sys::Blob) -> Self {
         Self { blob: blob.clone() }
     }
+
+    /// Returns the byte length of the underlying browser `Blob`.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "DOM Blob::size is a non-negative integer stored as f64"
+    )]
+    #[must_use]
+    pub fn total_bytes(&self) -> u64 {
+        self.blob.size().max(0.0) as u64
+    }
 }
 
-#[cfg(target_arch = "wasm32")]
 fn monotonic_clock_ms() -> f64 {
     web_sys::window()
         .and_then(|win| win.performance())
         .map_or_else(js_sys::Date::now, |perf| perf.now())
 }
 
-#[cfg(target_arch = "wasm32")]
 impl ChunkSource for BlobSource {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "DOM Blob::size is a non-negative integer stored as f64"
-    )]
     fn total_bytes(&self) -> u64 {
-        self.blob.size().max(0.0) as u64
+        Self::total_bytes(self)
     }
 
     #[expect(
@@ -53,9 +54,7 @@ impl ChunkSource for BlobSource {
             .await
             .map_err(|err| StreamError::io(crate::error::format_js_value(&err)))?;
         let array = js_sys::Uint8Array::new(&array_buffer);
-        let mut bytes = vec![0u8; array.byte_length() as usize];
-        array.copy_to(&mut bytes);
-        Ok(bytes)
+        Ok(array.to_vec())
     }
 
     async fn yield_now(&self) {

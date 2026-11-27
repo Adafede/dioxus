@@ -39,7 +39,7 @@ pub fn app() -> Element {
     ui::shared_signal!(file_name, String::new);
 
     let signals = browser::ImportSignals {
-        generation: use_signal(|| 0_u64),
+        generation: upload::use_upload_gen(),
         file_name,
         status: use_signal(String::new),
         busy: use_signal(|| false),

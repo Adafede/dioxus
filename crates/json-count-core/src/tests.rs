@@ -14,7 +14,7 @@ mod streaming;
 
 pub(super) fn cursor(bytes: &[u8], chunk: usize) -> BlobCursor<fn(u64, u64), SliceSource<'_>> {
     let on_progress: fn(u64, u64) = |_, _| {};
-    BlobCursor::new(SliceSource::new(bytes), bytes.len() as u64, on_progress).with_chunk_size(chunk)
+    BlobCursor::new(SliceSource::new(bytes), on_progress).with_chunk_size(chunk)
 }
 
 pub(super) fn count_str(input: &str) -> Result<u64, JsonCountError> {

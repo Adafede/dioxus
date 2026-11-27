@@ -22,6 +22,7 @@
 #![warn(missing_docs)]
 
 /// Browser `Blob` chunk source (`wasm32`).
+#[cfg(target_arch = "wasm32")]
 mod bytes;
 /// Download helpers (browser-triggered and native stubs).
 mod download;
@@ -34,4 +35,7 @@ mod event;
 pub use bytes::BlobSource;
 pub use download::{download_svg, download_text};
 pub use error::UploadError;
-pub use event::{Blob, ExtractedFile, extract_blob_from_file_data};
+pub use event::{
+    Blob, ExtractedFile, UploadGen, dispatch_file_upload, extract_blob_from_file_data,
+    report_browser_only_upload, use_upload_gen,
+};

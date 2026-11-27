@@ -457,7 +457,7 @@ Hardware & toolchain: Apple M1 Pro (8 cores, 16 GiB RAM, macOS arm64), Rust `1.1
 | TD-LP-12 | hygiene | `crates/lipid-core/src/tests/{analysis,export_and_filter}.rs` | 5x `FilterCriteria` literals + crate->app `include_str!` | Extract `wide_criteria`; move asset parity check to app | low | open | — |
 | TD-ST-01 | perf | `crates/stream-io/src/{blob_lines,buffer}.rs` | Redundant half-compaction `memmove` + `O(k^2)` multi-chunk scan | Remove half-compaction and track `scan_offset` | low | open | — |
 | TD-ST-02 | SOLID | `crates/stream-io/src/blob_lines.rs:22-149` | Duplicate `processed` field + test-only `expect` suppressions | Read `inner.source_read`, gate `#[cfg(test)]`, `Result` tests | low | open | — |
-| TD-ST-03 | DRY | `crates/stream-io/src/blob_cursor.rs:19-193` | Redundant `total_bytes` param, `eof` flag, byte-by-byte `skip_ws` | Read `source.total_bytes()`, add `remaining()`, slice-scan `skip_ws` | low | open | — |
+| TD-ST-03 | DRY | `crates/stream-io/src/blob_cursor.rs:19-193` | Redundant `total_bytes` param, EOF flag, byte-by-byte `skip_ws` | Read `source.total_bytes()`, add `remaining()`, slice-scan `skip_ws` | low | open | — |
 | TD-ST-04 | SOLID | `crates/stream-io/src/bytes.rs:84-96` | `thread_local!` clock epoch drifts across threads | Replace with `OnceLock<Instant>` | low | open | — |
 | TD-ST-05 | hygiene | `crates/stream-io/README.tpl:10` | Inconsistent LICENSE URL vs sibling core crates | Standardize LICENSE link across templates + `readme-write` | low | open | — |
 | TD-MG-01 | perf | `crates/mgf/src/parser.rs:44-158` | 4x `.trim()` and redundant `'='`/ws scans per MS2 peak line | Add trimmed internal path; infer 2nd token from `split_whitespace` | low | open | — |
