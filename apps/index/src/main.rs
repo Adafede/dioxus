@@ -25,6 +25,45 @@ mod app_card;
 
 use app_card::{AppCard, AppInfo};
 
+/// `WebMCP` capability and `BioSchemas` EDAM metadata.
+const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
+    app_id: "index",
+    title: "Dioxus Experiments",
+    description: "Landing page linking the client-side Rust/WebAssembly applications in this workspace",
+    inputs: &[],
+    outputs: &["experiment_links"],
+    edam: EdamAnnotations {
+        topics: &[
+            EdamTerm {
+                id: "topic_3332",
+                label: "Computational chemistry",
+            },
+            EdamTerm {
+                id: "topic_2258",
+                label: "Cheminformatics",
+            },
+            EdamTerm {
+                id: "topic_3172",
+                label: "Metabolomics",
+            },
+        ],
+        operations: &[EdamTerm {
+            id: "operation_2422",
+            label: "Data retrieval",
+        }],
+        input_data: &[],
+        input_formats: &[],
+        output_data: &[EdamTerm {
+            id: "data_2048",
+            label: "Report",
+        }],
+        output_formats: &[EdamTerm {
+            id: "format_2331",
+            label: "HTML",
+        }],
+    },
+};
+
 /// Root application component: theme-aware landing page.
 #[component]
 fn app() -> Element {
@@ -38,7 +77,7 @@ fn app() -> Element {
 
     let main_style = StyleBuilder::new()
         .flex("1")
-        .padding(&format!("{} {}", Spacing::XL, Spacing::LG))
+        .property_fmt("padding", format_args!("{} {}", Spacing::XL, Spacing::LG))
         .build();
 
     let grid_style = StyleBuilder::new()
@@ -48,15 +87,18 @@ fn app() -> Element {
             "repeat(auto-fit, minmax(300px, 1fr))",
         )
         .gap(Spacing::LG)
-        .margin(&format!("{} 0", Spacing::XL))
+        .property_fmt("margin", format_args!("{} 0", Spacing::XL))
         .build();
 
     let disclaimer_style = StyleBuilder::new()
         .background_color(ColorScheme::LIGHT.surface)
-        .border(&format!("1px solid {}", ColorScheme::LIGHT.border))
+        .property_fmt(
+            "border",
+            format_args!("1px solid {}", ColorScheme::LIGHT.border),
+        )
         .border_radius(Radius::MD)
         .padding(Spacing::LG)
-        .margin(&format!("{} 0 0 0", Spacing::XL))
+        .property_fmt("margin", format_args!("{} 0 0 0", Spacing::XL))
         .build();
 
     let section_heading_style = StyleBuilder::new()
@@ -82,25 +124,7 @@ fn app() -> Element {
             title: "Dioxus Experiments".to_string(),
             description: Some("Open-source Rust/WASM experiments built with Dioxus: CX-SMILES Yoga, JSON Count-rs, MGF Precursor Erro-rs, Lipid Selecto-rs, and Smellfish-rs.".to_string()),
             lang: "en".to_string(),
-            webmcp: Some(WebMcpConfig {
-                app_id: "index",
-                title: "Dioxus Experiments",
-                description: "Landing page linking the client-side Rust/WebAssembly applications in this workspace",
-                inputs: &[],
-                outputs: &["experiment_links"],
-                edam: EdamAnnotations {
-                    topics: &[
-                        EdamTerm { id: "topic_3332", label: "Computational chemistry" },
-                        EdamTerm { id: "topic_2258", label: "Cheminformatics" },
-                        EdamTerm { id: "topic_3172", label: "Metabolomics" },
-                    ],
-                    operations: &[EdamTerm { id: "operation_2422", label: "Data retrieval" }],
-                    input_data: &[],
-                    input_formats: &[],
-                    output_data: &[EdamTerm { id: "data_2048", label: "Report" }],
-                    output_formats: &[EdamTerm { id: "format_2331", label: "HTML" }],
-                },
-            }),
+            webmcp: Some(WEBMCP_CONFIG),
             og_type: Some("website".to_string()),
             og_site_name: Some("Dioxus Experiments".to_string()),
             theme_colors: Some((ColorScheme::LIGHT.bg, ColorScheme::LIGHT.bg)),

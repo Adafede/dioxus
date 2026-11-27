@@ -37,57 +37,55 @@ fn main() {
     launch(app);
 }
 
-const fn page_head() -> WebMcpConfig {
-    WebMcpConfig {
-        app_id: "json-count-rs",
-        title: "JSON Count-rs",
-        description: "Web app for counting non-null JSON fields from uploaded files",
-        inputs: &["json_file"],
-        outputs: &["field_stats"],
-        edam: EdamAnnotations {
-            topics: &[
-                EdamTerm {
-                    id: "topic_3071",
-                    label: "Data management",
-                },
-                EdamTerm {
-                    id: "topic_3366",
-                    label: "Data integration and warehousing",
-                },
-            ],
-            operations: &[
-                EdamTerm {
-                    id: "operation_2238",
-                    label: "Statistical calculation",
-                },
-                EdamTerm {
-                    id: "operation_0336",
-                    label: "Format validation",
-                },
-            ],
-            input_data: &[EdamTerm {
-                id: "data_0006",
-                label: "Data",
-            }],
-            input_formats: &[EdamTerm {
-                id: "format_3464",
-                label: "JSON",
-            }],
-            output_data: &[EdamTerm {
-                id: "data_2048",
-                label: "Report",
-            }],
-            output_formats: &[EdamTerm {
-                id: "format_2331",
-                label: "HTML",
-            }],
-        },
-    }
-}
+const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
+    app_id: "json-count-rs",
+    title: "JSON Count-rs",
+    description: "Web app for counting non-null JSON fields from uploaded files",
+    inputs: &["json_file"],
+    outputs: &["field_stats"],
+    edam: EdamAnnotations {
+        topics: &[
+            EdamTerm {
+                id: "topic_3071",
+                label: "Data management",
+            },
+            EdamTerm {
+                id: "topic_3366",
+                label: "Data integration and warehousing",
+            },
+        ],
+        operations: &[
+            EdamTerm {
+                id: "operation_2238",
+                label: "Statistical calculation",
+            },
+            EdamTerm {
+                id: "operation_0336",
+                label: "Format validation",
+            },
+        ],
+        input_data: &[EdamTerm {
+            id: "data_0006",
+            label: "Data",
+        }],
+        input_formats: &[EdamTerm {
+            id: "format_3464",
+            label: "JSON",
+        }],
+        output_data: &[EdamTerm {
+            id: "data_2048",
+            label: "Report",
+        }],
+        output_formats: &[EdamTerm {
+            id: "format_2331",
+            label: "HTML",
+        }],
+    },
+};
 
 #[component]
 fn app() -> Element {
-    ui::shared_signal!(file_name, String::new);
+    let file_name = use_signal(String::new);
 
     let results = use_signal(Vec::<ColumnResult>::new);
     let sort_spec = use_signal(|| None::<SortSpec>);
@@ -121,15 +119,15 @@ fn app() -> Element {
     rsx! {
         DocumentHead {
             title: "JSON Non-Null Field Counter".to_string(),
-            webmcp: Some(page_head()),
+            webmcp: Some(WEBMCP_CONFIG),
             lang: "en".to_string(),
-            theme_colors: Some(("#f6f8fb", "#10141b")),
+            theme_colors: Some((ColorScheme::LIGHT.bg, ColorScheme::DARK.bg)),
         }
 
         div {
             style: StyleBuilder::new()
                 .min_height("100vh")
-                .padding(&format!("{} {} 3rem", Spacing::XL, Spacing::LG))
+                .property_fmt("padding", format_args!("{} {} 3rem", Spacing::XL, Spacing::LG))
                 .background_color(ColorScheme::LIGHT.bg)
                 .color(ColorScheme::LIGHT.text)
                 .font_family(Typography::SANS)
@@ -143,7 +141,7 @@ fn app() -> Element {
                     .property("max-width", "760px")
                     .margin("0 auto")
                     .background_color(ColorScheme::LIGHT.surface)
-                    .border(&format!("1px solid {}", ColorScheme::LIGHT.border))
+                    .property_fmt("border", format_args!("1px solid {}", ColorScheme::LIGHT.border))
                     .border_radius(Radius::LG)
                     .box_shadow(Shadow::MD)
                     .padding(Spacing::LG)
