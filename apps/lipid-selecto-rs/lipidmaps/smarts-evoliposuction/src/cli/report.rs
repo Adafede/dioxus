@@ -3,22 +3,36 @@
 
 //! Evolution result CSV reporting and tested-SMARTS export.
 
+use std::fmt;
 use std::fs;
 use std::path::Path;
 
+use serde::{Serialize, Serializer};
 use smarts_evoliposuction::{
     CliError, EvolutionResult, ManifestRow, ParseCounts, TestedSmartsRecord,
 };
 
-/// Bundle of a manifest class row, evolution outcome, and elapsed wall seconds.
-pub(crate) struct EvolutionOutcome<'a> {
-    pub(crate) row: &'a ManifestRow,
-    pub(crate) result: &'a EvolutionResult,
-    pub(crate) elapsed: f64,
+struct OptDisplay<T>(Option<T>);
+
+impl<T: fmt::Display> Serialize for OptDisplay<T> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match &self.0 {
+            Some(val) => serializer.collect_str(val),
+            None => serializer.serialize_none(),
+        }
+    }
 }
 
-/// Formatted CSV field values for one evolution summary row.
-#[derive(Debug, Clone, PartialEq, Eq)]
+struct DisplayFloat3(f64);
+
+impl Serialize for DisplayFloat3 {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(&format_args!("{:.3}", self.0))
+    }
+}
+
+/// CSV field values for one evolution summary row.
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ResultRowFields {
     pub(crate) positives_total: usize,
     pub(crate) negatives_total: usize,
@@ -26,15 +40,38 @@ pub(crate) struct ResultRowFields {
     pub(crate) negatives_filtered: usize,
     pub(crate) status: &'static str,
     pub(crate) smarts: String,
-    pub(crate) mcc: String,
-    pub(crate) coverage_score: String,
-    pub(crate) smarts_len: String,
-    pub(crate) generations: String,
-    pub(crate) tested_smarts_count: String,
+    pub(crate) mcc: Option<f64>,
+    pub(crate) coverage_score: Option<f64>,
+    pub(crate) smarts_len: Option<usize>,
+    pub(crate) generations: Option<u64>,
+    pub(crate) tested_smarts_count: usize,
     pub(crate) tested_smarts_path: String,
 }
 
-fn empty_row_fields(counts: ParseCounts, status: &'static str) -> ResultRowFields {
+#[derive(Serialize)]
+struct EvolutionCsvRow<'a> {
+    level: &'a str,
+    label: &'a str,
+    category: &'a str,
+    main_class: &'a str,
+    subclass: &'a str,
+    slug: &'a str,
+    positive_count: usize,
+    negative_count: usize,
+    positive_parse_failures: usize,
+    negative_parse_failures: usize,
+    best_smarts: &'a str,
+    best_mcc: OptDisplay<f64>,
+    best_coverage_score: OptDisplay<f64>,
+    best_smarts_len: OptDisplay<usize>,
+    generations: OptDisplay<u64>,
+    elapsed_secs: DisplayFloat3,
+    status: &'a str,
+    tested_smarts_count: usize,
+    tested_smarts_path: &'a str,
+}
+
+const fn empty_row_fields(counts: ParseCounts, status: &'static str) -> ResultRowFields {
     ResultRowFields {
         positives_total: counts.positive_total,
         negatives_total: counts.negative_total,
@@ -42,11 +79,11 @@ fn empty_row_fields(counts: ParseCounts, status: &'static str) -> ResultRowField
         negatives_filtered: counts.negative_failed,
         status,
         smarts: String::new(),
-        mcc: String::new(),
-        coverage_score: String::new(),
-        smarts_len: String::new(),
-        generations: String::new(),
-        tested_smarts_count: "0".into(),
+        mcc: None,
+        coverage_score: None,
+        smarts_len: None,
+        generations: None,
+        tested_smarts_count: 0,
         tested_smarts_path: String::new(),
     }
 }
@@ -57,38 +94,30 @@ pub(crate) fn write_evolution_fields(
     elapsed: f64,
     fields: &ResultRowFields,
 ) -> Result<(), CliError> {
-    writer.write_record([
-        &row.level,
-        &row.label,
-        &row.category,
-        &row.main_class,
-        &row.subclass,
-        &row.slug,
-        &fields.positives_total.to_string(),
-        &fields.negatives_total.to_string(),
-        &fields.positives_filtered.to_string(),
-        &fields.negatives_filtered.to_string(),
-        &fields.smarts,
-        &fields.mcc,
-        &fields.coverage_score,
-        &fields.smarts_len,
-        &fields.generations,
-        &format!("{elapsed:.3}"),
-        fields.status,
-        &fields.tested_smarts_count,
-        &fields.tested_smarts_path,
-    ])?;
+    let csv_row = EvolutionCsvRow {
+        level: &row.level,
+        label: &row.label,
+        category: &row.category,
+        main_class: &row.main_class,
+        subclass: &row.subclass,
+        slug: &row.slug,
+        positive_count: fields.positives_total,
+        negative_count: fields.negatives_total,
+        positive_parse_failures: fields.positives_filtered,
+        negative_parse_failures: fields.negatives_filtered,
+        best_smarts: &fields.smarts,
+        best_mcc: OptDisplay(fields.mcc),
+        best_coverage_score: OptDisplay(fields.coverage_score),
+        best_smarts_len: OptDisplay(fields.smarts_len),
+        generations: OptDisplay(fields.generations),
+        elapsed_secs: DisplayFloat3(elapsed),
+        status: fields.status,
+        tested_smarts_count: fields.tested_smarts_count,
+        tested_smarts_path: &fields.tested_smarts_path,
+    };
+    writer.serialize(&csv_row)?;
     writer.flush()?;
     Ok(())
-}
-
-pub(crate) fn write_evolution_row(
-    writer: &mut csv::Writer<fs::File>,
-    outcome: &EvolutionOutcome<'_>,
-    tested_smarts_dir: &Path,
-) -> Result<(), CliError> {
-    let fields = process_evolution_result(outcome.result, outcome.row, tested_smarts_dir)?;
-    write_evolution_fields(writer, outcome.row, outcome.elapsed, &fields)
 }
 
 /// Extract CSV fields from an [`EvolutionResult`], writing the tested-SMARTS CSV
@@ -110,12 +139,12 @@ pub(crate) fn process_evolution_result(
                 negatives_filtered: counts.negative_failed,
                 status: "ok",
                 smarts: task_result.best_smarts().to_string(),
-                mcc: task_result.best_mcc().to_string(),
-                coverage_score: task_result.best_coverage_score().to_string(),
-                smarts_len: task_result.best_smarts_len().to_string(),
-                generations: task_result.generations().to_string(),
-                tested_smarts_count: tested_smarts.len().to_string(),
-                tested_smarts_path: path.to_string_lossy().to_string(),
+                mcc: Some(task_result.best_mcc()),
+                coverage_score: Some(task_result.best_coverage_score()),
+                smarts_len: Some(task_result.best_smarts_len()),
+                generations: Some(task_result.generations()),
+                tested_smarts_count: tested_smarts.len(),
+                tested_smarts_path: path.to_string_lossy().into_owned(),
             })
         }
         EvolutionResult::EmptyAfterParse(counts) => {
@@ -133,6 +162,16 @@ pub(crate) fn process_evolution_result(
     }
 }
 
+#[derive(Serialize)]
+struct TestedSmartsCsvRow<'a> {
+    smarts: &'a str,
+    mcc: f64,
+    smarts_len: usize,
+    coverage_score: f64,
+    limit_exceeded: bool,
+    generation: u64,
+}
+
 fn write_tested_smarts_csv(
     output_path: &Path,
     tested_smarts: &[TestedSmartsRecord],
@@ -143,7 +182,9 @@ fn write_tested_smarts_csv(
     let mut sorted: Vec<&TestedSmartsRecord> = tested_smarts.iter().collect();
     sorted.sort_by(|a, b| a.cmp_priority(b));
 
-    let mut writer = csv::Writer::from_path(output_path)?;
+    let mut writer = csv::WriterBuilder::new()
+        .has_headers(false)
+        .from_path(output_path)?;
     writer.write_record([
         "smarts",
         "mcc",
@@ -153,14 +194,14 @@ fn write_tested_smarts_csv(
         "generation",
     ])?;
     for tested in &sorted {
-        writer.write_record([
-            tested.smarts.as_str(),
-            &tested.mcc.to_string(),
-            &tested.smarts_len.to_string(),
-            &tested.coverage_score.to_string(),
-            &tested.limit_exceeded.to_string(),
-            &tested.generation.to_string(),
-        ])?;
+        writer.serialize(TestedSmartsCsvRow {
+            smarts: &tested.smarts,
+            mcc: tested.mcc,
+            smarts_len: tested.smarts_len,
+            coverage_score: tested.coverage_score,
+            limit_exceeded: tested.limit_exceeded,
+            generation: tested.generation,
+        })?;
     }
     writer.flush()?;
     Ok(())

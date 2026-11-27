@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+// SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
 //! Evolution runner wrapping `smarts-evolution` with per-class error isolation.
 
@@ -56,8 +56,9 @@ pub enum EvolutionResult {
 
 impl EvolutionResult {
     /// Returns the `TaskResult` when evolution succeeded.
+    #[cfg(test)]
     #[must_use]
-    pub const fn as_task_result(&self) -> Option<&TaskResult> {
+    pub(crate) const fn as_task_result(&self) -> Option<&TaskResult> {
         match self {
             Self::Ok(result, ..) => Some(result),
             _ => None,

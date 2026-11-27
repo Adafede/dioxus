@@ -7,41 +7,36 @@ use std::collections::HashMap;
 
 use super::SplitConfig;
 
-const LIPID_MAPS_CATEGORY_RANK: [(&str, usize); 8] = [
-    ("Fatty Acyls", 0),
-    ("Glycerolipids", 1),
-    ("Glycerophospholipids", 2),
-    ("Sphingolipids", 3),
-    ("Sterol Lipids", 4),
-    ("Prenol Lipids", 5),
-    ("Saccharolipids", 6),
-    ("Polyketides", 7),
+const LIPID_MAPS_CATEGORIES: [(&str, &str, usize); 8] = [
+    ("FA", "Fatty Acyls", 0),
+    ("GL", "Glycerolipids", 1),
+    ("GP", "Glycerophospholipids", 2),
+    ("SP", "Sphingolipids", 3),
+    ("ST", "Sterol Lipids", 4),
+    ("PR", "Prenol Lipids", 5),
+    ("SL", "Saccharolipids", 6),
+    ("PK", "Polyketides", 7),
 ];
 
 pub(super) fn category_rank(category: &str) -> usize {
     let trimmed = category.split(" [").next().unwrap_or(category).trim();
-    LIPID_MAPS_CATEGORY_RANK
+    LIPID_MAPS_CATEGORIES
         .iter()
-        .find(|(name, _)| *name == trimmed)
-        .map_or(99, |(_, rank)| *rank)
+        .find(|(_, name, _)| *name == trimmed)
+        .map_or(99, |(_, _, rank)| *rank)
 }
 
 pub(super) fn category_of_main(main_class: &str) -> &'static str {
     let code_source = main_class
         .rsplit_once('[')
         .map_or(main_class, |(_, rest)| rest);
-    let abbr = &code_source[..code_source.floor_char_boundary(2)];
-    match abbr {
-        "FA" => "Fatty Acyls",
-        "GL" => "Glycerolipids",
-        "GP" => "Glycerophospholipids",
-        "SP" => "Sphingolipids",
-        "ST" => "Sterol Lipids",
-        "PR" => "Prenol Lipids",
-        "SL" => "Saccharolipids",
-        "PK" => "Polyketides",
-        _ => "Other",
-    }
+    let abbr = code_source
+        .get(..code_source.floor_char_boundary(2))
+        .unwrap_or(code_source);
+    LIPID_MAPS_CATEGORIES
+        .iter()
+        .find(|(code, _, _)| *code == abbr)
+        .map_or("Other", |(_, name, _)| *name)
 }
 
 pub(super) fn target_negative_count(positive_count: usize, config: &SplitConfig) -> usize {
@@ -81,7 +76,8 @@ pub(super) fn slugify_with_len(label: &str, maxlen: usize) -> String {
     if slug.len() > maxlen {
         let hash = short_hash(label);
         let keep = maxlen.saturating_sub(hash.len() + 1);
-        format!("{}_{}", &slug[..slug.floor_char_boundary(keep)], hash)
+        let prefix = slug.get(..slug.floor_char_boundary(keep)).unwrap_or(&slug);
+        format!("{prefix}_{hash}")
     } else {
         slug
     }

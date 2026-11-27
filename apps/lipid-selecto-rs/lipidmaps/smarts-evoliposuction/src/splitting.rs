@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+// SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
-//! CSV parsing and positive/negative SMILES splitting for `smarts-evolution`.
+//! TSV parsing and positive/negative SMILES splitting for `smarts-evolution`.
 
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 
-#[cfg(test)]
-use csv::ReaderBuilder;
 use rand::rngs::StdRng;
 use rand::{RngExt, SeedableRng};
 
@@ -21,8 +20,6 @@ pub use self::types::{
     ClassSplit, Dataset, DatasetRow, Level, SkippedClass, SplitConfig, SplitResult,
     SubclassNegatives,
 };
-#[cfg(test)]
-use self::types::{ColumnNames, SplitError};
 
 /// Parse an LMSD TSV export containing `SMILES`, `MAIN_CLASS`, `SUB_CLASS`,
 /// and optional `CATEGORY` columns.
@@ -42,89 +39,35 @@ pub fn parse_lmsd_tsv(tsv_text: &str) -> Result<Dataset, crate::CliError> {
     let category_idx = find("CATEGORY");
     let main_idx = find("MAIN_CLASS").ok_or(crate::CliError::MissingColumn("MAIN_CLASS"))?;
     let sub_idx = find("SUB_CLASS").ok_or(crate::CliError::MissingColumn("SUB_CLASS"))?;
-    let rows = lines
-        .filter_map(|line| {
-            let cols: Vec<&str> = line.split('\t').collect();
-            let smiles = cols.get(smiles_idx)?.trim();
-            let main_class = cols.get(main_idx)?.trim();
-            let subclass = cols.get(sub_idx)?.trim();
-            if smiles.is_empty() || main_class.is_empty() {
-                return None;
-            }
-            let category = category_idx
-                .and_then(|idx| cols.get(idx))
-                .map_or("", |val| val.trim());
-            Some(DatasetRow {
-                smiles: smiles.to_string(),
-                category: category.to_string(),
-                main_class: main_class.to_string(),
-                subclass: subclass.to_string(),
-            })
-        })
-        .collect();
-    Ok(Dataset { rows })
-}
 
-#[cfg(test)]
-fn parse_csv(csv_text: &str, columns: &ColumnNames) -> Result<Dataset, SplitError> {
-    let mut reader = ReaderBuilder::new().from_reader(csv_text.as_bytes());
-    let headers = reader.headers()?.clone();
-
-    let find = |name: &str| headers.iter().position(|h| h == name);
-    let smiles_idx = find(&columns.smiles);
-    let cat_idx = find(&columns.category);
-    let main_idx = find(&columns.main_class);
-    let sub_idx = find(&columns.subclass).or_else(|| {
-        (columns.subclass == "SUB_CLASS")
-            .then(|| find("SUBCLASS"))
-            .flatten()
-    });
-
-    let (smiles_idx, main_idx, sub_idx) = require_columns(columns, smiles_idx, main_idx, sub_idx)?;
-
+    let mut cols: Vec<&str> = Vec::with_capacity(header.len());
     let mut rows = Vec::new();
-    for record in reader.records() {
-        let record = record?;
-        let smiles = record.get(smiles_idx).unwrap_or("").trim();
-        let main_class = record.get(main_idx).unwrap_or("").trim();
+    for line in lines {
+        cols.clear();
+        cols.extend(line.split('\t'));
+        let Some(smiles) = cols.get(smiles_idx).map(|v| v.trim()) else {
+            continue;
+        };
+        let Some(main_class) = cols.get(main_idx).map(|v| v.trim()) else {
+            continue;
+        };
+        let Some(subclass) = cols.get(sub_idx).map(|v| v.trim()) else {
+            continue;
+        };
         if smiles.is_empty() || main_class.is_empty() {
             continue;
         }
+        let category = category_idx
+            .and_then(|idx| cols.get(idx))
+            .map_or("", |val| val.trim());
         rows.push(DatasetRow {
             smiles: smiles.to_string(),
-            category: cat_idx
-                .map_or("", |i| record.get(i).unwrap_or(""))
-                .trim()
-                .to_string(),
+            category: category.to_string(),
             main_class: main_class.to_string(),
-            subclass: record.get(sub_idx).unwrap_or("").trim().to_string(),
+            subclass: subclass.to_string(),
         });
     }
-
     Ok(Dataset { rows })
-}
-
-#[cfg(test)]
-fn require_columns(
-    columns: &ColumnNames,
-    smiles_idx: Option<usize>,
-    main_idx: Option<usize>,
-    sub_idx: Option<usize>,
-) -> Result<(usize, usize, usize), SplitError> {
-    let mut missing = Vec::new();
-    if smiles_idx.is_none() {
-        missing.push(columns.smiles.clone());
-    }
-    if main_idx.is_none() {
-        missing.push(columns.main_class.clone());
-    }
-    if sub_idx.is_none() {
-        missing.push(columns.subclass.clone());
-    }
-    match (smiles_idx, main_idx, sub_idx) {
-        (Some(s), Some(m), Some(sub)) => Ok((s, m, sub)),
-        _ => Err(SplitError::MissingColumns(missing)),
-    }
 }
 
 struct SplitSpec<'a> {
@@ -288,10 +231,10 @@ type SplitIndex<'a> = (
     HashMap<(&'a str, &'a str), Vec<&'a str>>,
 );
 
-fn push_unique<'a>(
-    buckets: &mut HashMap<&'a str, Vec<&'a str>>,
-    seen_map: &mut HashMap<&'a str, HashSet<&'a str>>,
-    key: &'a str,
+fn push_unique<'a, K: Eq + Hash + Copy>(
+    buckets: &mut HashMap<K, Vec<&'a str>>,
+    seen_map: &mut HashMap<K, HashSet<&'a str>>,
+    key: K,
     smi: &'a str,
 ) {
     if seen_map.entry(key).or_default().insert(smi) {
@@ -320,9 +263,7 @@ fn index_dataset(dataset: &Dataset) -> SplitIndex<'_> {
         push_unique(&mut by_main, &mut seen_main, row.main_class.as_str(), smi);
         if !row.subclass.is_empty() {
             let key = (row.main_class.as_str(), row.subclass.as_str());
-            if seen_sub.entry(key).or_default().insert(smi) {
-                by_sub.entry(key).or_default().push(smi);
-            }
+            push_unique(&mut by_sub, &mut seen_sub, key, smi);
         }
     }
     (all_smiles, by_cat, by_main, by_sub)

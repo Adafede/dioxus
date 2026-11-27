@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+// SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
 #[expect(
     clippy::unwrap_used,
     reason = "tests unwrap controlled fixtures to fail fast"
+)]
+#[expect(
+    clippy::indexing_slicing,
+    reason = "tests slice validated NaN boundary positions"
 )]
 mod cases {
     use super::super::observer::truncate_str;

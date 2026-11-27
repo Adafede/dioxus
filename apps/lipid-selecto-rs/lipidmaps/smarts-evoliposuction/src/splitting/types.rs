@@ -1,31 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+// SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
 //! Public data types and configuration for SMILES dataset splitting.
 
 use std::fmt;
-
-/// Column names to read from the input CSV.
-#[cfg(test)]
-#[derive(Debug, Clone)]
-pub(super) struct ColumnNames {
-    pub(super) smiles: String,
-    pub(super) category: String,
-    pub(super) main_class: String,
-    pub(super) subclass: String,
-}
-
-#[cfg(test)]
-impl Default for ColumnNames {
-    fn default() -> Self {
-        Self {
-            smiles: "SMILES".to_string(),
-            category: "CATEGORY".to_string(),
-            main_class: "MAIN_CLASS".to_string(),
-            subclass: "SUB_CLASS".to_string(),
-        }
-    }
-}
 
 /// Where subclass negatives are drawn from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -88,16 +66,6 @@ pub struct DatasetRow {
 #[derive(Debug, Clone, Default)]
 pub struct Dataset {
     pub rows: Vec<DatasetRow>,
-}
-
-/// CSV parsing errors returned by [`super::parse_csv`].
-#[cfg(test)]
-#[derive(Debug, thiserror::Error)]
-pub(super) enum SplitError {
-    #[error("CSV error: {0}")]
-    Csv(#[from] csv::Error),
-    #[error("missing column(s) in CSV header: {}", .0.join(", "))]
-    MissingColumns(Vec<String>),
 }
 
 /// Positive/negative SMILES pair for one `CATEGORY`, `MAIN_CLASS`, or `SUBCLASS` label.

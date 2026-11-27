@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+// SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
 //! Evolution progress observer recording every evaluated SMARTS candidate.
 
@@ -93,5 +93,5 @@ impl EvolutionProgressObserver for TestedSmartsObserver {
 }
 
 pub(super) fn truncate_str(s: &str, max_bytes: usize) -> &str {
-    &s[..s.floor_char_boundary(max_bytes)]
+    s.get(..s.floor_char_boundary(max_bytes)).unwrap_or(s)
 }

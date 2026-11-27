@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+// SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
 //! Unit tests for the streaming SDF parser and LMSD TSV converter.
 
-#![expect(clippy::unwrap_used)] // tests unwrap fixtures to fail-fast rather than assert on the error
-#![expect(clippy::indexing_slicing)] // tests reach into fixture rows and columns by index
+#![expect(
+    clippy::unwrap_used,
+    reason = "tests unwrap fixtures to fail-fast rather than assert on the error"
+)]
+#![expect(
+    clippy::indexing_slicing,
+    reason = "tests reach into fixture rows and columns by index"
+)]
 
 use super::*;
 

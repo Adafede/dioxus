@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+// SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
 //! Download `LMSD.sdf.zip` from LIPID MAPS and convert to unique TSV using [`sdf`].
 
 mod sdf;
 
+use std::fs::File;
+use std::io::{BufReader, Read, Seek};
 use std::path::Path;
 
 use sdf::to_lmsd_tsv;
@@ -24,17 +26,14 @@ pub const LIPIDMAPS_LMSD_URL: &str = "https://www.lipidmaps.org/files/?file=LMSD
 ///
 /// Returns an error if the zip file cannot be read or parsed.
 pub fn sdf_zip_to_tsv(zip_path: &Path) -> Result<(String, usize), SdfConvertError> {
-    let data = std::fs::read(zip_path)?;
-    sdf_zip_to_tsv_from_bytes(&data)
+    let reader = BufReader::new(File::open(zip_path)?);
+    sdf_zip_to_tsv_from_reader(reader)
 }
 
-/// Same as [`sdf_zip_to_tsv`] but reads from an in-memory byte buffer.
-///
-/// # Errors
-///
-/// Returns an error if the zip data cannot be parsed.
-fn sdf_zip_to_tsv_from_bytes(data: &[u8]) -> Result<(String, usize), SdfConvertError> {
-    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(data))?;
+fn sdf_zip_to_tsv_from_reader<R: Read + Seek>(
+    reader: R,
+) -> Result<(String, usize), SdfConvertError> {
+    let mut archive = zip::ZipArchive::new(reader)?;
 
     // Find the first .sdf entry in the archive.
     let mut entry_name: Option<String> = None;
@@ -50,10 +49,9 @@ fn sdf_zip_to_tsv_from_bytes(data: &[u8]) -> Result<(String, usize), SdfConvertE
 
     let mut entry = archive.by_name(&entry_name)?;
     let mut sdf_text = String::new();
-    std::io::Read::read_to_string(&mut entry, &mut sdf_text)?;
+    entry.read_to_string(&mut sdf_text)?;
 
-    let (tsv, count) = to_lmsd_tsv(&sdf_text);
-    Ok((tsv, count))
+    Ok(to_lmsd_tsv(&sdf_text))
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -67,7 +65,10 @@ pub enum SdfConvertError {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used)] // tests unwrap fixtures to fail-fast rather than assert on the error
+#[expect(
+    clippy::unwrap_used,
+    reason = "tests unwrap fixtures to fail-fast rather than assert on the error"
+)]
 mod tests {
     use super::*;
 
@@ -110,7 +111,7 @@ $$$$
             zip.finish().unwrap();
         }
         let data = buf.into_inner();
-        let (tsv, count) = sdf_zip_to_tsv_from_bytes(&data).unwrap();
+        let (tsv, count) = sdf_zip_to_tsv_from_reader(std::io::Cursor::new(data)).unwrap();
         assert_eq!(count, 1);
         assert!(tsv.contains("LMFA00000001\tTest FA"));
     }

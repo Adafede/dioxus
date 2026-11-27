@@ -1,13 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
+#![expect(
+    clippy::unwrap_used,
+    reason = "tests unwrap controlled fixtures to fail fast"
+)]
+#![expect(
+    clippy::panic,
+    reason = "panic is used for unexpected clap command variants"
+)]
+
 use std::path::PathBuf;
 
 use clap::Parser;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use smarts_evoliposuction::{
-    EvolutionResult, ManifestRow, ParseCounts, already_done, open_results_writer,
+    EvolutionResult, ManifestRow, ParseCounts, ResultsOpenMode, already_done, open_results_writer,
 };
 use tempfile::tempdir;
 
@@ -55,7 +64,7 @@ fn open_results_writer_truncates_when_not_resuming_and_appends_on_resume() {
     std::fs::write(&out, "stale-header\nstale-row\n").unwrap();
 
     {
-        let (mut w, need_headers) = open_results_writer(&out, false).unwrap();
+        let (mut w, need_headers) = open_results_writer(&out, ResultsOpenMode::Truncate).unwrap();
         assert!(need_headers);
         w.write_record(["h1", "h2"]).unwrap();
         w.flush().unwrap();
@@ -64,7 +73,7 @@ fn open_results_writer_truncates_when_not_resuming_and_appends_on_resume() {
     assert_eq!(after_fresh, "h1,h2\n");
 
     {
-        let (mut w, need_headers) = open_results_writer(&out, true).unwrap();
+        let (mut w, need_headers) = open_results_writer(&out, ResultsOpenMode::Resume).unwrap();
         assert!(!need_headers);
         w.write_record(["v1", "v2"]).unwrap();
         w.flush().unwrap();

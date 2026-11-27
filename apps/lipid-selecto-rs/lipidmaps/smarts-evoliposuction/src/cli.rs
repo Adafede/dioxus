@@ -6,7 +6,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use clap::Parser;
+use clap::{Args as ClapArgs, Parser, ValueEnum};
 use smarts_evoliposuction::CliError;
 
 pub(crate) mod download;
@@ -18,6 +18,44 @@ pub(crate) mod split;
 use download::download_step;
 use evolve::{EvolveOptions, evolve_step};
 use split::split_step;
+
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LevelFilter {
+    #[value(name = "category")]
+    Category,
+    #[value(name = "main_class")]
+    MainClass,
+    #[value(name = "subclass")]
+    Subclass,
+}
+
+impl LevelFilter {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Category => "category",
+            Self::MainClass => "main_class",
+            Self::Subclass => "subclass",
+        }
+    }
+}
+
+#[derive(ClapArgs, Debug)]
+pub(crate) struct CommonEvolveArgs {
+    #[arg(long, default_value_t = 100)]
+    pub(crate) population: usize,
+    #[arg(long, default_value_t = 500)]
+    pub(crate) generations: u64,
+    #[arg(long)]
+    pub(crate) seed: Option<u64>,
+    #[arg(long, default_value_t = 5)]
+    pub(crate) match_timeout: u64,
+    /// Disable text progress output; run classes in parallel batch mode
+    #[arg(long = "no-tui", default_value_t = false)]
+    pub(crate) no_tui: bool,
+    /// Include subclass-level evolution (default: `category` + `main_class` only)
+    #[arg(long = "with-subclasses", default_value_t = false)]
+    pub(crate) with_subclasses: bool,
+}
 
 #[derive(Parser, Debug)]
 #[command(about = "LIPID MAPS SMARTS evolution pipeline")]
@@ -50,56 +88,27 @@ pub(crate) enum Command {
         manifest: PathBuf,
         #[arg(long, default_value = "smarts_results.csv")]
         output: PathBuf,
-        #[arg(long, default_value_t = 100)]
-        population: usize,
-        #[arg(long, default_value_t = 500)]
-        generations: u64,
         #[arg(long, default_value_t = 50)]
         stagnation: u64,
         #[arg(long)]
-        seed: Option<u64>,
-        #[arg(long)]
         resume: bool,
-        #[arg(long)]
-        level: Option<String>,
-        #[arg(long, default_value_t = 5)]
-        match_timeout: u64,
-        /// Disable text progress output; run classes in parallel batch mode
-        #[arg(long = "no-tui", default_value_t = false)]
-        no_tui: bool,
-        /// Include subclass-level evolution (default: `category` + `main_class` only)
-        #[arg(long = "with-subclasses", default_value_t = false)]
-        with_subclasses: bool,
+        #[arg(long, value_enum)]
+        level: Option<LevelFilter>,
+        #[command(flatten)]
+        common: CommonEvolveArgs,
     },
     /// Run full pipeline: download -> split -> evolve
     All {
         #[arg(long, default_value = ".")]
         output_dir: PathBuf,
-        #[arg(long, default_value_t = 500)]
-        generations: u64,
-        #[arg(long, default_value_t = 100)]
-        population: usize,
-        #[arg(long)]
-        seed: Option<u64>,
-        #[arg(long, default_value_t = 5)]
-        match_timeout: u64,
-        /// Disable text progress output; run classes in parallel batch mode
-        #[arg(long = "no-tui", default_value_t = false)]
-        no_tui: bool,
-        /// Include subclass-level evolution (default: `category` + `main_class` only)
-        #[arg(long = "with-subclasses", default_value_t = false)]
-        with_subclasses: bool,
+        #[command(flatten)]
+        common: CommonEvolveArgs,
     },
 }
 
 struct PipelineOptions<'a> {
     out_dir: &'a Path,
-    generations: u64,
-    population: usize,
-    seed: Option<u64>,
-    match_timeout: u64,
-    show_progress: bool,
-    with_subclasses: bool,
+    common: &'a CommonEvolveArgs,
 }
 
 pub(crate) fn run(args: Args) -> Result<(), CliError> {
@@ -114,44 +123,26 @@ pub(crate) fn run(args: Args) -> Result<(), CliError> {
         Command::Evolve {
             manifest,
             output,
-            population,
-            generations,
             stagnation,
-            seed,
             resume,
             level,
-            match_timeout,
-            no_tui,
-            with_subclasses,
+            common,
         } => evolve_step(&EvolveOptions {
             manifest: &manifest,
             output: &output,
-            population,
-            generations,
+            population: common.population,
+            generations: common.generations,
             stagnation,
-            seed,
+            seed: common.seed,
             resume,
-            level: level.as_deref(),
-            match_timeout_secs: match_timeout,
-            show_progress: !no_tui,
-            with_subclasses,
+            level,
+            match_timeout_secs: common.match_timeout,
+            show_progress: !common.no_tui,
+            with_subclasses: common.with_subclasses,
         }),
-        Command::All {
-            output_dir,
-            generations,
-            population,
-            seed,
-            match_timeout,
-            no_tui,
-            with_subclasses,
-        } => all_steps(&PipelineOptions {
+        Command::All { output_dir, common } => all_steps(&PipelineOptions {
             out_dir: &output_dir,
-            generations,
-            population,
-            seed,
-            match_timeout,
-            show_progress: !no_tui,
-            with_subclasses,
+            common: &common,
         }),
     }
 }
@@ -173,15 +164,15 @@ fn all_steps(opts: &PipelineOptions<'_>) -> Result<(), CliError> {
     evolve_step(&EvolveOptions {
         manifest: &manifest,
         output: &results,
-        population: opts.population,
-        generations: opts.generations,
+        population: opts.common.population,
+        generations: opts.common.generations,
         stagnation: 50,
-        seed: opts.seed,
+        seed: opts.common.seed,
         resume: true,
         level: None,
-        match_timeout_secs: opts.match_timeout,
-        show_progress: opts.show_progress,
-        with_subclasses: opts.with_subclasses,
+        match_timeout_secs: opts.common.match_timeout,
+        show_progress: !opts.common.no_tui,
+        with_subclasses: opts.common.with_subclasses,
     })?;
 
     eprintln!("\n=== Step 4/4: Summary");

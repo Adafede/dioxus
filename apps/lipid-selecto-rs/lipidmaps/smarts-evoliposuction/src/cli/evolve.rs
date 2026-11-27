@@ -12,14 +12,13 @@ use std::time::{Duration, Instant};
 
 use rayon::prelude::*;
 use smarts_evoliposuction::{
-    CliError, Config, ManifestRow, RESULTS_HEADERS, already_done, evolve_all,
-    evolve_all_with_progress, open_results_writer, read_manifest,
+    CliError, Config, EvolutionResult, ManifestRow, RESULTS_HEADERS, ResultsOpenMode, already_done,
+    evolve_all, evolve_all_with_progress, open_results_writer, read_manifest,
 };
 
+use super::LevelFilter;
 use super::ordering::order_rows_for_evolution;
-use super::report::{
-    EvolutionOutcome, process_evolution_result, write_evolution_fields, write_evolution_row,
-};
+use super::report::{process_evolution_result, write_evolution_fields};
 
 /// Configuration for [`evolve_step`].
 pub(crate) struct EvolveOptions<'a> {
@@ -30,7 +29,7 @@ pub(crate) struct EvolveOptions<'a> {
     pub(crate) stagnation: u64,
     pub(crate) seed: Option<u64>,
     pub(crate) resume: bool,
-    pub(crate) level: Option<&'a str>,
+    pub(crate) level: Option<LevelFilter>,
     pub(crate) match_timeout_secs: u64,
     pub(crate) show_progress: bool,
     pub(crate) with_subclasses: bool,
@@ -52,7 +51,12 @@ pub(crate) fn evolve_step(opts: &EvolveOptions<'_>) -> Result<(), CliError> {
     let tested_smarts_dir = opts.output.with_file_name(format!("{stem}_tested_smarts"));
     fs::create_dir_all(&tested_smarts_dir)?;
 
-    let (mut writer, need_headers) = open_results_writer(opts.output, opts.resume)?;
+    let mode = if opts.resume {
+        ResultsOpenMode::Resume
+    } else {
+        ResultsOpenMode::Truncate
+    };
+    let (mut writer, need_headers) = open_results_writer(opts.output, mode)?;
     if need_headers {
         writer.write_record(RESULTS_HEADERS)?;
     }
@@ -77,16 +81,43 @@ pub(crate) fn evolve_step(opts: &EvolveOptions<'_>) -> Result<(), CliError> {
 
 fn load_filtered_rows(
     manifest: &Path,
-    level: Option<&str>,
+    level: Option<LevelFilter>,
     with_subclasses: bool,
 ) -> Result<Vec<ManifestRow>, CliError> {
     let mut rows = read_manifest(manifest)?;
     if let Some(filter) = level {
-        rows.retain(|r| r.level == filter);
+        rows.retain(|r| r.level == filter.as_str());
     } else if !with_subclasses {
         rows.retain(|r| r.level == "category" || r.level == "main_class");
     }
     Ok(order_rows_for_evolution(rows))
+}
+
+fn evolve_one_row(
+    idx: usize,
+    total: usize,
+    row: &ManifestRow,
+    config: &Config,
+    show_progress: bool,
+) -> (EvolutionResult, f64) {
+    let pos_path = Path::new(&row.positive_path);
+    let neg_path = Path::new(&row.negative_path);
+    let start = Instant::now();
+    let result = if show_progress {
+        eprintln!("[{idx}/{total}] {} ", row.slug);
+        drop(std::io::stderr().flush());
+        evolve_all_with_progress(config, pos_path, neg_path)
+    } else {
+        eprintln!("[{idx}/{total}] {} evolving...", row.slug);
+        evolve_all(config, pos_path, neg_path)
+    };
+    let elapsed = start.elapsed().as_secs_f64();
+    if show_progress {
+        eprintln!("(done in {elapsed:.1}s)");
+    } else {
+        eprintln!("[{idx}/{total}] {} done in {elapsed:.1}s", row.slug);
+    }
+    (result, elapsed)
 }
 
 fn run_sequential(
@@ -102,24 +133,9 @@ fn run_sequential(
             eprintln!("[{i}/{len}] {} skipped (already done)", row.slug);
             continue;
         }
-        eprintln!("[{i}/{len}] {} ", row.slug);
-        std::io::stderr().flush().ok();
-
-        let t0 = Instant::now();
-        let result = evolve_all_with_progress(
-            config,
-            Path::new(&row.positive_path),
-            Path::new(&row.negative_path),
-        );
-        let elapsed = t0.elapsed().as_secs_f64();
-        eprintln!("(done in {elapsed:.1}s)");
-
-        let outcome = EvolutionOutcome {
-            row,
-            result: &result,
-            elapsed,
-        };
-        write_evolution_row(writer, &outcome, tested_smarts_dir)?;
+        let (result, elapsed) = evolve_one_row(i, len, row, config, true);
+        let fields = process_evolution_result(&result, row, tested_smarts_dir)?;
+        write_evolution_fields(writer, row, elapsed, &fields)?;
     }
     Ok(())
 }
@@ -140,15 +156,7 @@ fn run_parallel(
         .par_iter()
         .enumerate()
         .try_for_each(|(i, row)| -> Result<(), CliError> {
-            let t0 = Instant::now();
-            eprintln!("[{i}/{total}] {} evolving...", row.slug);
-            let result = evolve_all(
-                config,
-                Path::new(&row.positive_path),
-                Path::new(&row.negative_path),
-            );
-            let elapsed = t0.elapsed().as_secs_f64();
-            eprintln!("[{i}/{total}] {} done in {elapsed:.1}s", row.slug);
+            let (result, elapsed) = evolve_one_row(i, total, row, config, false);
             let fields = process_evolution_result(&result, row, tested_smarts_dir)?;
             let mut guard = writer_mutex
                 .lock()

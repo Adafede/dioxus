@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+// SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
 #[expect(
     clippy::unwrap_used,
@@ -9,10 +9,6 @@
     clippy::indexing_slicing,
     reason = "tests assert exact length before indexing fixtures"
 )]
-#[expect(
-    clippy::panic,
-    reason = "panic is used as explicit mismatch failure in tests"
-)]
 mod cases {
     use super::super::slug::{
         category_of_main, dedupe_slug, slugify, slugify_with_len, target_negative_count,
@@ -21,47 +17,32 @@ mod cases {
     use std::collections::HashMap;
 
     #[test]
-    fn parse_csv_basic() {
-        let csv = "SMILES,CATEGORY,MAIN_CLASS,SUBCLASS\nC(C)C,Fatty Acyls,FA,FA01\nCCO,Glycerolipids,GL,\n";
-        let dataset = parse_csv(csv, &ColumnNames::default()).unwrap();
+    fn parse_lmsd_tsv_basic_and_skips_empty_smiles() {
+        let tsv = "SMILES\tCATEGORY\tMAIN_CLASS\tSUB_CLASS\n\
+                   C(C)C\tFatty Acyls\tFA\tFA01\n\
+                   \t\tFA\t\n\
+                   CCO\tGlycerolipids\tGL\t\n";
+        let dataset = parse_lmsd_tsv(tsv).unwrap();
         assert_eq!(dataset.rows.len(), 2);
         assert_eq!(dataset.rows[0].smiles, "C(C)C");
         assert_eq!(dataset.rows[0].category, "Fatty Acyls");
         assert_eq!(dataset.rows[0].main_class, "FA");
         assert_eq!(dataset.rows[0].subclass, "FA01");
-    }
-
-    #[test]
-    fn parse_csv_skips_empty_smiles() {
-        let csv = "SMILES,CATEGORY,MAIN_CLASS,SUBCLASS\n,,FA,\n,,GL,\nCCO,,GL,\n";
-        let dataset = parse_csv(csv, &ColumnNames::default()).unwrap();
-        assert_eq!(dataset.rows.len(), 1);
-        assert_eq!(dataset.rows[0].smiles, "CCO");
-    }
-
-    #[test]
-    fn parse_csv_missing_column() {
-        let csv = "SMILES,MAIN_CLASS\nC(C)C,FA\n";
-        let result = parse_csv(csv, &ColumnNames::default());
-        assert!(result.is_err());
-        match result {
-            Err(SplitError::MissingColumns(cols)) => assert_eq!(cols, vec!["SUB_CLASS"]),
-            _ => panic!("expected MissingColumns error"),
-        }
+        assert_eq!(dataset.rows[1].smiles, "CCO");
     }
 
     #[test]
     fn split_dataset_with_categories() {
         use std::fmt::Write;
-        let mut csv = "SMILES,CATEGORY,MAIN_CLASS,SUBCLASS\n".to_string();
+        let mut tsv = "SMILES\tCATEGORY\tMAIN_CLASS\tSUB_CLASS\n".to_string();
         for i in 0..50 {
-            writeln!(csv, "C{i}({i})C,Fatty Acyls,FA01,FA01").unwrap();
+            writeln!(tsv, "C{i}({i})C\tFatty Acyls\tFA01\tFA01").unwrap();
         }
         for i in 0..50 {
-            writeln!(csv, "C{i}O,Glycerolipids,GL01,").unwrap();
+            writeln!(tsv, "C{i}O\tGlycerolipids\tGL01\t").unwrap();
         }
 
-        let dataset = parse_csv(&csv, &ColumnNames::default()).unwrap();
+        let dataset = parse_lmsd_tsv(&tsv).unwrap();
         let config = SplitConfig {
             min_positive: 20,
             neg_ratio: 1.0,
@@ -83,11 +64,12 @@ mod cases {
 
     #[test]
     fn split_dataset_skips_small_classes() {
-        let mut csv = "SMILES,CATEGORY,MAIN_CLASS,SUBCLASS\nC1,Fatty Acyls,FAAA,\n".to_string();
+        let mut tsv =
+            "SMILES\tCATEGORY\tMAIN_CLASS\tSUB_CLASS\nC1\tFatty Acyls\tFAAA\t\n".to_string();
         for _ in 0..10 {
-            csv.push_str("C1,Fatty Acyls,FAAA,\n");
+            tsv.push_str("C1\tFatty Acyls\tFAAA\t\n");
         }
-        let dataset = parse_csv(&csv, &ColumnNames::default()).unwrap();
+        let dataset = parse_lmsd_tsv(&tsv).unwrap();
         let config = SplitConfig {
             min_positive: 20,
             ..Default::default()
@@ -122,29 +104,15 @@ mod cases {
     }
 
     #[test]
-    fn parse_csv_custom_columns() {
-        let csv = "MOL,CLASS,SUBCLASS\nC(C)C,FA,FA01\n";
-        let cols = ColumnNames {
-            smiles: "MOL".to_string(),
-            category: "CATEGORY".to_string(),
-            main_class: "CLASS".to_string(),
-            subclass: "SUBCLASS".to_string(),
-        };
-        let dataset = parse_csv(csv, &cols).unwrap();
-        assert_eq!(dataset.rows.len(), 1);
-        assert_eq!(dataset.rows[0].smiles, "C(C)C");
-    }
-
-    #[test]
     fn split_dataset_subclass_siblings() {
         use std::fmt::Write as _;
-        let mut csv = "SMILES,MAIN_CLASS,SUB_CLASS\n".to_string();
+        let mut tsv = "SMILES\tMAIN_CLASS\tSUB_CLASS\n".to_string();
         for i in 1..=25 {
-            let _ = writeln!(csv, "{},GP,SUB1", "C".repeat(i));
-            let _ = writeln!(csv, "{}O,GP,SUB2", "C".repeat(i));
+            let _ = writeln!(tsv, "{}\tGP\tSUB1", "C".repeat(i));
+            let _ = writeln!(tsv, "{}O\tGP\tSUB2", "C".repeat(i));
         }
 
-        let dataset = parse_csv(&csv, &ColumnNames::default()).unwrap();
+        let dataset = parse_lmsd_tsv(&tsv).unwrap();
         let config = SplitConfig {
             min_positive: 20,
             neg_ratio: 1.0,

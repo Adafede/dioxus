@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+// SPDX-FileCopyrightText: Contributors to the smarts-evoliposuction project
 
 //! Streaming SDF (Structure-Data File) parser.
 //!
@@ -52,73 +52,81 @@ impl<'a> Parser<'a> {
     }
 }
 
-fn find_record_end(text: &str) -> Option<usize> {
-    let mut offset = 0usize;
-    for line in text.split_inclusive('\n') {
-        if line.trim() == "$$$$" {
-            return Some(offset);
+/// Find the byte bounds of the next `$$$$` separator line in `text`.
+///
+/// Returns `(record_len, next_record_offset)` where `record_len` ends at the
+/// start of `$$$$` and `next_record_offset` advances past the separator line
+/// itself. When no `$$$$` separator appears, spans to `text.len()`.
+fn find_record_span(text: &str) -> (usize, usize) {
+    let mut search_from = 0usize;
+    while let Some(rel) = text.get(search_from..).and_then(|s| s.find("$$$$")) {
+        let match_start = search_from + rel;
+        let line_start = text
+            .get(..match_start)
+            .and_then(|s| s.rfind('\n'))
+            .map_or(0, |nl| nl + 1);
+        let line_end = text
+            .get(match_start..)
+            .and_then(|s| s.find('\n'))
+            .map_or(text.len(), |nl| match_start + nl + 1);
+        if text
+            .get(line_start..line_end)
+            .is_some_and(|line| line.trim() == "$$$$")
+        {
+            return (line_start, line_end);
         }
-        offset += line.len();
+        search_from = match_start + 4;
     }
-    None
+    (text.len(), text.len())
 }
 
 impl Iterator for Parser<'_> {
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if self.pos >= self.text.len() {
+        while let Some(rest) = self.text.get(self.pos..) {
+            if rest.is_empty() {
                 return None;
             }
+            let (record_len, next_offset) = find_record_span(rest);
+            let record_slice = rest.get(..record_len).unwrap_or(rest);
+            self.pos += next_offset;
 
-            // Find the next ">" (property block opener).
-            let gap = self.text[self.pos..].find('>')?;
-            let abs = self.pos + gap;
-
-            // If "$$$$" (record separator line) appears before the next ">",
-            // skip past the separator.
-            let before_gt = &self.text[self.pos..abs];
-            if before_gt.lines().any(|l| l.trim() == "$$$$") {
-                self.pos = abs;
-                continue;
+            if let Some(gt_offset) = record_slice.find('>')
+                && let Some(prop_slice) = record_slice.get(gt_offset..)
+                && let Some(record) = parse_record_properties(prop_slice)
+            {
+                return Some(record);
             }
-
-            if let Some(record) = parse_one_record(&self.text[abs..]) {
-                self.pos = abs + record.consumed;
-                return Some(record.record);
-            }
-
-            // No property block found here — advance past this '>'.
-            self.pos = abs + 1;
         }
+        None
     }
 }
 
-struct ParsedRecord {
-    record: Record,
-    consumed: usize,
-}
-
 fn parse_property_header(text: &str, abs_gt: usize) -> Option<(String, usize)> {
-    let line_end = text[abs_gt..].find('\n').map_or(text.len(), |p| abs_gt + p);
-    let header_line = text[abs_gt..line_end].trim_end_matches('\r');
-    let after_gt = header_line[1..].trim_start_matches([' ', '\t']);
+    let after = text.get(abs_gt..)?;
+    let line_end = after.find('\n').map_or(text.len(), |p| abs_gt + p);
+    let header_line = text.get(abs_gt..line_end)?.trim_end_matches('\r');
+    let after_gt = header_line.get(1..)?.trim_start_matches([' ', '\t']);
     let tag_tail = after_gt.strip_prefix('<')?;
     let name_end = tag_tail.find('>')?;
-    Some((tag_tail[..name_end].to_string(), line_end))
+    Some((tag_tail.get(..name_end)?.to_string(), line_end))
 }
 
 fn read_property_value(text: &str, value_start: usize) -> (String, usize) {
     let mut value_lines: Vec<&str> = Vec::new();
     let mut line_start = value_start;
-    while line_start < text.len() {
-        let line_end = text[line_start..]
-            .find('\n')
-            .map_or(text.len(), |p| line_start + p);
-        let line = text[line_start..line_end].trim_end_matches('\r');
+    while let Some(after) = text.get(line_start..) {
+        if after.is_empty() {
+            break;
+        }
+        let line_end = after.find('\n').map_or(text.len(), |p| line_start + p);
+        let line = text
+            .get(line_start..line_end)
+            .unwrap_or("")
+            .trim_end_matches('\r');
 
-        if line.trim().is_empty() || line.starts_with('>') || line.trim() == "$$$$" {
+        if line.trim().is_empty() || line.starts_with('>') {
             break;
         }
         value_lines.push(line.trim_end());
@@ -127,13 +135,14 @@ fn read_property_value(text: &str, value_start: usize) -> (String, usize) {
     (value_lines.join("\n"), line_start)
 }
 
-fn parse_one_record(text: &str) -> Option<ParsedRecord> {
+fn parse_record_properties(text: &str) -> Option<Record> {
     let mut pos = 0;
     let mut properties: HashMap<String, String> = HashMap::new();
 
-    while pos < text.len() {
-        let rest = &text[pos..];
-        let dollar_pos = find_record_end(rest);
+    while let Some(rest) = text.get(pos..) {
+        if rest.is_empty() {
+            break;
+        }
         let Some(gt_idx) = (if rest.starts_with('>') {
             Some(0)
         } else {
@@ -141,10 +150,6 @@ fn parse_one_record(text: &str) -> Option<ParsedRecord> {
         }) else {
             break;
         };
-
-        if dollar_pos.is_some_and(|d| d < gt_idx) {
-            break;
-        }
 
         let abs_gt = pos + gt_idx;
         let Some((name, line_end)) = parse_property_header(text, abs_gt) else {
@@ -160,10 +165,7 @@ fn parse_one_record(text: &str) -> Option<ParsedRecord> {
         pos = next_pos;
     }
 
-    (!properties.is_empty()).then_some(ParsedRecord {
-        record: Record { properties },
-        consumed: pos,
-    })
+    (!properties.is_empty()).then_some(Record { properties })
 }
 
 /// `LipidMaps` LMSD-specific column definitions and TSV conversion.
@@ -189,6 +191,31 @@ const COLUMNS: &[&str] = &[
     "PLANTFA_ID",
 ];
 
+fn push_sanitized_tsv_field(out: &mut String, val: &str) {
+    if !val.bytes().any(|b| matches!(b, b'\r' | b'\n' | b'\t')) {
+        out.push_str(val);
+        return;
+    }
+    let mut rest = val;
+    while let Some(pos) = rest.find(['\r', '\n', '\t']) {
+        let (prefix, tail) = rest.split_at(pos);
+        out.push_str(prefix);
+        if let Some(after_crlf) = tail.strip_prefix("\r\n") {
+            out.push_str("; ");
+            rest = after_crlf;
+        } else if let Some(after_line) = tail.strip_prefix(['\r', '\n']) {
+            out.push_str("; ");
+            rest = after_line;
+        } else if let Some(after_tab) = tail.strip_prefix('\t') {
+            out.push(' ');
+            rest = after_tab;
+        } else {
+            break;
+        }
+    }
+    out.push_str(rest);
+}
+
 /// Read an SDF text blob and emit a TSV string with the LMSD columns.
 ///
 /// Only records that have at least a non-empty `SMILES` and `LM_ID` are
@@ -200,8 +227,13 @@ const COLUMNS: &[&str] = &[
 /// Returns `(tsv_text, record_count)`.
 #[must_use]
 pub(super) fn to_lmsd_tsv(sdf_text: &str) -> (String, usize) {
-    let mut out = String::new();
-    out.push_str(&COLUMNS.join("\t"));
+    let mut out = String::with_capacity(sdf_text.len() / 4);
+    for (i, col) in COLUMNS.iter().enumerate() {
+        if i > 0 {
+            out.push('\t');
+        }
+        out.push_str(col);
+    }
     out.push('\n');
 
     let mut count = 0;
@@ -215,14 +247,7 @@ pub(super) fn to_lmsd_tsv(sdf_text: &str) -> (String, usize) {
             if i > 0 {
                 out.push('\t');
             }
-            // Replace line breaks with "; " and tabs with spaces so
-            // multi-line or tabbed SDF values don't break TSV boundaries.
-            let val = record.get(col).unwrap_or("");
-            let sanitized = val
-                .replace("\r\n", "\n")
-                .replace(['\n', '\r'], "; ")
-                .replace('\t', " ");
-            out.push_str(&sanitized);
+            push_sanitized_tsv_field(&mut out, record.get(col).unwrap_or(""));
         }
         out.push('\n');
         count += 1;
