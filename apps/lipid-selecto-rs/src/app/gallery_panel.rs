@@ -4,10 +4,10 @@
 //! Filtered lipid gallery card grid.
 
 use dioxus::prelude::*;
-use lipid_core::{Analysis, FilterCriteria, GalleryItem, build_filtered_gallery};
+use lipid_core::{Analysis, GalleryItem, build_filtered_gallery};
 use ui::{ColorScheme, StyleBuilder};
 
-use super::types::SummaryFilters;
+use super::types::{MAX_GALLERY_ITEMS, SummaryFilters};
 
 fn gallery_class_badge(item: &GalleryItem) -> Element {
     let bg_color = item.primary_class_color;
@@ -29,7 +29,7 @@ fn gallery_class_badge(item: &GalleryItem) -> Element {
             rsx! {
                 div {
                     title: "{badge_title}",
-                    style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.25rem").padding("0.1rem 0.45rem").property("margin-bottom", "0.2rem").border_radius("999px").property("background", &format!("{bg_color}22")).border(&format!("1px solid {bg_color}55")).color(ColorScheme::LIGHT.text).font_size("0.68rem").font_weight("600").build(),
+                    style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.25rem").padding("0.1rem 0.45rem").property("margin-bottom", "0.2rem").border_radius("999px").property_fmt("background", format_args!("{bg_color}22")).property_fmt("border", format_args!("1px solid {bg_color}55")).color(ColorScheme::LIGHT.text).font_size("0.68rem").font_weight("600").build(),
                     span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", bg_color).build(), }
                     "{class_name}"
                 }
@@ -45,13 +45,13 @@ fn gallery_card(item: &GalleryItem) -> Element {
     let adduct_text = item.adduct.as_deref().unwrap_or("-");
     let bg_color = item.primary_class_color;
     let card_style = StyleBuilder::new()
-        .property(
+        .property_fmt(
             "background",
-            &format!("linear-gradient(180deg, {bg_color}15 0%, {bg_color}08 100%)"),
+            format_args!("linear-gradient(180deg, {bg_color}15 0%, {bg_color}08 100%)"),
         )
         .padding("0.6rem 0.7rem")
         .border_radius("14px")
-        .border(&format!("1px solid {bg_color}40"))
+        .property_fmt("border", format_args!("1px solid {bg_color}40"))
         .box_shadow("0 6px 16px rgba(15, 23, 42, 0.05)")
         .property("overflow", "hidden")
         .build();
@@ -61,14 +61,14 @@ fn gallery_card(item: &GalleryItem) -> Element {
         .height("120px")
         .display("grid")
         .property("place-items", "center")
-        .property("background", &format!("{bg_color}10"))
-        .border(&format!("1px solid {bg_color}30"))
+        .property_fmt("background", format_args!("{bg_color}10"))
+        .property_fmt("border", format_args!("1px solid {bg_color}30"))
         .border_radius("10px")
         .property("overflow", "hidden")
         .build();
 
     rsx! {
-        div { style: card_style,
+        div { key: "{item.block_index}", style: card_style,
             div { style: StyleBuilder::new().display("flex").gap("0.55rem").align_items("flex-start").build(),
                 div { style: svg_box_style,
                     div { style: StyleBuilder::new().width("100%").height("100%").display("flex").align_items("center").justify_content("center").build(),
@@ -97,32 +97,29 @@ fn gallery_card(item: &GalleryItem) -> Element {
     }
 }
 
-const MAX_GALLERY_ITEMS: usize = 96;
-
 /// Displays filtered gallery cards matching selected classes, mass/m/z ranges, and adduct.
 #[component]
 pub(super) fn GalleryPanel(analysis: Signal<Option<Analysis>>, filters: SummaryFilters) -> Element {
-    let guard = analysis.read();
-    let Some(data) = guard.as_ref() else {
+    let filtered = use_memo(move || {
+        let guard = analysis.read();
+        let Some(data) = guard.as_ref() else {
+            return Vec::new();
+        };
+        filters.with_criteria(|criteria| {
+            build_filtered_gallery(
+                &data.blocks,
+                &data.gallery,
+                criteria,
+                MAX_GALLERY_ITEMS,
+                data.all_classes,
+            )
+        })
+    });
+    if analysis.read().is_none() {
         return rsx! {};
-    };
-    let adduct = filters.read_adduct();
-    let criteria = FilterCriteria {
-        selected_classes: *filters.selected_classes.read(),
-        mz_min: *filters.mz_min.read(),
-        mz_max: *filters.mz_max.read(),
-        precursor_min: *filters.precursor_min.read(),
-        precursor_max: *filters.precursor_max.read(),
-        adduct: &adduct,
-    };
-    let filtered = build_filtered_gallery(
-        &data.blocks,
-        &data.gallery,
-        &criteria,
-        MAX_GALLERY_ITEMS,
-        data.all_classes,
-    );
-    let count = filtered.len();
+    }
+    let filtered_items = filtered.read();
+    let count = filtered_items.len();
 
     rsx! {
         div { style: StyleBuilder::new().property("margin-top", "1.25rem").build(),
@@ -135,7 +132,7 @@ pub(super) fn GalleryPanel(analysis: Signal<Option<Analysis>>, filters: SummaryF
                 }
             } else {
                 div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fill, minmax(320px, 1fr))").gap("0.75rem").build(),
-                    for item in &filtered {
+                    for item in filtered_items.iter() {
                         { gallery_card(item) }
                     }
                 }

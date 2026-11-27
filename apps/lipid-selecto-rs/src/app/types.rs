@@ -4,7 +4,10 @@
 //! Shared signal state for `lipid-selecto-rs` UI components.
 
 use dioxus::prelude::{ReadableExt, Signal};
-use lipid_core::ClassMatchSet;
+use lipid_core::{ClassMatchSet, FilterCriteria};
+
+/// Maximum number of structure cards rendered in the interactive gallery grid.
+pub(super) const MAX_GALLERY_ITEMS: usize = 96;
 
 /// Grouped reactive filter signals shared across summary, gallery, and export panels.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -18,7 +21,16 @@ pub(super) struct SummaryFilters {
 }
 
 impl SummaryFilters {
-    pub(super) fn read_adduct(&self) -> String {
-        self.adduct_filter.read().clone()
+    pub(super) fn with_criteria<R>(&self, f: impl FnOnce(&FilterCriteria<'_>) -> R) -> R {
+        let adduct = self.adduct_filter.read();
+        let criteria = FilterCriteria {
+            selected_classes: *self.selected_classes.read(),
+            mz_min: *self.mz_min.read(),
+            mz_max: *self.mz_max.read(),
+            precursor_min: *self.precursor_min.read(),
+            precursor_max: *self.precursor_max.read(),
+            adduct: &adduct,
+        };
+        f(&criteria)
     }
 }

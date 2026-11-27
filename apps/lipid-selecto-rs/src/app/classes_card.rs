@@ -64,7 +64,7 @@ fn family_group_row(
         .build();
 
     rsx! {
-        div {
+        div { key: "{family.code()}",
             div {
                 style: row_style,
                 onclick: move |_| {
@@ -86,6 +86,7 @@ fn family_group_row(
                 div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.3rem").property("padding", "0.4rem 0 0.2rem 0.8rem").build(),
                     for class in classes {
                         div {
+                            key: "{class.index}",
                             title: "{class.smarts}",
                             style: "{pill_style}",
                             strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.25rem").build(),

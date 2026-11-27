@@ -13,8 +13,7 @@ use stream_io::{BlobLines, ChunkSource, SliceSource};
 use upload::{Blob, BlobSource};
 
 use super::UploadCtx;
-
-const MAX_GALLERY_ITEMS: usize = 96;
+use super::types::MAX_GALLERY_ITEMS;
 
 /// Reads `blob` in chunks via `BlobSource` and classifies parsed spectra asynchronously.
 pub(super) fn start_analysis(
@@ -162,5 +161,4 @@ async fn run_source<S: ChunkSource>(
         "Done — {block_count} entries analyzed (showing {gallery_count} gallery items)."
     ));
     ctx.busy.set(false);
-    TimeoutFuture::new(0).await;
 }

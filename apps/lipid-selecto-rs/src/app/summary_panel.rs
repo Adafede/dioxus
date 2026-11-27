@@ -5,8 +5,8 @@
 
 use dioxus::prelude::*;
 use lipid_core::{
-    Analysis, ChemicalClass, ClassMatchSet, FilterCriteria, LipidFamily, LipidFormat,
-    collect_adduct_options, lmsd_classes_by_family, passes_item_filters,
+    Analysis, ChemicalClass, ClassMatchSet, LipidFamily, LipidFormat, collect_adduct_options,
+    lmsd_classes_by_family, passes_item_filters,
 };
 use ui::{ColorScheme, StyleBuilder};
 
@@ -22,10 +22,10 @@ fn section_subheading() -> String {
         .build()
 }
 
-fn checkbox_sm() -> String {
+fn checkbox_style(size: &str) -> String {
     StyleBuilder::new()
-        .width("14px")
-        .height("14px")
+        .width(size)
+        .height(size)
         .cursor("pointer")
         .build()
 }
@@ -54,7 +54,7 @@ fn family_filter_panel(
                                 selected_classes.set(ClassMatchSet::all(total_classes));
                             }
                         },
-                        style: checkbox_sm(),
+                        style: checkbox_style("14px"),
                     }
                     "Select All"
                 }
@@ -81,7 +81,7 @@ fn family_entry(
     let family_indices: Vec<usize> = family_classes.iter().map(|c| c.index).collect();
 
     rsx! {
-        div { style: StyleBuilder::new().property("margin-bottom", "0.6rem").build(),
+        div { key: "{family.code()}", style: StyleBuilder::new().property("margin-bottom", "0.6rem").build(),
             label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").property("margin-bottom", "0.3rem").build(),
                 input {
                     r#type: "checkbox",
@@ -97,7 +97,7 @@ fn family_entry(
                         }
                         selected_classes.set(next);
                     },
-                    style: StyleBuilder::new().width("16px").height("16px").cursor("pointer").build(),
+                    style: checkbox_style("16px"),
                 }
                 span { style: StyleBuilder::new().font_size("0.85rem").font_weight("700").color(ColorScheme::LIGHT.text).build(), "{family.name()}" }
                 if some_selected {
@@ -119,7 +119,7 @@ fn class_chip(
 ) -> Element {
     let is_selected = selected_classes.read().contains(class.index);
     rsx! {
-        li { style: StyleBuilder::new().display("flex").align_items("center").build(),
+        li { key: "{class.index}", style: StyleBuilder::new().display("flex").align_items("center").build(),
             label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").build(),
                 input {
                     r#type: "checkbox",
@@ -129,7 +129,7 @@ fn class_chip(
                         next.toggle(class.index);
                         selected_classes.set(next);
                     },
-                    style: checkbox_sm(),
+                    style: checkbox_style("14px"),
                 }
                 span {
                     title: "{class.smarts}",
@@ -159,16 +159,9 @@ fn download_buttons(
                 style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
                 onclick: move |_| {
                     if let Some(analysis) = analysis_signal.read().as_ref() {
-                        let adduct = filters.read_adduct();
-                        let criteria = FilterCriteria {
-                            selected_classes: *filters.selected_classes.read(),
-                            mz_min: *filters.mz_min.read(),
-                            mz_max: *filters.mz_max.read(),
-                            precursor_min: *filters.precursor_min.read(),
-                            precursor_max: *filters.precursor_max.read(),
-                            adduct: &adduct,
-                        };
-                        download_filtered(input_format, analysis, &criteria, status);
+                        filters.with_criteria(|criteria| {
+                            download_filtered(input_format, analysis, criteria, status);
+                        });
                     }
                 },
                 "{label}"
@@ -191,35 +184,34 @@ pub(super) fn SummaryPanel(
             .as_ref()
             .map_or_else(Vec::new, |a| collect_adduct_options(&a.blocks))
     });
+    let filtered_count = use_memo(move || {
+        let guard = analysis.read();
+        let Some(data) = guard.as_ref() else {
+            return 0usize;
+        };
+        filters.with_criteria(|criteria| {
+            data.blocks
+                .iter()
+                .filter(|block| {
+                    block.is_lipid()
+                        && passes_item_filters(
+                            block.class_matches(),
+                            block.exact_mass,
+                            block.precursor_mz,
+                            block.adduct.as_deref(),
+                            criteria,
+                        )
+                })
+                .count()
+        })
+    });
     let families = lmsd_classes_by_family();
     let guard = analysis.read();
     let Some(data) = guard.as_ref() else {
         return rsx! {};
     };
     let s = data.summary;
-    let adduct = filters.read_adduct();
-    let criteria = FilterCriteria {
-        selected_classes: *filters.selected_classes.read(),
-        mz_min: *filters.mz_min.read(),
-        mz_max: *filters.mz_max.read(),
-        precursor_min: *filters.precursor_min.read(),
-        precursor_max: *filters.precursor_max.read(),
-        adduct: &adduct,
-    };
-    let filtered_count = data
-        .blocks
-        .iter()
-        .filter(|block| {
-            block.is_lipid()
-                && passes_item_filters(
-                    block.class_matches(),
-                    block.exact_mass,
-                    block.precursor_mz,
-                    block.adduct.as_deref(),
-                    &criteria,
-                )
-        })
-        .count();
+    let filtered_count = *filtered_count.read();
 
     rsx! {
         div {

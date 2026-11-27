@@ -70,7 +70,7 @@ pub(super) fn filter_controls_row(filters: SummaryFilters, adduct_options: &[Str
                     style: StyleBuilder::new().width("110px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
                     option { value: "", "All" }
                     for opt in adduct_options {
-                        option { value: "{opt}", "{opt}" }
+                        option { key: "{opt}", value: "{opt}", "{opt}" }
                     }
                 }
             }
