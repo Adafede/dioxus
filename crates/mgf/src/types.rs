@@ -17,10 +17,6 @@ pub struct MgfPeak {
 pub struct MgfHeader {
     /// Spectrum title from `TITLE=`, or fallback `NAME=` / `SCANS=`.
     pub title: Option<String>,
-    /// Precursor `m/z` from `PEPMASS=`.
-    pub pepmass: Option<f64>,
-    /// Precursor `m/z` from `PRECURSOR_MZ=`.
-    pub precursor_mz: Option<f64>,
     /// Last seen precursor `m/z` (`PEPMASS` or `PRECURSOR_MZ`).
     pub latest_precursor_mz: Option<f64>,
     /// `CHARGE=` metadata value.

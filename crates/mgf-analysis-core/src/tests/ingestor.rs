@@ -12,7 +12,6 @@ use crate::{MAX_RAW_RETENTION_BYTES, PrecursorStats, WarningDetail, append_retai
 fn keeps_full_precision_when_computing_error() {
     let block = MgfBlock {
         header: MgfHeader {
-            pepmass: Some(100.1234),
             latest_precursor_mz: Some(100.1234),
             exact_mass: Some(100.123_456_789),
             charge: Some("1".to_string()),

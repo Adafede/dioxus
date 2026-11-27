@@ -5,27 +5,32 @@
 
 use crate::types::{MgfBlock, MgfHeader, MgfPeak};
 
+#[inline]
+fn parse_finite_f64(text: &str) -> Option<f64> {
+    text.parse::<f64>().ok().filter(|v| v.is_finite())
+}
+
 /// Parses the first whitespace-separated finite float from an MGF header or peak field.
 #[must_use]
 pub fn parse_leading_float(text: &str) -> Option<f64> {
-    text.split_whitespace()
-        .next()?
-        .parse::<f64>()
-        .ok()
-        .filter(|v| v.is_finite())
+    parse_finite_f64(text.split_whitespace().next()?)
 }
 
-/// Returns `true` when `line` begins with `marker` (`"BEGIN IONS"` or `"END IONS"`)
-/// on a word boundary (case-insensitive).
-#[must_use]
-pub fn is_ions_marker(line: &str, marker: &str) -> bool {
-    let trimmed = line.trim();
+#[inline]
+fn is_ions_marker_trimmed(trimmed: &str, marker: &str) -> bool {
     trimmed
         .get(..marker.len())
         .is_some_and(|prefix| prefix.eq_ignore_ascii_case(marker))
         && trimmed
             .get(marker.len()..)
             .is_some_and(|rest| rest.is_empty() || rest.starts_with(char::is_whitespace))
+}
+
+/// Returns `true` when `line` begins with `marker` (`"BEGIN IONS"` or `"END IONS"`)
+/// on a word boundary (case-insensitive).
+#[must_use]
+pub fn is_ions_marker(line: &str, marker: &str) -> bool {
+    is_ions_marker_trimmed(line.trim(), marker)
 }
 
 /// Extracts a precursor `m/z` value from a `PEPMASS=` or `PRECURSOR_MZ=` line.
@@ -39,48 +44,37 @@ pub fn extract_pepmass_from_line(line: &str) -> Option<f64> {
     }
 }
 
+#[inline]
+fn parse_peak_line_trimmed(trimmed: &str) -> Option<MgfPeak> {
+    let mut fields = trimmed.split_whitespace();
+    let mz = parse_finite_f64(fields.next()?).filter(|&v| v > 0.0)?;
+    let intensity = parse_finite_f64(fields.next()?);
+    Some(MgfPeak { mz, intensity })
+}
+
 /// Parses a single MS2 peak line requiring a finite positive `m/z` followed by whitespace.
+#[cfg(test)]
 #[must_use]
 pub(crate) fn parse_peak_line(line: &str) -> Option<MgfPeak> {
     let trimmed = line.trim();
-    if trimmed.is_empty() || trimmed.contains('=') || !trimmed.contains(char::is_whitespace) {
+    if trimmed.is_empty() || trimmed.contains('=') {
         return None;
     }
-    let mut fields = trimmed.split_whitespace();
-    let mz = fields
-        .next()?
-        .parse::<f64>()
-        .ok()
-        .filter(|v| v.is_finite() && *v > 0.0)?;
-    let intensity = fields
-        .next()
-        .and_then(|s| s.parse::<f64>().ok())
-        .filter(|v| v.is_finite());
-    Some(MgfPeak { mz, intensity })
+    parse_peak_line_trimmed(trimmed)
 }
 
 fn assign_header_field(header: &mut MgfHeader, key: &str, value: &str) {
     let trimmed = value.trim();
-    if key.eq_ignore_ascii_case("PEPMASS") {
+    if key.eq_ignore_ascii_case("PEPMASS") || key.eq_ignore_ascii_case("PRECURSOR_MZ") {
         if let Some(parsed) = parse_leading_float(value) {
-            header.pepmass = Some(parsed);
-            header.latest_precursor_mz = Some(parsed);
-        }
-    } else if key.eq_ignore_ascii_case("PRECURSOR_MZ") {
-        if let Some(parsed) = parse_leading_float(value) {
-            header.precursor_mz = Some(parsed);
             header.latest_precursor_mz = Some(parsed);
         }
     } else if key.eq_ignore_ascii_case("EXACTMASS") {
-        if let Ok(parsed) = trimmed.parse::<f64>()
-            && parsed.is_finite()
-        {
+        if let Some(parsed) = parse_finite_f64(trimmed) {
             header.exact_mass = Some(parsed);
         }
     } else if key.eq_ignore_ascii_case("MOLECULEMASS") {
-        if let Ok(parsed) = trimmed.parse::<f64>()
-            && parsed.is_finite()
-        {
+        if let Some(parsed) = parse_finite_f64(trimmed) {
             header.molecule_mass = Some(parsed);
         }
     } else if key.eq_ignore_ascii_case("CHARGE") {
@@ -104,7 +98,7 @@ fn assign_header_field(header: &mut MgfHeader, key: &str, value: &str) {
 /// Incremental line-by-line parser producing [`MgfBlock`] records.
 #[derive(Debug, Default)]
 pub struct MgfLineParser {
-    line_index: usize,
+    seen_first_line: bool,
     block_index: usize,
     current: Option<MgfBlock>,
 }
@@ -114,28 +108,29 @@ impl MgfLineParser {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            line_index: 0,
+            seen_first_line: false,
             block_index: 0,
             current: None,
         }
     }
 
     /// Feeds one line into the parser, returning a completed [`MgfBlock`] when
-    /// `END IONS` closes the current block.
+    /// `END IONS` closes the current block or a new `BEGIN IONS` supersedes an
+    /// unclosed block.
     pub fn push_line(&mut self, line: &str) -> Option<MgfBlock> {
-        let normalized = if self.line_index == 0 {
-            line.trim_start_matches('\u{feff}')
-        } else {
+        let normalized = if self.seen_first_line {
             line
+        } else {
+            self.seen_first_line = true;
+            line.trim_start_matches('\u{feff}')
         };
-        self.line_index += 1;
 
         let trimmed = normalized.trim();
         if trimmed.is_empty() {
             return None;
         }
 
-        if is_ions_marker(trimmed, "BEGIN IONS") {
+        if is_ions_marker_trimmed(trimmed, "BEGIN IONS") {
             let previous = self.current.take();
             self.block_index += 1;
             self.current = Some(MgfBlock {
@@ -147,13 +142,13 @@ impl MgfLineParser {
 
         let block = self.current.as_mut()?;
 
-        if is_ions_marker(trimmed, "END IONS") {
+        if is_ions_marker_trimmed(trimmed, "END IONS") {
             return self.current.take();
         }
 
         if let Some((key, value)) = trimmed.split_once('=') {
             assign_header_field(&mut block.header, key, value);
-        } else if let Some(peak) = parse_peak_line(trimmed) {
+        } else if let Some(peak) = parse_peak_line_trimmed(trimmed) {
             block.peaks.push(peak);
         }
         None

@@ -16,6 +16,8 @@ pub(crate) const DEFAULT_MAX_LINE_BYTES: usize = 64 * 1024 * 1024;
 #[derive(Debug)]
 pub struct BlobLines<F, S: ChunkSource> {
     inner: ChunkBuffer<S>,
+    /// Buffer index (`>= inner.pos`) up to which no `\n` has been seen yet.
+    scan_offset: usize,
     total_bytes: u64,
     chunk_size: usize,
     max_line_bytes: usize,
@@ -33,6 +35,7 @@ where
         let total_bytes = source.total_bytes();
         Self {
             inner: ChunkBuffer::new(source),
+            scan_offset: 0,
             total_bytes,
             chunk_size: DEFAULT_CHUNK_SIZE,
             max_line_bytes: DEFAULT_MAX_LINE_BYTES,
@@ -98,6 +101,7 @@ where
                 }
                 let remaining = String::from_utf8_lossy(remaining).into_owned();
                 self.inner.pos = self.inner.buf.len();
+                self.scan_offset = self.inner.pos;
                 return Ok(Some(remaining));
             }
 
@@ -105,13 +109,18 @@ where
         }
     }
 
+    #[inline]
     fn take_line_from_buffer(&mut self) -> Result<Option<String>, StreamError> {
-        let Some(available) = self.inner.buf.get(self.inner.pos..) else {
+        let search_start = self.scan_offset.max(self.inner.pos);
+        let Some(search_slice) = self.inner.buf.get(search_start..) else {
+            self.scan_offset = self.inner.buf.len();
             return Ok(None);
         };
-        if let Some(pos) = available.iter().position(|b| *b == b'\n')
-            && let Some(line_bytes) = available.get(..pos)
-        {
+        if let Some(rel_nl) = search_slice.iter().position(|b| *b == b'\n') {
+            let nl_idx = search_start + rel_nl;
+            let Some(line_bytes) = self.inner.buf.get(self.inner.pos..nl_idx) else {
+                return Ok(None);
+            };
             let content_bytes = line_bytes.strip_suffix(b"\r").unwrap_or(line_bytes);
             if content_bytes.len() > self.max_line_bytes {
                 return Err(StreamError::LineTooLong {
@@ -119,16 +128,18 @@ where
                 });
             }
             let line = String::from_utf8_lossy(content_bytes).into_owned();
-            self.inner.pos += pos + 1;
-            self.inner.compact_half();
+            self.inner.pos = nl_idx + 1;
+            self.scan_offset = self.inner.pos;
             Ok(Some(line))
         } else {
+            self.scan_offset = self.inner.buf.len();
             Ok(None)
         }
     }
 
     async fn load_next_chunk(&mut self) -> Result<(), StreamError> {
         self.inner.compact_all();
+        self.scan_offset = self.inner.buf.len();
         if self
             .inner
             .pull_chunk(self.chunk_size, self.total_bytes)

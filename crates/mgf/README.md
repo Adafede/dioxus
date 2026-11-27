@@ -6,9 +6,9 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 
 Streaming MGF (`Mascot Generic Format`) block parser and spectrum model.
 
-Provides `BEGIN IONS ... END IONS` line-by-line parsing with UTF-8 BOM
-stripping, case-insensitive header keys, positive-m/z peak validation, and
-dropping of unclosed EOF blocks.
+Provides `BEGIN IONS ... END IONS` line-by-line parsing with first-line UTF-8
+BOM stripping, case-insensitive header keys, positive-m/z peak validation,
+returning completed blocks at `END IONS` or a nested `BEGIN IONS`.
 
 ## Example
 

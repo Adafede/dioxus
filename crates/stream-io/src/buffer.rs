@@ -39,14 +39,6 @@ impl<S: ChunkSource> ChunkBuffer<S> {
         }
     }
 
-    /// Compacts the buffer when more than half of it has been consumed.
-    pub(crate) fn compact_half(&mut self) {
-        if self.pos > self.buf.len() / 2 {
-            self.buf.drain(..self.pos);
-            self.pos = 0;
-        }
-    }
-
     /// Pulls the next `chunk_size` slice up to `total_limit` and updates `source_read`.
     ///
     /// Returns the `(start, end)` range read, or `None` when `source_read >= total_limit`.
