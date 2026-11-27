@@ -212,15 +212,46 @@ impl StyleBuilder {
         }
     }
 
-    /// Appends an arbitrary CSS `name: value` declaration.
-    pub fn property(mut self, name: &str, value: &str) -> Self {
+    fn push_separator_and_name(&mut self, name: &str) {
         if !self.css.is_empty() {
             self.css.push_str("; ");
         }
         self.css.push_str(name);
         self.css.push_str(": ");
+    }
+
+    /// Appends an arbitrary CSS `name: value` declaration.
+    pub fn property(mut self, name: &str, value: &str) -> Self {
+        self.push_separator_and_name(name);
         self.css.push_str(value);
         self
+    }
+
+    /// Appends an arbitrary CSS `name: value` declaration formatted directly into the buffer.
+    pub fn property_fmt(mut self, name: &str, args: fmt::Arguments<'_>) -> Self {
+        self.push_separator_and_name(name);
+        let _ = fmt::Write::write_fmt(&mut self.css, args);
+        self
+    }
+
+    /// Pre-configured body copy typography base (`font-size`, `font-family`, `color`, `margin: 0`, `line-height`).
+    pub(crate) fn body_text_style(color: &str) -> Self {
+        Self::with_capacity(140)
+            .font_size(Typography::BODY)
+            .font_family(Typography::SANS)
+            .color(color)
+            .margin("0")
+            .line_height(Typography::LINE_HEIGHT)
+    }
+
+    /// Pre-configured wrapping centered flex row container.
+    pub(crate) fn flex_row_wrap(capacity: usize, gap: &str) -> Self {
+        Self::with_capacity(capacity)
+            .display("flex")
+            .flex_direction("row")
+            .flex_wrap("wrap")
+            .align_items("center")
+            .gap(gap)
     }
 
     style_props! {

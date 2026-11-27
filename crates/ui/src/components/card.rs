@@ -55,7 +55,7 @@ pub fn Card(props: CardProps) -> Element {
 
     let card_style = StyleBuilder::with_capacity(240)
         .background_color(colors.surface)
-        .border(&format!("1px solid {}", colors.border))
+        .property_fmt("border", format_args!("1px solid {}", colors.border))
         .border_radius(Radius::MD)
         .padding(Spacing::LG)
         .box_shadow(props.theme.card_shadow())
@@ -74,13 +74,7 @@ pub fn Card(props: CardProps) -> Element {
         .line_height(Typography::LINE_HEIGHT)
         .build();
 
-    let content_style = StyleBuilder::with_capacity(160)
-        .font_size(Typography::BODY)
-        .font_family(Typography::SANS)
-        .color(colors.text2)
-        .margin("0")
-        .line_height(Typography::LINE_HEIGHT)
-        .build();
+    let content_style = StyleBuilder::body_text_style(colors.text2).build();
 
     rsx! {
         article {

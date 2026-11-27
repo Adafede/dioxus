@@ -112,7 +112,7 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
         .border_radius("999px")
         .background_color(bg)
         .color(fg)
-        .border(&format!("1px solid {border_color}"))
+        .property_fmt("border", format_args!("1px solid {border_color}"))
         .box_shadow(shadow)
         .cursor("pointer")
         .transition(Interaction::TRANSITION_DEFAULT)

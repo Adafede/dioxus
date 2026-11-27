@@ -8,7 +8,7 @@
     reason = "Dioxus Props derive macro generates an empty helper enum"
 )]
 
-use crate::theme::{Radius, Spacing, StyleBuilder, Theme, Typography};
+use crate::theme::{Radius, Spacing, StyleBuilder, Theme};
 use dioxus::prelude::*;
 
 /// Properties for the [`Footer`] component.
@@ -44,19 +44,13 @@ pub fn Footer(props: FooterProps) -> Element {
 
     let footer_style = StyleBuilder::with_capacity(140)
         .background_color(colors.bg)
-        .border(&format!("1px solid {}", colors.border))
+        .property_fmt("border", format_args!("1px solid {}", colors.border))
         .border_radius(Radius::LG)
-        .padding(&format!("{} {}", Spacing::LG, Spacing::LG))
+        .property_fmt("padding", format_args!("{} {}", Spacing::LG, Spacing::LG))
         .text_align("center")
         .build();
 
-    let text_style = StyleBuilder::with_capacity(140)
-        .font_size(Typography::BODY)
-        .font_family(Typography::SANS)
-        .color(colors.text3)
-        .margin("0")
-        .line_height(Typography::LINE_HEIGHT)
-        .build();
+    let text_style = StyleBuilder::body_text_style(colors.text3).build();
 
     let link_style = StyleBuilder::with_capacity(96)
         .color(colors.accent)

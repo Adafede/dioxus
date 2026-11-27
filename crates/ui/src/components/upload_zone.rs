@@ -125,7 +125,7 @@ pub fn UploadZone(props: UploadZoneProps) -> Element {
         }
         if !file_name.is_empty() {
             p {
-                style: StyleBuilder::with_capacity(96).margin(&format!("{} 0 0", Spacing::MD)).color(colors.text2).font_size(Typography::BODY).build(),
+                style: StyleBuilder::with_capacity(96).property_fmt("margin", format_args!("{} 0 0", Spacing::MD)).color(colors.text2).font_size(Typography::BODY).build(),
                 "Selected: {file_name}"
             }
         }
@@ -134,7 +134,7 @@ pub fn UploadZone(props: UploadZoneProps) -> Element {
             role: "status",
             aria_live: "polite",
             aria_atomic: "true",
-            style: StyleBuilder::with_capacity(96).margin(&format!("{} 0 0", Spacing::MD)).font_weight("600").color(tone_color).build(),
+            style: StyleBuilder::with_capacity(96).property_fmt("margin", format_args!("{} 0 0", Spacing::MD)).font_weight("600").color(tone_color).build(),
             "{status_text}"
         }
     }
@@ -151,14 +151,17 @@ fn build_zone_style(colors: ColorScheme, drag_active: bool, busy: bool) -> Strin
         .width("100%")
         .property("box-sizing", "border-box")
         .property("position", "relative")
-        .border(&format!(
-            "2px dashed {}",
-            if drag_active {
-                colors.blue
-            } else {
-                colors.border
-            }
-        ))
+        .property_fmt(
+            "border",
+            format_args!(
+                "2px dashed {}",
+                if drag_active {
+                    colors.blue
+                } else {
+                    colors.border
+                }
+            ),
+        )
         .border_radius(Radius::MD)
         .padding(Spacing::LG)
         .cursor(if busy { "wait" } else { "pointer" })

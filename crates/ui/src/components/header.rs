@@ -49,14 +49,17 @@ pub fn Header(props: HeaderProps) -> Element {
 
     let header_style = StyleBuilder::with_capacity(140)
         .background_color(colors.bg)
-        .padding(&format!(
-            "{} {} {} {}",
-            Spacing::XL,
-            Spacing::LG,
-            Spacing::XL,
-            Spacing::LG
-        ))
-        .border(&format!("1px solid {}", colors.border))
+        .property_fmt(
+            "padding",
+            format_args!(
+                "{} {} {} {}",
+                Spacing::XL,
+                Spacing::LG,
+                Spacing::XL,
+                Spacing::LG
+            ),
+        )
+        .property_fmt("border", format_args!("1px solid {}", colors.border))
         .border_radius(Radius::LG)
         .text_align("center")
         .build();
@@ -70,13 +73,7 @@ pub fn Header(props: HeaderProps) -> Element {
         .line_height(Typography::LINE_HEIGHT)
         .build();
 
-    let subtitle_style = StyleBuilder::with_capacity(140)
-        .font_size(Typography::BODY)
-        .font_family(Typography::SANS)
-        .color(colors.text2)
-        .margin("0")
-        .line_height(Typography::LINE_HEIGHT)
-        .build();
+    let subtitle_style = StyleBuilder::body_text_style(colors.text2).build();
 
     rsx! {
         header { style: header_style,

@@ -68,22 +68,22 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         NoticeTone::Warning => colors.yellow,
         NoticeTone::Danger => colors.red,
     };
-    let border_color = format!("color-mix(in srgb, {tone_color} 24%, {})", colors.border);
-    let label_background = format!("color-mix(in srgb, {tone_color} 12%, {})", colors.bg2);
-    let outer_background = format!("color-mix(in srgb, {tone_color} 4%, {})", colors.bg2);
-
-    let outer_style = StyleBuilder::with_capacity(300)
+    let outer_style = StyleBuilder::flex_row_wrap(300, Spacing::SM)
         .margin(props.margin)
         .padding(props.padding)
-        .display("flex")
-        .flex_direction("row")
-        .flex_wrap("wrap")
-        .align_items("center")
-        .gap(Spacing::SM)
-        .border(&format!("1px solid {border_color}"))
-        .border_left(&format!("4px solid {tone_color}"))
+        .property_fmt(
+            "border",
+            format_args!(
+                "1px solid color-mix(in srgb, {tone_color} 24%, {})",
+                colors.border
+            ),
+        )
+        .property_fmt("border-left", format_args!("4px solid {tone_color}"))
         .border_radius(Radius::MD)
-        .background_color(&outer_background)
+        .property_fmt(
+            "background-color",
+            format_args!("color-mix(in srgb, {tone_color} 4%, {})", colors.bg2),
+        )
         .box_shadow(Shadow::XS)
         .font_size(Typography::UI)
         .build();
@@ -93,7 +93,10 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         .align_items("center")
         .padding("2px 8px")
         .border_radius("999px")
-        .background_color(&label_background)
+        .property_fmt(
+            "background-color",
+            format_args!("color-mix(in srgb, {tone_color} 12%, {})", colors.bg2),
+        )
         .color(tone_color)
         .font_size(Typography::LABEL)
         .font_weight("700")
@@ -103,23 +106,13 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         .property("white-space", "nowrap")
         .build();
 
-    let body_style = StyleBuilder::with_capacity(140)
-        .display("flex")
-        .flex_direction("row")
-        .flex_wrap("wrap")
-        .align_items("center")
-        .gap(Spacing::SM)
+    let body_style = StyleBuilder::flex_row_wrap(140, Spacing::SM)
         .property("min-width", "0")
         .property("flex", "1")
         .color(colors.text)
         .build();
 
-    let trailing_style = StyleBuilder::with_capacity(110)
-        .display("flex")
-        .flex_direction("row")
-        .flex_wrap("wrap")
-        .align_items("center")
-        .gap(Spacing::SM)
+    let trailing_style = StyleBuilder::flex_row_wrap(110, Spacing::SM)
         .property("margin-left", "auto")
         .build();
 

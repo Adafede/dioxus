@@ -102,19 +102,17 @@ pub(crate) fn json_string(s: &str) -> String {
     out
 }
 
-fn write_json_list<T: Copy>(
+fn write_json_list_into<T: Copy>(
+    out: &mut String,
     items: &[T],
-    cap_per_item: usize,
-    mut write: impl FnMut(&mut String, T),
-) -> String {
-    let mut out = String::with_capacity(items.len() * cap_per_item);
+    mut write_item: impl FnMut(&mut String, T),
+) {
     for (i, &item) in items.iter().enumerate() {
         if i > 0 {
             out.push_str(", ");
         }
-        write(&mut out, item);
+        write_item(out, item);
     }
-    out
 }
 
 fn write_json_edam_uri(out: &mut String, term: EdamTerm) {
@@ -123,16 +121,25 @@ fn write_json_edam_uri(out: &mut String, term: EdamTerm) {
     out.push('"');
 }
 
-fn json_edam_terms(terms: &[EdamTerm]) -> String {
-    write_json_list(terms, 80, |out, t| {
-        out.push_str(r#"{"id": "#);
-        write_json_string(out, t.id);
-        out.push_str(r#", "label": "#);
-        write_json_string(out, t.label);
-        out.push_str(r#", "uri": "#);
-        write_json_edam_uri(out, t);
-        out.push('}');
-    })
+fn write_edam_term_prop(out: &mut String, key: &str, terms: &[EdamTerm], quote_key: bool) {
+    if quote_key {
+        out.push('"');
+        out.push_str(key);
+        out.push_str(r#"":["#);
+    } else {
+        out.push_str(key);
+        out.push_str(": [");
+    }
+    write_json_list_into(out, terms, |buf, t| {
+        buf.push_str(r#"{"id": "#);
+        write_json_string(buf, t.id);
+        buf.push_str(r#", "label": "#);
+        write_json_string(buf, t.label);
+        buf.push_str(r#", "uri": "#);
+        write_json_edam_uri(buf, t);
+        buf.push('}');
+    });
+    out.push(']');
 }
 
 /// Returns the inline `<script>` body that registers one read-only tool on
@@ -142,54 +149,70 @@ fn json_edam_terms(terms: &[EdamTerm]) -> String {
 /// `webmcp` prop, and apps pass a [`WebMcpConfig`] rather than a script.
 #[must_use]
 pub(crate) fn capabilities_script(cfg: WebMcpConfig) -> String {
-    let tool_name = format!("{}_capabilities", cfg.app_id);
-    let name = json_string(&tool_name);
-    let title = json_string(cfg.title);
-    let description = json_string(cfg.description);
-    let inputs = write_json_list(cfg.inputs, 0, write_json_string);
-    let outputs = write_json_list(cfg.outputs, 0, write_json_string);
-    let topics = json_edam_terms(cfg.edam.topics);
-    let operations = json_edam_terms(cfg.edam.operations);
-    let input_data = json_edam_terms(cfg.edam.input_data);
-    let input_formats = json_edam_terms(cfg.edam.input_formats);
-    let output_data = json_edam_terms(cfg.edam.output_data);
-    let output_formats = json_edam_terms(cfg.edam.output_formats);
-
-    format!(
-        r#"(function() {{
-  const mc = document.modelContext || (navigator && navigator.modelContext);
-  if (!mc || typeof mc.registerTool !== "function") return;
-  mc.registerTool({{
-    name: {name},
-    title: {title},
-    description: {description},
-    inputSchema: {{ "type": "object", "properties": {{}}, "additionalProperties": false }},
-    execute: async () => ({{ name: {title}, description: {description}, inputs: [{inputs}], outputs: [{outputs}], edam: {{ topics: [{topics}], operations: [{operations}], inputs: {{ data: [{input_data}], formats: [{input_formats}] }}, outputs: {{ data: [{output_data}], formats: [{output_formats}] }} }} }}),
-    annotations: {{ readOnlyHint: true }}
-  }}).catch(() => {{}});
-}})();"#
-    )
+    let mut out = String::with_capacity(1024);
+    out.push_str(
+        "(function() {\n  const mc = document.modelContext || (navigator && navigator.modelContext);\n  if (!mc || typeof mc.registerTool !== \"function\") return;\n  mc.registerTool({\n    name: \"",
+    );
+    write_json_escaped_body(&mut out, cfg.app_id);
+    out.push_str("_capabilities\",\n    title: ");
+    write_json_string(&mut out, cfg.title);
+    out.push_str(",\n    description: ");
+    write_json_string(&mut out, cfg.description);
+    out.push_str(
+        ",\n    inputSchema: { \"type\": \"object\", \"properties\": {}, \"additionalProperties\": false },\n    execute: async () => ({ name: ",
+    );
+    write_json_string(&mut out, cfg.title);
+    out.push_str(", description: ");
+    write_json_string(&mut out, cfg.description);
+    out.push_str(", inputs: [");
+    write_json_list_into(&mut out, cfg.inputs, write_json_string);
+    out.push_str("], outputs: [");
+    write_json_list_into(&mut out, cfg.outputs, write_json_string);
+    out.push_str("], edam: { ");
+    write_edam_term_prop(&mut out, "topics", cfg.edam.topics, false);
+    out.push_str(", ");
+    write_edam_term_prop(&mut out, "operations", cfg.edam.operations, false);
+    out.push_str(", inputs: { ");
+    write_edam_term_prop(&mut out, "data", cfg.edam.input_data, false);
+    out.push_str(", ");
+    write_edam_term_prop(&mut out, "formats", cfg.edam.input_formats, false);
+    out.push_str(" }, outputs: { ");
+    write_edam_term_prop(&mut out, "data", cfg.edam.output_data, false);
+    out.push_str(", ");
+    write_edam_term_prop(&mut out, "formats", cfg.edam.output_formats, false);
+    out.push_str(" } } }),\n    annotations: { readOnlyHint: true }\n  }).catch(() => {});\n})();");
+    out
 }
 
 /// Returns a Schema.org / `BioSchemas` `SoftwareApplication` JSON-LD document
 /// enriched with EDAM ontology URIs and terms.
 #[must_use]
 pub(crate) fn bioschemas_json_ld(cfg: WebMcpConfig) -> String {
-    let id = json_string(cfg.app_id);
-    let name = json_string(cfg.title);
-    let description = json_string(cfg.description);
-    let topic_uris = write_json_list(cfg.edam.topics, 40, write_json_edam_uri);
-    let operation_uris = write_json_list(cfg.edam.operations, 40, write_json_edam_uri);
-    let topics = json_edam_terms(cfg.edam.topics);
-    let operations = json_edam_terms(cfg.edam.operations);
-    let input_data = json_edam_terms(cfg.edam.input_data);
-    let input_formats = json_edam_terms(cfg.edam.input_formats);
-    let output_data = json_edam_terms(cfg.edam.output_data);
-    let output_formats = json_edam_terms(cfg.edam.output_formats);
-
-    format!(
-        r#"{{"@context":"https://schema.org","@type":"SoftwareApplication","identifier":{id},"name":{name},"description":{description},"applicationCategory":"ScientificApplication","operatingSystem":"WebAssembly","applicationSubCategory":[{topic_uris}],"featureList":[{operation_uris}],"edam":{{"topics":[{topics}],"operations":[{operations}],"inputData":[{input_data}],"inputFormats":[{input_formats}],"outputData":[{output_data}],"outputFormats":[{output_formats}]}}}}"#
-    )
+    let mut out = String::with_capacity(1024);
+    out.push_str(r#"{"@context":"https://schema.org","@type":"SoftwareApplication","identifier":"#);
+    write_json_string(&mut out, cfg.app_id);
+    out.push_str(r#","name":"#);
+    write_json_string(&mut out, cfg.title);
+    out.push_str(r#","description":"#);
+    write_json_string(&mut out, cfg.description);
+    out.push_str(r#","applicationCategory":"ScientificApplication","operatingSystem":"WebAssembly","applicationSubCategory":["#);
+    write_json_list_into(&mut out, cfg.edam.topics, write_json_edam_uri);
+    out.push_str(r#"],"featureList":["#);
+    write_json_list_into(&mut out, cfg.edam.operations, write_json_edam_uri);
+    out.push_str(r#"],"edam":{"#);
+    write_edam_term_prop(&mut out, "topics", cfg.edam.topics, true);
+    out.push(',');
+    write_edam_term_prop(&mut out, "operations", cfg.edam.operations, true);
+    out.push(',');
+    write_edam_term_prop(&mut out, "inputData", cfg.edam.input_data, true);
+    out.push(',');
+    write_edam_term_prop(&mut out, "inputFormats", cfg.edam.input_formats, true);
+    out.push(',');
+    write_edam_term_prop(&mut out, "outputData", cfg.edam.output_data, true);
+    out.push(',');
+    write_edam_term_prop(&mut out, "outputFormats", cfg.edam.output_formats, true);
+    out.push_str("}}");
+    out
 }
 
 #[cfg(test)]

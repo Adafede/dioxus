@@ -72,18 +72,18 @@ pub fn Button(props: ButtonProps) -> Element {
         ButtonVariant::Secondary => (colors.surface, colors.text, colors.border, Shadow::XS),
         ButtonVariant::Tertiary => ("transparent", colors.accent, "transparent", "none"),
     };
-    let border_value = if props.variant == ButtonVariant::Tertiary {
-        "none".to_string()
-    } else {
-        format!("1px solid {border_color}")
-    };
 
-    let button_style = StyleBuilder::with_capacity(280)
+    let mut button_style = StyleBuilder::with_capacity(280)
         .background_color(bg_color)
-        .color(text_color)
-        .border(&border_value)
+        .color(text_color);
+    button_style = if props.variant == ButtonVariant::Tertiary {
+        button_style.border("none")
+    } else {
+        button_style.property_fmt("border", format_args!("1px solid {border_color}"))
+    };
+    let button_style = button_style
         .box_shadow(box_shadow)
-        .padding(&format!("{} {}", Spacing::MD, Spacing::LG))
+        .property_fmt("padding", format_args!("{} {}", Spacing::MD, Spacing::LG))
         .border_radius(Radius::SM)
         .font_size(Typography::UI)
         .font_family(Typography::SANS)
