@@ -5,6 +5,7 @@
 
 use mgf_analysis_core::usize_to_f64;
 
+use super::color::{AFTER_RGB, MS1_BEFORE_RGB, filled_rgba};
 use super::data::sample_scatter_points;
 #[cfg(test)]
 use super::histogram::{fill_histogram, render_recalibration_diagnostic_histogram};
@@ -78,7 +79,7 @@ pub fn render_recalibration_diagnostic_ppm(
             .y_desc("Error (ppm)")
             .draw()?;
 
-        let before_style = ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled();
+        let before_style = filled_rgba(MS1_BEFORE_RGB, 0.4);
         chart
             .draw_series(
                 before_pts
@@ -87,7 +88,7 @@ pub fn render_recalibration_diagnostic_ppm(
             )?
             .label("Before")
             .legend(move |(x, y)| Circle::new((x + 8, y), 4, before_style));
-        let after_style = ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled();
+        let after_style = filled_rgba(AFTER_RGB, 0.6);
         chart
             .draw_series(
                 after_pts
@@ -107,5 +108,4 @@ pub fn render_recalibration_diagnostic_ppm(
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used)]
 mod tests;

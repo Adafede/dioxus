@@ -4,7 +4,19 @@
 //! Colour palettes for adduct families and BATLOW tolerance steps.
 
 use mgf_analysis_core::AdductFamily;
+use plotters::style::{RGBAColor, RGBColor, ShapeStyle};
 use prismatica::crameri::BATLOW;
+
+pub(super) const MESH_AXIS_RGB: RGBColor = RGBColor(148, 163, 184);
+pub(super) const MESH_LIGHT_RGB: RGBColor = RGBColor(226, 232, 240);
+pub(super) const MESH_BOLD_RGB: RGBColor = RGBColor(100, 116, 139);
+pub(super) const MS1_BEFORE_RGB: RGBColor = RGBColor(68, 119, 170);
+pub(super) const MS2_BEFORE_RGB: RGBColor = RGBColor(255, 140, 0);
+pub(super) const AFTER_RGB: RGBColor = RGBColor(34, 136, 51);
+
+pub(super) fn filled_rgba(rgb: RGBColor, alpha: f64) -> ShapeStyle {
+    ShapeStyle::from(&RGBAColor(rgb.0, rgb.1, rgb.2, alpha)).filled()
+}
 
 const PAUL_TOL_QUALITATIVE: [(&str, (u8, u8, u8)); 8] = [
     ("#4477AA", (0x44, 0x77, 0xAA)),

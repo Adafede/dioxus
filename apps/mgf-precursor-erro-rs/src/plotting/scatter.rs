@@ -4,15 +4,40 @@
 //! Scatter/ECDF chart renderers. These compose data helpers (prep + legend +
 //! points) with colour helpers and `plotters` to emit SVG strings.
 
-use mgf_analysis_core::PlotPoint;
+use mgf_analysis_core::{ErrorUnit, PlotPoint};
+use plotters::chart::MeshStyle;
+use plotters::prelude::*;
 
-use super::color::{adduct_family_shape_style, tolerance_step_color, tolerance_step_rgb};
+use super::color::{
+    MESH_AXIS_RGB, MESH_BOLD_RGB, MESH_LIGHT_RGB, adduct_family_shape_style, tolerance_step_color,
+    tolerance_step_rgb,
+};
 use super::data::{
     ScatterPlotData, build_ecdf_points, display_error_value_for_point, fallback_y_limit_for_unit,
     format_threshold_value, prepare_scatter_plot_data,
 };
 use super::svg::embed_svg_legend;
 use crate::errors::PlotError;
+
+fn style_mesh<'a, 'b, X, Y, DB>(
+    mut mesh: MeshStyle<'a, 'b, X, Y, DB>,
+    x_desc: &'a str,
+    y_desc: &'a str,
+) -> MeshStyle<'a, 'b, X, Y, DB>
+where
+    X: Ranged,
+    Y: Ranged,
+    DB: DrawingBackend,
+{
+    mesh.axis_style(ShapeStyle::from(&MESH_AXIS_RGB))
+        .light_line_style(ShapeStyle::from(&MESH_LIGHT_RGB))
+        .bold_line_style(ShapeStyle::from(&MESH_BOLD_RGB))
+        .x_desc(x_desc)
+        .y_desc(y_desc)
+        .x_label_style(("sans-serif", 11).into_font())
+        .y_label_style(("sans-serif", 11).into_font());
+    mesh
+}
 
 /// Renders an ECDF SVG for the observed error values.
 ///
@@ -23,9 +48,8 @@ pub(crate) fn render_ecdf_svg(
     title: &str,
     values: &[f64],
     thresholds: &[f64],
-    unit: &str,
+    unit: ErrorUnit,
 ) -> Result<String, PlotError> {
-    use plotters::prelude::*;
     use plotters::series::LineSeries;
 
     let width = 900u32;
@@ -34,11 +58,12 @@ pub(crate) fn render_ecdf_svg(
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
     root.fill(&WHITE)?;
 
+    let unit_str = unit.as_str();
     let legend_items = thresholds
         .iter()
         .enumerate()
         .map(|(index, threshold)| {
-            let label = format!("≤ {} {unit}", format_threshold_value(*threshold));
+            let label = format!("≤ {} {unit_str}", format_threshold_value(*threshold));
             (label, tolerance_step_color(index, 5))
         })
         .collect::<Vec<_>>();
@@ -58,14 +83,14 @@ pub(crate) fn render_ecdf_svg(
     let view_max = thresholds.iter().copied().fold(0.0, f64::max).max(1e-6);
     let plot_max = observed_max.max(view_max);
     let mut x_max = (plot_max * 1.03).max(x_min + 1e-3);
-    x_max = if unit == "mDa" {
-        x_max.max(5.0)
-    } else {
-        x_max.max(10.0)
-    };
+    x_max = x_max.max(fallback_y_limit_for_unit(unit));
     let y_min = 0.0f64;
     let y_max = 1.0f64;
 
+    let x_desc = match unit {
+        ErrorUnit::Ppm => format!("Relative error ({unit_str})"),
+        ErrorUnit::Mda => format!("Absolute error ({unit_str})"),
+    };
     {
         let mut chart = ChartBuilder::on(&root)
             .margin_top(28)
@@ -77,20 +102,7 @@ pub(crate) fn render_ecdf_svg(
             .set_label_area_size(LabelAreaPosition::Bottom, 64)
             .build_cartesian_2d((x_min..x_max).log_scale(), y_min..y_max)?;
 
-        chart
-            .configure_mesh()
-            .axis_style(ShapeStyle::from(&RGBColor(148, 163, 184)))
-            .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
-            .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
-            .x_desc(if unit == "ppm" {
-                format!("Relative error ({unit})")
-            } else {
-                format!("Absolute error ({unit})")
-            })
-            .y_desc("cumulative fraction")
-            .x_label_style(("sans-serif", 11).into_font())
-            .y_label_style(("sans-serif", 11).into_font())
-            .draw()?;
+        style_mesh(chart.configure_mesh(), &x_desc, "cumulative fraction").draw()?;
 
         chart.draw_series(LineSeries::new(
             [(x_min, y_min), (x_max, y_min)],
@@ -137,7 +149,6 @@ fn render_scatter_svg(
     alpha: f32,
     clamp_y: bool,
 ) -> Result<String, PlotError> {
-    use plotters::prelude::*;
     use plotters::series::{LineSeries, PointSeries};
 
     let width = 900u32;
@@ -164,20 +175,11 @@ fn render_scatter_svg(
             .set_label_area_size(LabelAreaPosition::Bottom, 64)
             .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
 
-        chart
-            .configure_mesh()
-            .axis_style(ShapeStyle::from(&RGBColor(148, 163, 184)))
-            .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
-            .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
-            .x_desc("Observed precursor 𝑚/𝑧")
-            .y_desc(y_desc)
-            .x_label_style(("sans-serif", 11).into_font())
-            .y_label_style(("sans-serif", 11).into_font())
-            .draw()?;
+        style_mesh(chart.configure_mesh(), "Observed precursor 𝑚/𝑧", y_desc).draw()?;
 
         chart.draw_series(LineSeries::new(
             [(x_min, 0.0f64), (x_max, 0.0f64)],
-            ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
+            ShapeStyle::from(&MESH_AXIS_RGB).stroke_width(1),
         ))?;
 
         for &tick in ticks {
@@ -187,7 +189,7 @@ fn render_scatter_svg(
             for y in [tick, -tick] {
                 chart.draw_series(LineSeries::new(
                     [(x_min, y), (x_max, y)],
-                    ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
+                    ShapeStyle::from(&MESH_LIGHT_RGB).stroke_width(1),
                 ))?;
             }
         }
@@ -225,7 +227,7 @@ fn render_scatter_svg(
 pub(crate) fn render_absolute_mass_bias_svg(
     title: &str,
     points: &[PlotPoint],
-    unit: &str,
+    unit: ErrorUnit,
     ticks: &[f64],
 ) -> Result<String, PlotError> {
     let plot_data = prepare_scatter_plot_data(
@@ -242,7 +244,7 @@ pub(crate) fn render_absolute_mass_bias_svg(
         },
         fallback_y_limit_for_unit(unit),
     );
-    let y_desc = format!("Signed error ({unit})");
+    let y_desc = format!("Signed error ({})", unit.as_str());
     render_scatter_svg(title, plot_data, &y_desc, ticks, 0.3, true)
 }
 

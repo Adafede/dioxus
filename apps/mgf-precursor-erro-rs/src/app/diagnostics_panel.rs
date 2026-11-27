@@ -7,11 +7,42 @@ use dioxus::prelude::*;
 use mgf_analysis_core::{ErrorUnit, RecalibrationStats};
 use ui::StyleBuilder;
 
-use super::recalibration_panel::RecalibrationSummaryTable;
+use super::recalibration_panel::{RecalibrationSummaryTable, SummaryMetrics};
 use crate::plotting::cumulative::render_cumulative_error_three_curves;
 use crate::plotting::diagnostics::render_recalibration_diagnostic_ppm;
 use crate::plotting::histogram::render_recalibration_diagnostic_histogram;
 use crate::plotting::svg::make_svg_responsive;
+
+fn diagnostic_chart_box(
+    title: &str,
+    legend: Option<&str>,
+    svg: &str,
+    bottom_margin: bool,
+) -> Element {
+    let outer_style = if bottom_margin {
+        StyleBuilder::new()
+            .property("margin-bottom", "1.5rem")
+            .build()
+    } else {
+        String::new()
+    };
+    rsx! {
+        div { style: outer_style,
+            h5 { style: StyleBuilder::new().margin("0 0 0.5rem").font_size("0.95rem").color("#1e40af").build(), "{title}" }
+            div {
+                style: StyleBuilder::new().property("background", "white").padding("1rem").border("1px solid #e2e8f0").border_radius("12px").property("overflow-x", "auto").build(),
+                if let Some(legend_text) = legend {
+                    p {
+                        style: StyleBuilder::new().margin("0 0 0.8rem").font_size("0.9rem").color("#64748b").build(),
+                        strong { "Legend: " }
+                        "{legend_text}"
+                    }
+                }
+                div { dangerous_inner_html: svg }
+            }
+        }
+    }
+}
 
 /// Renders memoized diagnostic SVGs (cumulative curves, sampled-spectrum error, histogram) and summary table.
 #[component]
@@ -34,7 +65,7 @@ pub(super) fn DiagnosticsPanel(
                     &ms1,
                     &before,
                     &after,
-                    unit.as_str(),
+                    unit,
                     unit.plot_thresholds(),
                 )
                 .unwrap_or_default()
@@ -43,7 +74,7 @@ pub(super) fn DiagnosticsPanel(
                 &diag.error_ppm_ms1,
                 &diag.error_ppm_before,
                 &diag.error_ppm_after,
-                unit.as_str(),
+                unit,
                 unit.plot_thresholds(),
             )
             .unwrap_or_default(),
@@ -87,7 +118,7 @@ pub(super) fn DiagnosticsPanel(
             style: StyleBuilder::new().property("margin-top", "1.5rem").padding("1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").build(),
             h4 { style: StyleBuilder::new().margin("0 0 1rem").font_size("1rem").color("#1e40af").build(), "Recalibration Diagnostics" }
 
-            RecalibrationSummaryTable { diag: diag.clone() }
+            RecalibrationSummaryTable { diag: SummaryMetrics::from(diag) }
 
             div {
                 style: StyleBuilder::new().property("margin-bottom", "1.5rem").build(),
@@ -96,6 +127,7 @@ pub(super) fn DiagnosticsPanel(
                     style: StyleBuilder::new().display("flex").gap("0.5rem").property("margin-bottom", "0.8rem").border_bottom("1px solid #e2e8f0").property("padding-bottom", "0.5rem").build(),
                     for (tab, label) in [(ErrorUnit::Mda, "mDa (Absolute)"), (ErrorUnit::Ppm, "ppm (Relative)")] {
                         button {
+                            key: "{label}",
                             style: if *cumulative_dist_tab.read() == tab {
                                 StyleBuilder::new().padding("0.5rem 1rem").border("2px solid #1e40af").property("background", "#1e40af").color("white").border_radius("6px").font_weight("600").cursor("pointer").build()
                             } else {
@@ -115,30 +147,23 @@ pub(super) fn DiagnosticsPanel(
                         "Orange = MS2 precursor before correction vs theoretical | "
                         "Green = MS2 precursor after recalibration vs theoretical"
                     }
-                    div { dangerous_inner_html: cumulative_svg.read().clone() }
+                    div { dangerous_inner_html: cumulative_svg.read().as_str() }
                 }
             }
 
-            div {
-                style: StyleBuilder::new().property("margin-bottom", "1.5rem").build(),
-                h5 { style: StyleBuilder::new().margin("0 0 0.5rem").font_size("0.95rem").color("#1e40af").build(), "Precursor error across sampled spectra" }
-                div {
-                    style: StyleBuilder::new().property("background", "white").padding("1rem").border("1px solid #e2e8f0").border_radius("12px").property("overflow-x", "auto").build(),
-                    dangerous_inner_html: time_series_svg.read().clone()
-                }
-            }
+            { diagnostic_chart_box(
+                "Precursor error across sampled spectra",
+                None,
+                time_series_svg.read().as_str(),
+                true,
+            ) }
 
-            div {
-                h5 { style: StyleBuilder::new().margin("0 0 0.5rem").font_size("0.95rem").color("#1e40af").build(), "Error distribution" }
-                p { style: StyleBuilder::new().margin("0 0 0.8rem").font_size("0.9rem").color("#64748b").build(),
-                    strong { "Legend: " }
-                    "Blue = MS2 before correction | Green = MS2 after correction"
-                }
-                div {
-                    style: StyleBuilder::new().property("background", "white").padding("1rem").border("1px solid #e2e8f0").border_radius("12px").property("overflow-x", "auto").build(),
-                    dangerous_inner_html: histogram_svg.read().clone()
-                }
-            }
+            { diagnostic_chart_box(
+                "Error distribution",
+                Some("Blue = MS2 before correction | Green = MS2 after correction"),
+                histogram_svg.read().as_str(),
+                false,
+            ) }
         }
     }
 }

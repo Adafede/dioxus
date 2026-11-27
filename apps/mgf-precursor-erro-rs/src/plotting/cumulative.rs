@@ -5,9 +5,10 @@
 
 use std::fmt::Write as _;
 
-use mgf_analysis_core::usize_to_f64;
+use mgf_analysis_core::{ErrorUnit, usize_to_f64};
 
-use super::color::tolerance_step_rgb;
+use super::color::{AFTER_RGB, MS1_BEFORE_RGB, MS2_BEFORE_RGB, tolerance_step_rgb};
+use super::svg::inject_before_closing_svg;
 use crate::errors::PlotError;
 
 fn cumulative_points(values: &[f64]) -> Vec<(f64, f64)> {
@@ -79,36 +80,34 @@ where
     Ok(())
 }
 
-fn append_cumulative_legend(mut svg: String) -> String {
-    let Some(pos) = svg.rfind("</svg>") else {
-        return svg;
-    };
-    let tail = svg.split_off(pos);
+fn append_cumulative_legend(svg: String) -> String {
+    inject_before_closing_svg(svg, |out| {
+        let legend_items = [
+            ("MS1 Precursor (PEPMASS)", MS1_BEFORE_RGB),
+            ("MS2 Before Correction", MS2_BEFORE_RGB),
+            ("MS2 After Correction", AFTER_RGB),
+        ];
 
-    let legend_items = [
-        ("MS1 Precursor (PEPMASS)", (68u8, 119u8, 170u8)),
-        ("MS2 Before Correction", (255u8, 140u8, 0u8)),
-        ("MS2 After Correction", (51u8, 153u8, 51u8)),
-    ];
-
-    svg.push_str(r#"<g id="legend" font-size="12" font-family="sans-serif">"#);
-    for (idx, (label, (r, g, b))) in legend_items.iter().enumerate() {
-        let y = 30 + (idx * 20);
-        let x = 990;
-        let _ = write!(
-            svg,
-            r#"<rect x="{x}" y="{}" width="15" height="15" fill="rgb({r},{g},{b})" stroke="none"/>"#,
-            y - 10
-        );
-        let _ = write!(
-            svg,
-            r#"<text x="{}" y="{y}" fill="black" font-size="12">{label}</text>"#,
-            x + 20
-        );
-    }
-    svg.push_str("</g>");
-    svg.push_str(&tail);
-    svg
+        out.push_str(r#"<g id="legend" font-size="12" font-family="sans-serif">"#);
+        for (idx, (label, rgb)) in legend_items.iter().enumerate() {
+            let y = 30 + (idx * 20);
+            let x = 990;
+            let _ = write!(
+                out,
+                r#"<rect x="{x}" y="{}" width="15" height="15" fill="rgb({},{},{})" stroke="none"/>"#,
+                y - 10,
+                rgb.0,
+                rgb.1,
+                rgb.2
+            );
+            let _ = write!(
+                out,
+                r#"<text x="{}" y="{y}" fill="black" font-size="12">{label}</text>"#,
+                x + 20
+            );
+        }
+        out.push_str("</g>");
+    })
 }
 
 fn render_cumulative_chart(
@@ -185,17 +184,17 @@ pub(crate) fn render_cumulative_error_three_curves(
     error_ms1: &[f64],
     error_before: &[f64],
     error_after: &[f64],
-    unit: &str,
+    unit: ErrorUnit,
     thresholds: &[f64],
 ) -> Result<String, PlotError> {
-    use plotters::style::RGBColor;
+    let unit_str = unit.as_str();
     Ok(render_cumulative_chart(
-        &format!("Cumulative Error Distribution ({unit})"),
-        &format!("Absolute Error ({unit})"),
+        &format!("Cumulative Error Distribution ({unit_str})"),
+        &format!("Absolute Error ({unit_str})"),
         &[
-            (error_ms1, RGBColor(68, 119, 170)),
-            (error_before, RGBColor(255, 140, 0)),
-            (error_after, RGBColor(51, 153, 51)),
+            (error_ms1, MS1_BEFORE_RGB),
+            (error_before, MS2_BEFORE_RGB),
+            (error_after, AFTER_RGB),
         ],
         thresholds,
     )?
@@ -203,5 +202,4 @@ pub(crate) fn render_cumulative_error_three_curves(
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used)]
 mod tests;

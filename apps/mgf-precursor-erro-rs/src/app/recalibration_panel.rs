@@ -5,12 +5,42 @@
 
 use dioxus::prelude::*;
 use mgf_analysis_core::{
-    CalibrationModel, ErrorBucket, RecalibrationStats, ShrinkageLambda, generate_recalibrated_mgf,
+    CalibrationModel, RecalibrationStats, ShrinkageLambda, generate_recalibrated_mgf,
 };
 use ui::StyleBuilder;
 
+use super::UploadSignals;
 use super::browser::download_recalibrated_mgf;
-use super::plots::{format_recalibrated_compliance, format_value, tolerance_card_style};
+use super::plots::{format_recalibrated_compliance, format_value, tolerance_compliance_grid};
+
+#[derive(Clone, Copy, PartialEq)]
+pub(super) struct SummaryMetrics {
+    mean_error_ppm_before: f64,
+    mean_error_ppm_after: f64,
+    mae_error_ppm_before: f64,
+    mae_error_ppm_after: f64,
+    mean_improvement_ppm: f64,
+    rms_error_ppm_before: f64,
+    rms_error_ppm_after: f64,
+    max_abs_error_ppm_before: f64,
+    max_abs_error_ppm_after: f64,
+}
+
+impl From<&RecalibrationStats> for SummaryMetrics {
+    fn from(diag: &RecalibrationStats) -> Self {
+        Self {
+            mean_error_ppm_before: diag.mean_error_ppm_before,
+            mean_error_ppm_after: diag.mean_error_ppm_after,
+            mae_error_ppm_before: diag.mae_error_ppm_before,
+            mae_error_ppm_after: diag.mae_error_ppm_after,
+            mean_improvement_ppm: diag.mean_error_improvement_ppm(),
+            rms_error_ppm_before: diag.rms_error_ppm_before,
+            rms_error_ppm_after: diag.rms_error_ppm_after,
+            max_abs_error_ppm_before: diag.max_abs_error_ppm_before,
+            max_abs_error_ppm_after: diag.max_abs_error_ppm_after,
+        }
+    }
+}
 
 pub(super) fn improvement_color(improvement: f64) -> &'static str {
     if !improvement.is_finite() || improvement < 0.0 {
@@ -23,9 +53,9 @@ pub(super) fn improvement_color(improvement: f64) -> &'static str {
 }
 
 #[component]
-pub(super) fn RecalibrationSummaryTable(diag: RecalibrationStats) -> Element {
+pub(super) fn RecalibrationSummaryTable(diag: SummaryMetrics) -> Element {
     let mean_imp = diag.mean_error_ppm_before.abs() - diag.mean_error_ppm_after.abs();
-    let mae_imp = diag.mean_error_improvement_ppm();
+    let mae_imp = diag.mean_improvement_ppm;
     let rms_imp = diag.rms_error_ppm_before - diag.rms_error_ppm_after;
     let max_imp = diag.max_abs_error_ppm_before - diag.max_abs_error_ppm_after;
 
@@ -89,14 +119,15 @@ pub(super) fn RecalibrationSummaryTable(diag: RecalibrationStats) -> Element {
 /// Interactive model/lambda controls, recalibrated tolerance preview, and MGF download action.
 #[component]
 pub(super) fn RecalibrationPanel(
+    signals: UploadSignals,
     calibration_model: Signal<CalibrationModel>,
     preferred_lambda: Signal<ShrinkageLambda>,
     diagnostics: Memo<Option<RecalibrationStats>>,
-    original_mgf_content: Signal<String>,
-    file_name: Signal<String>,
-    status: Signal<String>,
     raw_retention_capped: bool,
 ) -> Element {
+    let original_mgf_content = signals.original_mgf_content;
+    let file_name = signals.file_name;
+    let mut status = signals.status;
     let active_lambda = calibration_model
         .read()
         .shrinkage()
@@ -161,19 +192,14 @@ pub(super) fn RecalibrationPanel(
         }
 
         if let Some(diag) = diagnostics.read().as_ref() {
-            div {
-                style: StyleBuilder::new().property("margin-top", "1rem").padding("0.95rem 1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
-                h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "Tolerance-band compliance (Recalibrated)" }
-                p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Estimated compliance after MS2 fragment recalibration (preview over n = {diag.sample_count} sampled spectra)" }
-                div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
-                    for bucket in ErrorBucket::ALL {
-                        div { style: tolerance_card_style(bucket.severity_level()),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "{bucket.label()}" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance(diag, bucket)}" }
-                        }
-                    }
-                }
-            }
+            { tolerance_compliance_grid(
+                "Tolerance-band compliance (Recalibrated)",
+                &format!(
+                    "Estimated compliance after MS2 fragment recalibration (preview over n = {} sampled spectra)",
+                    diag.sample_count
+                ),
+                |bucket| format_recalibrated_compliance(diag, bucket),
+            ) }
         }
 
         if !original_mgf_content.read().is_empty() && calibration_model.read().is_active() {

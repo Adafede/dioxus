@@ -6,9 +6,31 @@
 
 use std::collections::HashMap;
 
-use mgf_analysis_core::{AdductFamily, PlotPoint};
+use mgf_analysis_core::{AdductFamily, ErrorUnit, PlotPoint};
 
 use super::color::adduct_family_color_hex;
+
+fn downsample_uniform<T: Copy>(items: &[T], max_len: usize) -> Vec<T> {
+    let target = max_len.max(1);
+    if items.len() <= target {
+        return items.to_vec();
+    }
+    if target == 1 {
+        return items.first().copied().into_iter().collect();
+    }
+    let len_minus_one = u64::try_from(items.len() - 1).unwrap_or(u64::MAX);
+    let target_minus_one = u64::try_from(target - 1).unwrap_or(1);
+    (0..target)
+        .filter_map(|slot| {
+            let idx_u64 = u64::try_from(slot)
+                .unwrap_or(0)
+                .saturating_mul(len_minus_one)
+                / target_minus_one;
+            let point_index = usize::try_from(idx_u64).unwrap_or(usize::MAX);
+            items.get(point_index).copied()
+        })
+        .collect()
+}
 
 /// Prepared scatter-series data and viewport bounds.
 #[derive(Clone, Debug)]
@@ -121,20 +143,20 @@ pub(crate) fn format_threshold_value(value: f64) -> String {
     }
 }
 
-/// Selects signed error in `unit` (`"ppm"` or `"mDa"`) from a [`PlotPoint`].
+/// Selects signed error in `unit` (`ppm` or `mDa`) from a [`PlotPoint`].
 #[must_use]
-pub(crate) fn display_error_value_for_point(point: &PlotPoint, unit: &str) -> f64 {
+pub(crate) const fn display_error_value_for_point(point: &PlotPoint, unit: ErrorUnit) -> f64 {
     match unit {
-        "ppm" => point.signed_error_ppm,
-        _ => point.signed_error_da * 1000.0,
+        ErrorUnit::Ppm => point.signed_error_ppm,
+        ErrorUnit::Mda => point.signed_error_da * 1000.0,
     }
 }
 
 #[must_use]
-pub(super) fn fallback_y_limit_for_unit(unit: &str) -> f64 {
+pub(super) const fn fallback_y_limit_for_unit(unit: ErrorUnit) -> f64 {
     match unit {
-        "ppm" => 10.0,
-        _ => 5.0,
+        ErrorUnit::Ppm => 10.0,
+        ErrorUnit::Mda => 5.0,
     }
 }
 
@@ -153,16 +175,7 @@ pub(crate) fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(
 
     sorted.sort_by(f64::total_cmp);
     if sorted.len() > MAX_ECDF_RAW {
-        let len_u64 = u64::try_from(sorted.len() - 1).unwrap_or(u64::MAX);
-        let target_denom = u64::try_from(MAX_ECDF_RAW - 1).unwrap_or(1);
-        sorted = (0..MAX_ECDF_RAW)
-            .filter_map(|slot| {
-                let idx_u64 =
-                    u64::try_from(slot).unwrap_or(0).saturating_mul(len_u64) / target_denom;
-                let idx = usize::try_from(idx_u64).unwrap_or(usize::MAX);
-                sorted.get(idx).copied()
-            })
-            .collect();
+        sorted = downsample_uniform(&sorted, MAX_ECDF_RAW);
     }
 
     let total = sorted.len();
@@ -205,25 +218,8 @@ pub(crate) fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(
 /// Uniformly downsamples `points` to at most `max_points` (keeping first/last).
 #[must_use]
 pub(crate) fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<(f64, f64)> {
-    let target = max_points.max(1);
-    if points.len() <= target {
+    if points.len() <= max_points.max(1) {
         return points;
     }
-    if target == 1 {
-        return points.first().copied().into_iter().collect();
-    }
-    let len_minus_one = u64::try_from(points.len() - 1).unwrap_or(u64::MAX);
-    let target_minus_one = u64::try_from(target - 1).unwrap_or(1);
-    let mut sampled = Vec::with_capacity(target);
-    for slot in 0..target {
-        let idx_u64 = u64::try_from(slot)
-            .unwrap_or(0)
-            .saturating_mul(len_minus_one)
-            / target_minus_one;
-        let point_index = usize::try_from(idx_u64).unwrap_or(usize::MAX);
-        if let Some(point) = points.get(point_index) {
-            sampled.push(*point);
-        }
-    }
-    sampled
+    downsample_uniform(&points, max_points)
 }

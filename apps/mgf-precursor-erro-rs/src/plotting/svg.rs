@@ -22,19 +22,29 @@ fn escape_xml(input: &str) -> String {
     out
 }
 
-pub(super) fn embed_svg_legend<L: AsRef<str>, C: AsRef<str>>(
+pub(super) fn inject_before_closing_svg(
     mut svg_markup: String,
+    write_body: impl FnOnce(&mut String),
+) -> String {
+    let Some(position) = svg_markup.rfind("</svg>") else {
+        return svg_markup;
+    };
+    let tail = svg_markup.split_off(position);
+    write_body(&mut svg_markup);
+    svg_markup.push_str(&tail);
+    svg_markup
+}
+
+pub(super) fn embed_svg_legend<L: AsRef<str>, C: AsRef<str>>(
+    svg_markup: String,
     legend_items: &[(L, C)],
     title: &str,
     width: f64,
     height: f64,
 ) -> String {
-    if legend_items.is_empty() {
+    if legend_items.is_empty() || !svg_markup.contains("</svg>") {
         return svg_markup;
     }
-    let Some(position) = svg_markup.rfind("</svg>") else {
-        return svg_markup;
-    };
 
     let item_height = 13.5;
     let inset = 18.0;
@@ -71,32 +81,31 @@ pub(super) fn embed_svg_legend<L: AsRef<str>, C: AsRef<str>>(
     let rect_y = legend_y - 2.0;
 
     let title_escaped = escape_xml(title);
-    let tail = svg_markup.split_off(position);
-    let _ = write!(
-        svg_markup,
-        "\n<g>\n            <rect x=\"{rect_x}\" y=\"{rect_y}\" width=\"{box_width}\" height=\"{box_height}\" rx=\"8\" ry=\"8\" fill=\"#f8fafc\" fill-opacity=\"0.97\" stroke=\"#cbd5e1\" stroke-width=\"0.8\" />\n            <text x=\"{title_x}\" y=\"{title_y}\" font-family=\"Inter, sans-serif\" font-size=\"10.5\" font-weight=\"600\" fill=\"#0f172a\">{title_escaped}</text>\n            "
-    );
-
-    for (index, (family, color)) in legend_items.iter().enumerate() {
-        let family = escape_xml(family.as_ref());
-        let color = escape_xml(color.as_ref());
-        let row = index / items_per_row;
-        let col = index % items_per_row;
-        let item_x = usize_to_f64(col).mul_add(entry_width, items_start_x);
-        let item_y = usize_to_f64(row).mul_add(item_height, legend_y + 15.0);
-        let marker_x = item_x + 8.0;
-        let text_x = item_x + 18.0;
-        let text_y = item_y + 2.0;
-        let marker_y = item_y - 2.0;
+    inject_before_closing_svg(svg_markup, |out| {
         let _ = write!(
-            svg_markup,
-            "<g>\n                <circle cx=\"{marker_x}\" cy=\"{marker_y}\" r=\"{marker_radius}\" fill=\"{color}\" />\n                <text x=\"{text_x}\" y=\"{text_y}\" font-family=\"Inter, sans-serif\" font-size=\"10\" fill=\"#334155\">{family}</text>\n            </g>"
+            out,
+            "\n<g>\n            <rect x=\"{rect_x}\" y=\"{rect_y}\" width=\"{box_width}\" height=\"{box_height}\" rx=\"8\" ry=\"8\" fill=\"#f8fafc\" fill-opacity=\"0.97\" stroke=\"#cbd5e1\" stroke-width=\"0.8\" />\n            <text x=\"{title_x}\" y=\"{title_y}\" font-family=\"Inter, sans-serif\" font-size=\"10.5\" font-weight=\"600\" fill=\"#0f172a\">{title_escaped}</text>\n            "
         );
-    }
 
-    svg_markup.push_str("\n        </g>\n");
-    svg_markup.push_str(&tail);
-    svg_markup
+        for (index, (family, color)) in legend_items.iter().enumerate() {
+            let family = escape_xml(family.as_ref());
+            let color = escape_xml(color.as_ref());
+            let row = index / items_per_row;
+            let col = index % items_per_row;
+            let item_x = usize_to_f64(col).mul_add(entry_width, items_start_x);
+            let item_y = usize_to_f64(row).mul_add(item_height, legend_y + 15.0);
+            let marker_x = item_x + 8.0;
+            let text_x = item_x + 18.0;
+            let text_y = item_y + 2.0;
+            let marker_y = item_y - 2.0;
+            let _ = write!(
+                out,
+                "<g>\n                <circle cx=\"{marker_x}\" cy=\"{marker_y}\" r=\"{marker_radius}\" fill=\"{color}\" />\n                <text x=\"{text_x}\" y=\"{text_y}\" font-family=\"Inter, sans-serif\" font-size=\"10\" fill=\"#334155\">{family}</text>\n            </g>"
+            );
+        }
+
+        out.push_str("\n        </g>\n");
+    })
 }
 
 fn extract_svg_attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {

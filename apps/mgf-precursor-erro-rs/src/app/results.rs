@@ -5,15 +5,15 @@
 
 use dioxus::prelude::*;
 use mgf_analysis_core::{
-    CalibrationModel, ErrorBucket, ErrorUnit, PrecursorStats, ShrinkageLambda,
-    compute_recalibration_diagnostics,
+    CalibrationModel, ErrorUnit, ShrinkageLambda, compute_recalibration_diagnostics,
 };
 use ui::StyleBuilder;
 
+use super::UploadSignals;
 use super::diagnostics_panel::DiagnosticsPanel;
 use super::plots::{
     AbsoluteMassBiasPlot, EcdfPlot, format_cumulative_bucket_count, format_value,
-    tolerance_card_style,
+    tolerance_compliance_grid,
 };
 use super::recalibration_panel::RecalibrationPanel;
 use super::warnings_panel::WarningsPanel;
@@ -21,14 +21,12 @@ use super::warnings_panel::WarningsPanel;
 /// Renders summary metrics, warnings, recalibration controls/diagnostics, and ECDF/scatter plots.
 #[component]
 pub fn ResultsPanel(
-    metrics: Signal<Option<PrecursorStats>>,
+    signals: UploadSignals,
     calibration_model: Signal<CalibrationModel>,
     preferred_lambda: Signal<ShrinkageLambda>,
     cumulative_dist_tab: Signal<ErrorUnit>,
-    original_mgf_content: Signal<String>,
-    file_name: Signal<String>,
-    status: Signal<String>,
 ) -> Element {
+    let metrics = signals.metrics;
     let diagnostics = use_memo(move || {
         let guard = metrics.read();
         let m = guard.as_ref()?;
@@ -92,27 +90,17 @@ pub fn ResultsPanel(
                 }
             }
 
-            div {
-                style: StyleBuilder::new().property("margin-top", "1rem").padding("0.95rem 1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
-                h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "Tolerance-band compliance" }
-                p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Counts of spectra up to each reported mass-error cutoff (cumulative)" }
-                div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
-                    for bucket in ErrorBucket::ALL {
-                        div { style: tolerance_card_style(bucket.severity_level()),
-                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "{bucket.label()}" }
-                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(m, bucket, m.spectra)}" }
-                        }
-                    }
-                }
-            }
+            { tolerance_compliance_grid(
+                "Tolerance-band compliance",
+                "Counts of spectra up to each reported mass-error cutoff (cumulative)",
+                |bucket| format_cumulative_bucket_count(m, bucket, m.spectra),
+            ) }
 
             RecalibrationPanel {
+                signals,
                 calibration_model,
                 preferred_lambda,
                 diagnostics,
-                original_mgf_content,
-                file_name,
-                status,
                 raw_retention_capped: m.raw_retention_capped,
             }
 

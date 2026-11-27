@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
 use super::*;
-use mgf_analysis_core::{AdductFamily, PlotPoint};
+use mgf_analysis_core::{AdductFamily, ErrorUnit, PlotPoint};
 
 fn sample_point(err_da: f64, err_ppm: f64) -> PlotPoint {
     PlotPoint {
@@ -19,7 +19,7 @@ fn sample_point(err_da: f64, err_ppm: f64) -> PlotPoint {
 
 #[test]
 fn render_ecdf_svg_empty_values_returns_ok() {
-    let result = render_ecdf_svg("test", &[], &[], "ppm");
+    let result = render_ecdf_svg("test", &[], &[], ErrorUnit::Ppm);
     assert!(
         result.is_ok(),
         "empty ECDF input should be handled gracefully, got {result:?}"
@@ -35,7 +35,7 @@ fn render_ecdf_svg_nan_and_inf_values_returns_ok() {
         Vec::<(f64, f64)>::new(),
         "empty or all-non-finite values must not emit a fake diagonal"
     );
-    let result = render_ecdf_svg("test", &values, &[1.0, 5.0, 10.0], "ppm");
+    let result = render_ecdf_svg("test", &values, &[1.0, 5.0, 10.0], ErrorUnit::Ppm);
     assert!(
         result.is_ok(),
         "NaN/inf values should be filtered, not panic, got {result:?}"
@@ -52,7 +52,7 @@ fn render_ecdf_svg_nan_and_inf_values_returns_ok() {
 
 #[test]
 fn render_ecdf_svg_single_value_returns_ok() {
-    let result = render_ecdf_svg("test", &[5.0], &[1.0, 5.0, 10.0], "ppm");
+    let result = render_ecdf_svg("test", &[5.0], &[1.0, 5.0, 10.0], ErrorUnit::Ppm);
     assert!(result.is_ok(), "single ECDF value should not panic");
 }
 
@@ -60,7 +60,7 @@ fn render_ecdf_svg_single_value_returns_ok() {
 
 #[test]
 fn render_absolute_mass_bias_svg_empty_points_returns_ok() -> Result<(), crate::errors::PlotError> {
-    let svg = render_absolute_mass_bias_svg("test", &[], "ppm", &[])?;
+    let svg = render_absolute_mass_bias_svg("test", &[], ErrorUnit::Ppm, &[])?;
     assert!(
         svg.contains("<svg"),
         "empty input should produce SVG canvas"
@@ -75,7 +75,7 @@ fn render_absolute_mass_bias_svg_all_non_finite_y_returns_ok()
         sample_point(f64::NAN, f64::NAN),
         sample_point(f64::INFINITY, f64::INFINITY),
     ];
-    let svg = render_absolute_mass_bias_svg("test", &points, "ppm", &[1.0, 5.0])?;
+    let svg = render_absolute_mass_bias_svg("test", &points, ErrorUnit::Ppm, &[1.0, 5.0])?;
     assert!(
         svg.contains("<svg"),
         "all-non-finite input should produce SVG canvas"
@@ -101,7 +101,7 @@ fn render_absolute_mass_bias_svg_valid_points_returns_ok() {
         "scatter plot x_min should stay anchored near observed m/z (~500), got {}",
         plot_data.x_min
     );
-    let result = render_absolute_mass_bias_svg("test", &points, "ppm", &[1.0, 2.0]);
+    let result = render_absolute_mass_bias_svg("test", &points, ErrorUnit::Ppm, &[1.0, 2.0]);
     assert!(
         matches!(
             &result,
@@ -120,19 +120,19 @@ fn plotting_data_helpers_downsample_format_and_stay_monotonic() {
 
     let pt = sample_point(0.002, 4.0);
     assert!(
-        (display_error_value_for_point(&pt, "ppm") - 4.0).abs() < 1e-12,
+        (display_error_value_for_point(&pt, ErrorUnit::Ppm) - 4.0).abs() < 1e-12,
         "ppm selector"
     );
     assert!(
-        (display_error_value_for_point(&pt, "mDa") - 2.0).abs() < 1e-12,
+        (display_error_value_for_point(&pt, ErrorUnit::Mda) - 2.0).abs() < 1e-12,
         "mDa selector"
     );
     assert!(
-        (fallback_y_limit_for_unit("ppm") - 10.0).abs() < 1e-12,
+        (fallback_y_limit_for_unit(ErrorUnit::Ppm) - 10.0).abs() < 1e-12,
         "ppm fallback y_limit"
     );
     assert!(
-        (fallback_y_limit_for_unit("mDa") - 5.0).abs() < 1e-12,
+        (fallback_y_limit_for_unit(ErrorUnit::Mda) - 5.0).abs() < 1e-12,
         "mDa fallback y_limit"
     );
     assert_eq!(format_threshold_value(0.5), "0.5", "trim trailing zeros");

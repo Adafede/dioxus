@@ -2,36 +2,38 @@
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
 use super::*;
+use mgf_analysis_core::ErrorUnit;
 
 #[test]
-fn render_cumulative_error_three_curves_empty_arrays_returns_ok_empty() {
-    let result = render_cumulative_error_three_curves(&[], &[], &[], "ppm", &[]);
-    assert!(
-        result.is_ok(),
-        "empty three-curves input should return Ok, not panic"
-    );
-    assert_eq!(result.unwrap(), "");
+fn render_cumulative_error_three_curves_empty_arrays_returns_ok_empty() -> Result<(), PlotError> {
+    let svg = render_cumulative_error_three_curves(&[], &[], &[], ErrorUnit::Ppm, &[])?;
+    assert_eq!(svg, "");
+    Ok(())
 }
 
 #[test]
-fn render_cumulative_error_three_curves_all_nan_returns_ok_empty() {
-    let result =
-        render_cumulative_error_three_curves(&[f64::NAN], &[f64::NAN], &[f64::NAN], "ppm", &[]);
-    assert!(
-        result.is_ok(),
-        "all-NaN three-curves should return Ok empty, not panic"
-    );
-    assert_eq!(result.unwrap(), "");
+fn render_cumulative_error_three_curves_all_nan_returns_ok_empty() -> Result<(), PlotError> {
+    let svg = render_cumulative_error_three_curves(
+        &[f64::NAN],
+        &[f64::NAN],
+        &[f64::NAN],
+        ErrorUnit::Ppm,
+        &[],
+    )?;
+    assert_eq!(svg, "");
+    Ok(())
 }
 
 #[test]
-fn render_cumulative_error_three_curves_single_point_returns_ok_with_svg() {
-    let svg = render_cumulative_error_three_curves(&[1.0], &[2.0], &[0.5], "ppm", &[5.0]).unwrap();
+fn render_cumulative_error_three_curves_single_point_returns_ok_with_svg() -> Result<(), PlotError>
+{
+    let svg = render_cumulative_error_three_curves(&[1.0], &[2.0], &[0.5], ErrorUnit::Ppm, &[5.0])?;
     assert!(svg.contains("<svg"), "expected SVG root element");
     assert!(
         svg.contains("<polyline") || svg.contains("<path"),
         "expected curve geometry"
     );
+    Ok(())
 }
 
 // ── internal helpers ─────────────────────────────────────────────
@@ -62,10 +64,11 @@ fn append_cumulative_legend_no_svg_tag_is_noop() {
 }
 
 #[test]
-fn cumulative_legend_text_starts_inside_1200px_canvas() {
-    let svg = render_cumulative_error_three_curves(&[1.0], &[2.0], &[0.5], "ppm", &[5.0]).unwrap();
+fn cumulative_legend_text_starts_inside_1200px_canvas() -> Result<(), PlotError> {
+    let svg = render_cumulative_error_three_curves(&[1.0], &[2.0], &[0.5], ErrorUnit::Ppm, &[5.0])?;
     assert!(
         svg.contains(r#"x="990""#) || svg.contains(r#"x="980""#),
         "legend rect must leave enough horizontal room for label inside 1200px canvas: {svg}"
     );
+    Ok(())
 }

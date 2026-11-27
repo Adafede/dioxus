@@ -168,13 +168,10 @@ pub fn app() -> Element {
                     example_load_button { signals }
 
                     ResultsPanel {
-                        metrics: signals.metrics,
+                        signals,
                         calibration_model,
                         preferred_lambda,
                         cumulative_dist_tab,
-                        original_mgf_content: signals.original_mgf_content,
-                        file_name: signals.file_name,
-                        status: signals.status,
                     }
                 }
             }

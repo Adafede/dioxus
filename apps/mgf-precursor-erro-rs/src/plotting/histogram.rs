@@ -5,6 +5,7 @@
 
 use mgf_analysis_core::{floor_to_usize, usize_to_f64};
 
+use super::color::{AFTER_RGB, MS1_BEFORE_RGB, filled_rgba};
 use super::diagnostics::combined_finite_bounds;
 use crate::errors::PlotError;
 
@@ -108,13 +109,13 @@ pub fn render_recalibration_diagnostic_histogram(
             .y_desc("Count")
             .draw()?;
 
-        let before_style = ShapeStyle::from(&RGBAColor(68, 119, 170, 0.5)).filled();
+        let before_style = filled_rgba(MS1_BEFORE_RGB, 0.5);
         chart.draw_series(hist_before.iter().enumerate().map(|(i, &count)| {
             let x = usize_to_f64(i).mul_add(bin_width, error_min);
             Rectangle::new([(x, 0), (bin_width.mul_add(0.45, x), count)], before_style)
         }))?;
 
-        let after_style = ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled();
+        let after_style = filled_rgba(AFTER_RGB, 0.6);
         chart.draw_series(hist_after.iter().enumerate().map(|(i, &count)| {
             let x = bin_width.mul_add(0.45, usize_to_f64(i).mul_add(bin_width, error_min));
             Rectangle::new([(x, 0), (bin_width.mul_add(0.45, x), count)], after_style)

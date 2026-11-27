@@ -46,10 +46,32 @@ pub(super) fn tolerance_card_style(index: usize) -> String {
     StyleBuilder::new()
         .padding("0.6rem 0.7rem")
         .border_radius("12px")
-        .border(&format!("1px solid {color}"))
+        .property_fmt("border", format_args!("1px solid {color}"))
         .property("background", "#f8fafc")
         .color(&color)
         .build()
+}
+
+pub(super) fn tolerance_compliance_grid(
+    title: &str,
+    subtitle: &str,
+    mut count_for: impl FnMut(ErrorBucket) -> String,
+) -> Element {
+    rsx! {
+        div {
+            style: StyleBuilder::new().property("margin-top", "1rem").padding("0.95rem 1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
+            h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "{title}" }
+            p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "{subtitle}" }
+            div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
+                for bucket in ErrorBucket::ALL {
+                    div { key: "{bucket.label()}", style: tolerance_card_style(bucket.severity_level()),
+                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "{bucket.label()}" }
+                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{count_for(bucket)}" }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn format_threshold_compliance(errors: &[f64], threshold: f64, above: bool) -> String {
@@ -118,7 +140,7 @@ fn plot_shell(title: &'static str, subtitle: &'static str, svg_markup: Memo<Stri
                 }
             }
             div { style: StyleBuilder::new().border_radius("16px").property("overflow", "visible").border("1px solid #e2e8f0").property("background", "#fcfdff").build(),
-                dangerous_inner_html: svg_markup.read().clone()
+                dangerous_inner_html: svg_markup.read().as_str()
             }
         }
     }
@@ -132,7 +154,6 @@ pub(super) fn EcdfPlot(
     diagnostics: Memo<Option<RecalibrationStats>>,
     unit: ErrorUnit,
 ) -> Element {
-    let unit_str = unit.as_str();
     let thresholds = unit.plot_thresholds();
     let svg_markup = use_memo(move || {
         if let Some(diag) = diagnostics.read().as_ref() {
@@ -145,7 +166,7 @@ pub(super) fn EcdfPlot(
                 ErrorUnit::Ppm => diag.error_ppm_after.iter().map(|v| v.abs()).collect(),
             };
             return make_svg_responsive(
-                render_ecdf_svg(title, &values, thresholds, unit_str).unwrap_or_default(),
+                render_ecdf_svg(title, &values, thresholds, unit).unwrap_or_default(),
             );
         }
         let metrics_guard = metrics.read();
@@ -160,11 +181,11 @@ pub(super) fn EcdfPlot(
                     .map(|v| v * 1000.0)
                     .collect();
                 make_svg_responsive(
-                    render_ecdf_svg(title, &values, thresholds, unit_str).unwrap_or_default(),
+                    render_ecdf_svg(title, &values, thresholds, unit).unwrap_or_default(),
                 )
             }
             ErrorUnit::Ppm => make_svg_responsive(
-                render_ecdf_svg(title, &m.absolute_error_ppm_values, thresholds, unit_str)
+                render_ecdf_svg(title, &m.absolute_error_ppm_values, thresholds, unit)
                     .unwrap_or_default(),
             ),
         }
@@ -184,7 +205,6 @@ pub(super) fn AbsoluteMassBiasPlot(
     metrics: Signal<Option<PrecursorStats>>,
     unit: ErrorUnit,
 ) -> Element {
-    let unit_str = unit.as_str();
     let ticks = unit.plot_thresholds();
     let svg_markup = use_memo(move || {
         let metrics_guard = metrics.read();
@@ -192,8 +212,7 @@ pub(super) fn AbsoluteMassBiasPlot(
             return String::new();
         };
         make_svg_responsive(
-            render_absolute_mass_bias_svg(title, &m.plot_points, unit_str, ticks)
-                .unwrap_or_default(),
+            render_absolute_mass_bias_svg(title, &m.plot_points, unit, ticks).unwrap_or_default(),
         )
     });
     plot_shell(title, subtitle, svg_markup)
