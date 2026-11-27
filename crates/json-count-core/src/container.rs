@@ -3,8 +3,6 @@
 
 //! Streaming container (`{...}` / `[...]`) and bare-scalar value scanner.
 
-use std::collections::HashSet;
-
 use stream_io::{BlobCursor, ChunkSource};
 
 use crate::error::JsonCountError;
@@ -30,7 +28,52 @@ pub(crate) struct ScanBuffers {
     pub(crate) key: String,
     pub(crate) scalar: Vec<u8>,
     pub(crate) stack: Vec<ContainerFrame>,
-    pub(crate) counted_in_row: HashSet<usize>,
+    row_seen: Vec<u64>,
+    row_gen: u64,
+}
+
+impl ScanBuffers {
+    pub(crate) fn begin_row(&mut self) {
+        self.row_gen = self.row_gen.wrapping_add(1);
+        if self.row_gen == 0 {
+            self.row_seen.fill(0);
+            self.row_gen = 1;
+        }
+    }
+
+    pub(crate) fn mark_counted_in_row(&mut self, idx: usize) -> bool {
+        if idx >= self.row_seen.len() {
+            self.row_seen.resize(idx + 1, 0);
+        }
+        if let Some(slot) = self.row_seen.get_mut(idx)
+            && *slot != self.row_gen
+        {
+            *slot = self.row_gen;
+            return true;
+        }
+        false
+    }
+}
+
+pub(crate) async fn drive_cursor_chunks<F, S, T>(
+    cursor: &mut BlobCursor<F, S>,
+    mut on_chunk: impl FnMut(&[u8]) -> Result<(usize, Option<T>), JsonCountError>,
+) -> Result<Option<T>, JsonCountError>
+where
+    F: FnMut(u64, u64),
+    S: ChunkSource,
+{
+    loop {
+        let tail = cursor.remaining();
+        let (consumed, finished) = on_chunk(tail)?;
+        cursor.advance(consumed);
+        if finished.is_some() {
+            return Ok(finished);
+        }
+        if !cursor.fill().await? {
+            return Ok(None);
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -190,36 +233,45 @@ fn scan_container_chunk(
     bufs: &mut ScanBuffers,
     count: &mut u64,
 ) -> Result<(usize, bool), JsonCountError> {
-    let mut consumed = 0usize;
-    for (i, &byte) in tail.iter().enumerate() {
-        consumed = i + 1;
-        match *state {
+    let mut i = 0usize;
+    while i < tail.len() {
+        match state {
             ContainerState::String {
                 is_key,
                 has_content,
-                mut validator,
+                validator,
             } => {
+                let rest = tail.get(i..).unwrap_or_default();
+                let run = validator.plain_ascii_run(rest);
+                if run > 0 {
+                    *has_content = true;
+                    i += run;
+                }
+                let Some(&byte) = tail.get(i) else {
+                    break;
+                };
+                i += 1;
                 if validator.step(byte)? {
-                    if is_key {
+                    if *is_key {
                         if let Some(frame) = bufs.stack.last_mut() {
                             *frame = ContainerFrame::ObjectExpectColon;
                         }
                     } else {
-                        if has_content {
+                        if *has_content {
                             *count += 1;
                         }
                         mark_value_complete(&mut bufs.stack);
                     }
                     *state = ContainerState::Container;
                 } else {
-                    *state = ContainerState::String {
-                        is_key,
-                        has_content: true,
-                        validator,
-                    };
+                    *has_content = true;
                 }
             }
             ContainerState::Token => {
+                let Some(&byte) = tail.get(i) else {
+                    break;
+                };
+                i += 1;
                 if is_scalar_delimiter(byte) {
                     *count += validate_bare_scalar(&bufs.scalar)?;
                     bufs.scalar.clear();
@@ -228,23 +280,27 @@ fn scan_container_chunk(
                         step_in_container(byte, &mut bufs.stack, &mut bufs.scalar)?;
                     *state = next_state;
                     if closed {
-                        return Ok((consumed, true));
+                        return Ok((i, true));
                     }
                 } else {
                     push_scalar_byte(&mut bufs.scalar, byte)?;
                 }
             }
             ContainerState::Container => {
+                let Some(&byte) = tail.get(i) else {
+                    break;
+                };
+                i += 1;
                 let (next_state, closed) =
                     step_in_container(byte, &mut bufs.stack, &mut bufs.scalar)?;
                 *state = next_state;
                 if closed {
-                    return Ok((consumed, true));
+                    return Ok((i, true));
                 }
             }
         }
     }
-    Ok((consumed, false))
+    Ok((i, false))
 }
 
 /// Counts non-null leaf values inside a `{...}` or `[...]` container.
@@ -268,19 +324,14 @@ pub(crate) async fn scan_container<F: FnMut(u64, u64), S: ChunkSource>(
     let mut state = ContainerState::Container;
     let mut count = 0u64;
 
-    loop {
-        let tail = cursor.remaining();
+    drive_cursor_chunks(cursor, |tail| {
         let (consumed, closed) = scan_container_chunk(tail, &mut state, bufs, &mut count)?;
-        cursor.advance(consumed);
-        if closed {
-            return Ok(count);
-        }
-        if !cursor.fill().await? {
-            return Err(JsonCountError::UnexpectedEof(
-                "while scanning nested JSON value",
-            ));
-        }
-    }
+        Ok((consumed, closed.then_some(count)))
+    })
+    .await?
+    .ok_or(JsonCountError::UnexpectedEof(
+        "while scanning nested JSON value",
+    ))
 }
 
 /// Scans a top-level bare scalar token starting with `first`.
@@ -293,21 +344,20 @@ pub(crate) async fn scan_bare_scalar<F: FnMut(u64, u64), S: ChunkSource>(
     push_scalar_byte(&mut bufs.scalar, first)?;
     cursor.advance(1);
 
-    loop {
-        let tail = cursor.remaining();
-        let mut consumed = 0usize;
-        let mut at_delimiter = false;
-        for &byte in tail {
+    if let Some(count) = drive_cursor_chunks(cursor, |tail| {
+        for (i, &byte) in tail.iter().enumerate() {
             if is_scalar_delimiter(byte) {
-                at_delimiter = true;
-                break;
+                let count = validate_bare_scalar(&bufs.scalar)?;
+                return Ok((i, Some(count)));
             }
             push_scalar_byte(&mut bufs.scalar, byte)?;
-            consumed += 1;
         }
-        cursor.advance(consumed);
-        if at_delimiter || !cursor.fill().await? {
-            return validate_bare_scalar(&bufs.scalar);
-        }
+        Ok((tail.len(), None))
+    })
+    .await?
+    {
+        Ok(count)
+    } else {
+        validate_bare_scalar(&bufs.scalar)
     }
 }

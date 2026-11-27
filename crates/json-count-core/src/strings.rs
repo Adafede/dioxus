@@ -5,8 +5,9 @@
 
 use stream_io::{BlobCursor, ChunkSource};
 
+use crate::container::drive_cursor_chunks;
 use crate::error::JsonCountError;
-use crate::unescape::{StringValidator, unescape_json_string_into};
+use crate::unescape::{StringValidator, unescape_validated_json_string_into};
 
 const MAX_KEY_BYTES: usize = 1_048_576;
 
@@ -23,9 +24,28 @@ fn scan_key_chunk(
     raw: &mut Vec<u8>,
     validator: &mut StringValidator,
 ) -> Result<(usize, bool), JsonCountError> {
-    for (i, &byte) in tail.iter().enumerate() {
+    let mut i = 0usize;
+    while let Some(rest) = tail.get(i..) {
+        if rest.is_empty() {
+            break;
+        }
+        let run = validator.plain_ascii_run(rest);
+        if run > 0 {
+            let remaining_cap = MAX_KEY_BYTES.saturating_sub(raw.len());
+            if run > remaining_cap {
+                return Err(JsonCountError::KeyTooLong);
+            }
+            if let Some(chunk) = rest.get(..run) {
+                raw.extend_from_slice(chunk);
+            }
+            i += run;
+        }
+        let Some(&byte) = tail.get(i) else {
+            break;
+        };
+        i += 1;
         if validator.step(byte)? {
-            return Ok((i + 1, true));
+            return Ok((i, true));
         }
         push_key_byte(raw, byte)?;
     }
@@ -44,17 +64,17 @@ pub(crate) async fn read_json_key_into<F: FnMut(u64, u64), S: ChunkSource>(
 
     raw.clear();
     let mut validator = StringValidator::default();
-    loop {
-        let tail = cursor.remaining();
+    drive_cursor_chunks(cursor, |tail| {
         let (consumed, closed) = scan_key_chunk(tail, raw, &mut validator)?;
-        cursor.advance(consumed);
         if closed {
-            return unescape_json_string_into(raw, out);
+            unescape_validated_json_string_into(raw, validator.has_backslash(), out)?;
+            Ok((consumed, Some(())))
+        } else {
+            Ok((consumed, None))
         }
-        if !cursor.fill().await? {
-            return Err(JsonCountError::UnexpectedEof("while reading string"));
-        }
-    }
+    })
+    .await?
+    .ok_or(JsonCountError::UnexpectedEof("while reading string"))
 }
 
 /// Reads a JSON string key from `cursor`.
@@ -77,9 +97,22 @@ fn scan_skip_chunk(
     validator: &mut StringValidator,
 ) -> Result<(usize, bool, bool), JsonCountError> {
     let mut has_body = false;
-    for (i, &byte) in tail.iter().enumerate() {
+    let mut i = 0usize;
+    while let Some(rest) = tail.get(i..) {
+        if rest.is_empty() {
+            break;
+        }
+        let run = validator.plain_ascii_run(rest);
+        if run > 0 {
+            has_body = true;
+            i += run;
+        }
+        let Some(&byte) = tail.get(i) else {
+            break;
+        };
+        i += 1;
         if validator.step(byte)? {
-            return Ok((i + 1, has_body, true));
+            return Ok((i, has_body, true));
         }
         has_body = true;
     }
@@ -100,18 +133,13 @@ pub(crate) async fn skip_string_nonempty<F: FnMut(u64, u64), S: ChunkSource>(
 
     let mut validator = StringValidator::default();
     let mut any = false;
-    loop {
-        let tail = cursor.remaining();
+    drive_cursor_chunks(cursor, |tail| {
         let (consumed, has_body, closed) = scan_skip_chunk(tail, &mut validator)?;
         if has_body {
             any = true;
         }
-        cursor.advance(consumed);
-        if closed {
-            return Ok(any);
-        }
-        if !cursor.fill().await? {
-            return Err(JsonCountError::UnexpectedEof("while reading string"));
-        }
-    }
+        Ok((consumed, closed.then_some(any)))
+    })
+    .await?
+    .ok_or(JsonCountError::UnexpectedEof("while reading string"))
 }

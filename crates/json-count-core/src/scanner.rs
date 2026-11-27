@@ -69,12 +69,38 @@ fn record_column_hit(
         idx
     };
     let add = if per_row {
-        u64::from(count > 0 && bufs.counted_in_row.insert(idx))
+        u64::from(count > 0 && bufs.mark_counted_in_row(idx))
     } else {
         count
     };
     if let Some(col) = fields.get_mut(idx) {
         col.count += add;
+    }
+}
+
+struct DelimSpec {
+    close: u8,
+    trailing: JsonCountError,
+    expected: JsonCountError,
+    eof: &'static str,
+}
+
+async fn expect_comma_or_close<F: FnMut(u64, u64), S: ChunkSource>(
+    cur: &mut BlobCursor<F, S>,
+    spec: DelimSpec,
+) -> Result<bool, JsonCountError> {
+    cur.skip_ws().await?;
+    match cur.next_byte().await? {
+        Some(b',') => {
+            cur.skip_ws().await?;
+            if cur.peek().await? == Some(spec.close) {
+                return Err(spec.trailing);
+            }
+            Ok(true)
+        }
+        Some(b) if b == spec.close => Ok(false),
+        Some(_) => Err(spec.expected),
+        None => Err(JsonCountError::UnexpectedEof(spec.eof)),
     }
 }
 
@@ -92,7 +118,7 @@ async fn scan_object<F: FnMut(u64, u64), S: ChunkSource>(
     }
 
     if per_row {
-        bufs.counted_in_row.clear();
+        bufs.begin_row();
     }
     loop {
         cur.skip_ws().await?;
@@ -105,17 +131,18 @@ async fn scan_object<F: FnMut(u64, u64), S: ChunkSource>(
         let raw_count = count_value_with_bufs(cur, bufs).await?;
         record_column_hit(fields, index_by_key, bufs, per_row, raw_count);
 
-        cur.skip_ws().await?;
-        match cur.next_byte().await? {
-            Some(b',') => {
-                cur.skip_ws().await?;
-                if cur.peek().await? == Some(b'}') {
-                    return Err(JsonCountError::TrailingCommaInObject);
-                }
-            }
-            Some(b'}') => return Ok(()),
-            Some(_) => return Err(JsonCountError::ExpectedCommaOrBrace),
-            None => return Err(JsonCountError::UnexpectedEof("missing closing '}'")),
+        if !expect_comma_or_close(
+            cur,
+            DelimSpec {
+                close: b'}',
+                trailing: JsonCountError::TrailingCommaInObject,
+                expected: JsonCountError::ExpectedCommaOrBrace,
+                eof: "missing closing '}'",
+            },
+        )
+        .await?
+        {
+            return Ok(());
         }
     }
 }
@@ -137,17 +164,18 @@ async fn scan_row_array<F: FnMut(u64, u64), S: ChunkSource>(
             return Err(JsonCountError::ExpectedTopLevelObject);
         }
         scan_object(cur, fields, index_by_key, bufs, true).await?;
-        cur.skip_ws().await?;
-        match cur.next_byte().await? {
-            Some(b',') => {
-                cur.skip_ws().await?;
-                if cur.peek().await? == Some(b']') {
-                    return Err(JsonCountError::TrailingCommaInArray);
-                }
-            }
-            Some(b']') => return Ok(()),
-            Some(_) => return Err(JsonCountError::ExpectedCommaOrBracket),
-            None => return Err(JsonCountError::UnexpectedEof("missing closing ']'")),
+        if !expect_comma_or_close(
+            cur,
+            DelimSpec {
+                close: b']',
+                trailing: JsonCountError::TrailingCommaInArray,
+                expected: JsonCountError::ExpectedCommaOrBracket,
+                eof: "missing closing ']'",
+            },
+        )
+        .await?
+        {
+            return Ok(());
         }
     }
 }

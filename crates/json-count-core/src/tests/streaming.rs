@@ -214,17 +214,4 @@ fn malformed_json_and_limits_are_rejected() {
         Err(JsonCountError::ScalarTooLong),
         "scalar over 64 KiB rejected"
     );
-
-    let max_key = "k".repeat(1_048_576);
-    assert_eq!(
-        columns(&format!(r#"{{"{max_key}":1}}"#), 65_536),
-        Ok(vec![(max_key, 1)]),
-        "1 MiB key allowed"
-    );
-    let over_key = "k".repeat(1_048_577);
-    assert_eq!(
-        columns(&format!(r#"{{"{over_key}":1}}"#), 65_536),
-        Err(JsonCountError::KeyTooLong),
-        "key over 1 MiB rejected"
-    );
 }

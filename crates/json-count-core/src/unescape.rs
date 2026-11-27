@@ -20,9 +20,28 @@ pub(crate) struct StringValidator {
     utf8_buf: [u8; 4],
     utf8_len: u8,
     utf8_target: u8,
+    has_backslash: bool,
 }
 
 impl StringValidator {
+    #[must_use]
+    pub(crate) const fn has_backslash(self) -> bool {
+        self.has_backslash
+    }
+
+    /// Returns the length of the leading plain-ASCII prefix (`0x20..=0x7F`,
+    /// excluding `"` and `\`) that needs no escape or multi-byte UTF-8 state.
+    #[inline]
+    #[must_use]
+    pub(crate) fn plain_ascii_run(self, tail: &[u8]) -> usize {
+        if self.utf8_len != 0 || !matches!(self.esc, EscState::Normal) {
+            return 0;
+        }
+        tail.iter()
+            .take_while(|&&b| (0x20..0x80).contains(&b) && b != b'"' && b != b'\\')
+            .count()
+    }
+
     /// Feeds one byte inside an open JSON string.
     ///
     /// Returns `Ok(true)` when an unescaped closing `"` ends the string.
@@ -66,16 +85,18 @@ impl StringValidator {
                 Ok(false)
             }
             EscState::AfterBackslash => {
-                self.esc = match byte {
-                    b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't' => EscState::Normal,
-                    b'u' => EscState::UnicodeHex(4),
-                    _ => return Err(JsonCountError::InvalidEscape),
-                };
+                if byte == b'u' {
+                    self.esc = EscState::UnicodeHex(4);
+                } else {
+                    let _ = single_char_escape(byte)?;
+                    self.esc = EscState::Normal;
+                }
                 Ok(false)
             }
             EscState::Normal => match byte {
                 b'"' => Ok(true),
                 b'\\' => {
+                    self.has_backslash = true;
                     self.esc = EscState::AfterBackslash;
                     Ok(false)
                 }
@@ -158,19 +179,18 @@ fn push_verified_slice(chunk: &[u8], out: &mut String) -> Result<(), JsonCountEr
     Ok(())
 }
 
-/// Validates and unescapes `raw` JSON string bytes into `out`.
-///
-/// # Errors
-///
-/// Returns [`JsonCountError`] on unescaped control bytes, invalid escape sequences,
-/// or invalid UTF-8.
-pub(crate) fn unescape_json_string_into(
+/// Unescapes `raw` bytes already validated by [`StringValidator`], skipping
+/// backslash and control-character rescans when `has_backslash` is `false`.
+pub(crate) fn unescape_validated_json_string_into(
     raw: &[u8],
+    has_backslash: bool,
     out: &mut String,
 ) -> Result<(), JsonCountError> {
     out.clear();
-    if !raw.contains(&b'\\') {
-        return push_verified_slice(raw, out);
+    if !has_backslash {
+        let text = std::str::from_utf8(raw).map_err(|_| JsonCountError::InvalidUtf8)?;
+        out.push_str(text);
+        return Ok(());
     }
 
     out.reserve(raw.len());
@@ -199,6 +219,24 @@ pub(crate) fn unescape_json_string_into(
         }
     }
     Ok(())
+}
+
+/// Validates and unescapes `raw` JSON string bytes into `out`.
+///
+/// # Errors
+///
+/// Returns [`JsonCountError`] on unescaped control bytes, invalid escape sequences,
+/// or invalid UTF-8.
+#[cfg(test)]
+pub(crate) fn unescape_json_string_into(
+    raw: &[u8],
+    out: &mut String,
+) -> Result<(), JsonCountError> {
+    if !raw.contains(&b'\\') {
+        out.clear();
+        return push_verified_slice(raw, out);
+    }
+    unescape_validated_json_string_into(raw, true, out)
 }
 
 /// Unescapes a raw JSON string body, including `\uXXXX` and UTF-16 surrogate pairs.

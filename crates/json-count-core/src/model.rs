@@ -98,9 +98,16 @@ pub const fn next_sort_state(current: Option<SortSpec>, clicked: SortColumn) -> 
 
 /// Returns the ARIA `aria-sort` value for column `col` given `current`.
 #[must_use]
-pub fn aria_sort_for(current: Option<SortSpec>, col: SortColumn) -> &'static str {
+pub const fn aria_sort_for(current: Option<SortSpec>, col: SortColumn) -> &'static str {
     match current {
-        Some(spec) if spec.column == col => spec.direction.aria_sort(),
+        Some(spec)
+            if matches!(
+                (spec.column, col),
+                (SortColumn::Key, SortColumn::Key) | (SortColumn::Count, SortColumn::Count)
+            ) =>
+        {
+            spec.direction.aria_sort()
+        }
         _ => "none",
     }
 }
