@@ -4,6 +4,7 @@
 //! Per-fragment MS2 recalibration formulas.
 
 use super::types::{CalibrationModel, Peak, ShrinkageLambda};
+use crate::numeric::da_to_ppm;
 
 /// Applies `model` to a single fragment `mz` given precursor discrepancy `delta = ms2 - ms1`.
 #[must_use]
@@ -39,7 +40,7 @@ pub(super) fn apply_orbitrap_correction(
     lambda: ShrinkageLambda,
 ) {
     let delta = precursor_ms2 - precursor_ms1;
-    let delta_ppm = 1e6 * delta / precursor_ms1;
+    let delta_ppm = da_to_ppm(delta, precursor_ms1);
     if delta_ppm.abs() < 1e-7 {
         return;
     }

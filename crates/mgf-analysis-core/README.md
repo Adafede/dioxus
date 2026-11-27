@@ -28,7 +28,7 @@ ADDUCT=[M+H]+
 138.0660 2500.0
 END IONS
 ";
-let mut ingestor = LineIngestor::default();
+let mut ingestor = LineIngestor::new();
 for line in mgf_text.lines() {
     ingestor.feed_line(line);
 }

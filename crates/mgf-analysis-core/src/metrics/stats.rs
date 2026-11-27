@@ -104,6 +104,12 @@ pub(super) fn push_reservoir<T>(
 }
 
 impl PrecursorStats {
+    /// Accounts for one spectrum block skipped due to unparsable or unsupported metadata.
+    pub(crate) const fn record_skipped(&mut self) {
+        self.total_spectra += 1;
+        self.skipped_spectra += 1;
+    }
+
     /// Returns the cumulative count for the given tolerance [`ErrorBucket`].
     #[must_use]
     pub const fn cumulative_bucket_count(&self, bucket: ErrorBucket) -> usize {

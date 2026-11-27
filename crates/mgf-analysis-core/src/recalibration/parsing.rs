@@ -3,6 +3,8 @@
 
 //! MGF fragment and precursor-peak line helpers for recalibration.
 
+use crate::numeric::da_to_ppm;
+
 pub(super) fn parse_fragment_prefix(line: &str) -> Option<(f64, f64)> {
     let mut fields = line.split_whitespace();
     let mz = fields.next()?.parse::<f64>().ok()?;
@@ -22,7 +24,7 @@ pub(crate) fn closest_ms2_precursor_mz(
     let mut best_delta = f64::INFINITY;
     for mz in mzs {
         let da = (mz - pepmass).abs();
-        let ppm = da * 1e6 / pepmass;
+        let ppm = da_to_ppm(da, pepmass);
         if da <= 0.02 && ppm <= 100.0 && da < best_delta {
             best_delta = da;
             best_mz = Some(mz);

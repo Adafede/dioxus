@@ -9,11 +9,13 @@ use std::hash::BuildHasher;
 use mgf::{MgfBlock, MgfLineParser, is_ions_marker};
 
 use crate::adduct::{
-    AdductFamily, expected_precursor_mz, is_supported_adduct, normalize_adduct_label,
+    AdductFamily, expected_precursor_mz_with_spec, normalize_adduct_label,
+    resolve_adduct_mass_spec_cached,
 };
 use crate::mass::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached};
 use crate::metrics::stats::PrecursorStats;
 use crate::metrics::{ErrorMeasurement, WarningDetail};
+use crate::numeric::da_to_ppm;
 use crate::recalibration::parsing::closest_ms2_precursor_mz;
 
 /// Upper bound (`64 MiB`) on retained raw MGF text kept in memory for recalibrated export.
@@ -45,26 +47,22 @@ pub fn append_retained_line(
 }
 
 /// Incremental MGF line ingestor backed by [`MgfLineParser`] and cached mass lookups.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LineIngestor {
     parser: MgfLineParser,
     metrics: PrecursorStats,
     smiles_cache: HashMap<String, Option<f64>>,
     formula_cache: HashMap<String, Option<f64>>,
-}
-
-impl Default for LineIngestor {
-    fn default() -> Self {
-        Self {
-            parser: MgfLineParser::new(),
-            metrics: PrecursorStats::default(),
-            smiles_cache: HashMap::new(),
-            formula_cache: HashMap::new(),
-        }
-    }
+    adduct_cache: HashMap<String, Option<(f64, f64)>>,
 }
 
 impl LineIngestor {
+    /// Creates an empty MGF line ingestor.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Feeds one MGF line into the underlying parser, scoring completed `END IONS` blocks.
     pub fn feed_line(&mut self, line: &str) {
         if let Some(block) = self.parser.push_line(line)
@@ -75,6 +73,7 @@ impl LineIngestor {
                 &block,
                 &mut self.smiles_cache,
                 &mut self.formula_cache,
+                &mut self.adduct_cache,
             );
         }
     }
@@ -108,6 +107,7 @@ pub(crate) fn record_block<S: BuildHasher>(
     block: &MgfBlock,
     smiles_cache: &mut HashMap<String, Option<f64>, S>,
     formula_cache: &mut HashMap<String, Option<f64>, S>,
+    adduct_cache: &mut HashMap<String, Option<(f64, f64)>, S>,
 ) {
     let Some(observed_precursor) = block.header.effective_precursor_mz() else {
         return;
@@ -119,21 +119,27 @@ pub(crate) fn record_block<S: BuildHasher>(
     };
 
     let adduct_text = block.header.adduct.as_deref().unwrap_or("").trim();
-    if !adduct_text.is_empty() && !is_supported_adduct(adduct_text) {
-        metrics.total_spectra += 1;
-        metrics.skipped_spectra += 1;
-        *metrics
-            .unrecognized_adducts
-            .entry(adduct_text.to_string())
-            .or_insert(0) += 1;
-        return;
-    }
+    let adduct_spec = if adduct_text.is_empty() {
+        None
+    } else {
+        let resolved = resolve_adduct_mass_spec_cached(adduct_text, adduct_cache);
+        if resolved.is_none() {
+            metrics.record_skipped();
+            *metrics
+                .unrecognized_adducts
+                .entry(adduct_text.to_string())
+                .or_insert(0) += 1;
+            return;
+        }
+        resolved
+    };
 
     let adduct_label = normalize_adduct_label(adduct_text);
     record_observed_metrics(
         metrics,
         observed_precursor,
         reference_mass,
+        adduct_spec,
         adduct_label,
         block,
     );
@@ -164,8 +170,7 @@ fn compute_reference_mass<S: BuildHasher>(
 }
 
 fn record_unparsable_smiles(metrics: &mut PrecursorStats, block: &MgfBlock) {
-    metrics.total_spectra += 1;
-    metrics.skipped_spectra += 1;
+    metrics.record_skipped();
     if let Some(smiles_text) = block
         .header
         .smiles
@@ -195,23 +200,24 @@ fn record_observed_metrics(
     metrics: &mut PrecursorStats,
     observed_precursor: f64,
     reference_mass: f64,
+    adduct_spec: Option<(f64, f64)>,
     adduct_label: &str,
     block: &MgfBlock,
 ) {
-    let expected_mz = expected_precursor_mz(
+    let expected_mz = expected_precursor_mz_with_spec(
         reference_mass,
+        adduct_spec,
         block.header.adduct.as_deref(),
         block.header.charge.as_deref(),
         block.header.ion_mode.as_deref(),
     );
     if !expected_mz.is_finite() || expected_mz <= 0.0 || !observed_precursor.is_finite() {
-        metrics.total_spectra += 1;
-        metrics.skipped_spectra += 1;
+        metrics.record_skipped();
         return;
     }
     let error_da = observed_precursor - expected_mz;
     let abs_error_da = error_da.abs();
-    let ppm = error_da / expected_mz * 1_000_000.0;
+    let ppm = da_to_ppm(error_da, expected_mz);
     let ms2_precursor_peak =
         closest_ms2_precursor_mz(block.peaks.iter().map(|peak| peak.mz), observed_precursor);
 

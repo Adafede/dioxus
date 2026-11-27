@@ -13,16 +13,21 @@ use super::calibration::{
 use super::parsing::{closest_ms2_precursor_mz, parse_fragment_prefix};
 use super::types::{CalibrationModel, Peak};
 
+#[derive(Clone, Copy)]
+struct RecalibrationParams {
+    delta: f64,
+    pepmass: f64,
+    model: CalibrationModel,
+}
+
 fn write_recalibrated_fragment_line(
     frag: &str,
     mz: f64,
     intensity: f64,
     result: &mut String,
-    delta: f64,
-    pepmass: f64,
-    model: CalibrationModel,
+    params: RecalibrationParams,
 ) {
-    let corrected_mz = recalibrate_fragment_mz(mz, delta, pepmass, model);
+    let corrected_mz = recalibrate_fragment_mz(mz, params.delta, params.pepmass, params.model);
     let _ = write!(result, "{corrected_mz} {intensity}");
     for field in frag.split_whitespace().skip(2) {
         result.push(' ');
@@ -78,17 +83,13 @@ pub fn generate_recalibrated_mgf(original_content: &str, model: CalibrationModel
             && let Some(ms2_peak) =
                 closest_ms2_precursor_mz(spectrum_frags.iter().map(|&(_, mz, _)| mz), pm)
         {
-            let delta = ms2_peak - pm;
+            let params = RecalibrationParams {
+                delta: ms2_peak - pm,
+                pepmass: pm,
+                model,
+            };
             for &(frag, mz, intensity) in &spectrum_frags {
-                write_recalibrated_fragment_line(
-                    frag,
-                    mz,
-                    intensity,
-                    &mut result,
-                    delta,
-                    pm,
-                    model,
-                );
+                write_recalibrated_fragment_line(frag, mz, intensity, &mut result, params);
             }
         } else {
             for &(frag, _, _) in &spectrum_frags {

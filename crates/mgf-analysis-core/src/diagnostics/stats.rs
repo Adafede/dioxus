@@ -4,8 +4,34 @@
 //! Streaming `RecalibrationStats` accumulator and synchronized reservoir sampling.
 
 use super::model::{RecalibrationMeasurement, RecalibrationStats, RunningStats};
-use super::{compute_max_abs, compute_mean, compute_rms};
 use crate::numeric::{reservoir_index, usize_to_f64, write_reservoir_slot};
+
+#[derive(Clone, Copy)]
+enum ReservoirAction {
+    Append,
+    Replace(usize),
+}
+
+fn next_reservoir_action(
+    sample_count: &mut usize,
+    total_count: usize,
+    max_samples: usize,
+) -> Option<ReservoirAction> {
+    if *sample_count < max_samples {
+        *sample_count += 1;
+        Some(ReservoirAction::Append)
+    } else {
+        let idx = reservoir_index(total_count);
+        (idx < max_samples).then_some(ReservoirAction::Replace(idx))
+    }
+}
+
+fn apply_reservoir_slot(vec: &mut Vec<f64>, action: ReservoirAction, value: f64) {
+    match action {
+        ReservoirAction::Append => vec.push(value),
+        ReservoirAction::Replace(idx) => write_reservoir_slot(vec, idx, value),
+    }
+}
 
 impl RunningStats {
     fn push(&mut self, value: f64) {
@@ -21,26 +47,24 @@ impl RunningStats {
     }
 
     fn finish(self, samples: &[f64]) -> (f64, f64, f64, f64) {
-        if self.count == 0 {
-            let finite: Vec<f64> = samples.iter().copied().filter(|v| v.is_finite()).collect();
-            let mae = if finite.is_empty() {
-                0.0
-            } else {
-                finite.iter().map(|v| v.abs()).sum::<f64>() / usize_to_f64(finite.len())
-            };
-            return (
-                compute_mean(&finite),
-                compute_rms(&finite),
-                mae,
-                compute_max_abs(&finite),
-            );
+        let stats = if self.count == 0 {
+            let mut acc = Self::default();
+            for &value in samples {
+                acc.push(value);
+            }
+            acc
+        } else {
+            self
+        };
+        if stats.count == 0 {
+            return (0.0, 0.0, 0.0, 0.0);
         }
-        let n = usize_to_f64(self.count);
+        let n = usize_to_f64(stats.count);
         (
-            self.sum / n,
-            (self.sum_sq / n).sqrt(),
-            self.sum_abs / n,
-            self.max_abs,
+            stats.sum / n,
+            (stats.sum_sq / n).sqrt(),
+            stats.sum_abs / n,
+            stats.max_abs,
         )
     }
 }
@@ -66,20 +90,13 @@ impl RecalibrationStats {
         self.stream_ppm_before.push(error_ppm_before);
         self.stream_ppm_after.push(error_ppm_after);
 
-        if self.sample_count < max_samples {
-            self.error_ppm_before.push(error_ppm_before);
-            self.error_ppm_after.push(error_ppm_after);
-            self.error_da_before.push(error_da_before);
-            self.error_da_after.push(error_da_after);
-            self.sample_count += 1;
-        } else {
-            let idx = reservoir_index(self.total_count);
-            if idx < max_samples {
-                write_reservoir_slot(&mut self.error_ppm_before, idx, error_ppm_before);
-                write_reservoir_slot(&mut self.error_ppm_after, idx, error_ppm_after);
-                write_reservoir_slot(&mut self.error_da_before, idx, error_da_before);
-                write_reservoir_slot(&mut self.error_da_after, idx, error_da_after);
-            }
+        if let Some(action) =
+            next_reservoir_action(&mut self.sample_count, self.total_count, max_samples)
+        {
+            apply_reservoir_slot(&mut self.error_ppm_before, action, error_ppm_before);
+            apply_reservoir_slot(&mut self.error_ppm_after, action, error_ppm_after);
+            apply_reservoir_slot(&mut self.error_da_before, action, error_da_before);
+            apply_reservoir_slot(&mut self.error_da_after, action, error_da_after);
         }
         if let Some(family) = adduct_family {
             self.record_adduct_error(family, error_ppm_before);
@@ -92,28 +109,29 @@ impl RecalibrationStats {
         self.stream_ppm_before.push(measurement.error_ppm_before);
         self.stream_ppm_after.push(measurement.error_ppm_after);
 
-        if self.sample_count < measurement.max_samples {
-            self.error_ppm_ms1.push(measurement.error_ppm_ms1);
-            self.error_ppm_before.push(measurement.error_ppm_before);
-            self.error_ppm_after.push(measurement.error_ppm_after);
-            self.error_da_ms1.push(measurement.error_da_ms1);
-            self.error_da_before.push(measurement.error_da_before);
-            self.error_da_after.push(measurement.error_da_after);
-            self.sample_count += 1;
-        } else {
-            let idx = reservoir_index(self.total_count);
-            if idx < measurement.max_samples {
-                write_reservoir_slot(&mut self.error_ppm_ms1, idx, measurement.error_ppm_ms1);
-                write_reservoir_slot(
-                    &mut self.error_ppm_before,
-                    idx,
-                    measurement.error_ppm_before,
-                );
-                write_reservoir_slot(&mut self.error_ppm_after, idx, measurement.error_ppm_after);
-                write_reservoir_slot(&mut self.error_da_ms1, idx, measurement.error_da_ms1);
-                write_reservoir_slot(&mut self.error_da_before, idx, measurement.error_da_before);
-                write_reservoir_slot(&mut self.error_da_after, idx, measurement.error_da_after);
-            }
+        if let Some(action) = next_reservoir_action(
+            &mut self.sample_count,
+            self.total_count,
+            measurement.max_samples,
+        ) {
+            apply_reservoir_slot(&mut self.error_ppm_ms1, action, measurement.error_ppm_ms1);
+            apply_reservoir_slot(
+                &mut self.error_ppm_before,
+                action,
+                measurement.error_ppm_before,
+            );
+            apply_reservoir_slot(
+                &mut self.error_ppm_after,
+                action,
+                measurement.error_ppm_after,
+            );
+            apply_reservoir_slot(&mut self.error_da_ms1, action, measurement.error_da_ms1);
+            apply_reservoir_slot(
+                &mut self.error_da_before,
+                action,
+                measurement.error_da_before,
+            );
+            apply_reservoir_slot(&mut self.error_da_after, action, measurement.error_da_after);
         }
         if let Some(family) = measurement.adduct_family {
             self.record_adduct_error(family, measurement.error_ppm_before);
@@ -121,10 +139,12 @@ impl RecalibrationStats {
     }
 
     fn record_adduct_error(&mut self, family: &str, err_before: f64) {
-        self.error_by_adduct_before
-            .entry(family.to_string())
-            .or_default()
-            .push(err_before);
+        if let Some(bucket) = self.error_by_adduct_before.get_mut(family) {
+            bucket.push(err_before);
+        } else {
+            self.error_by_adduct_before
+                .insert(family.to_string(), vec![err_before]);
+        }
     }
 
     /// Finalizes stream-wide summary statistics (mean, MAE, RMS, max).

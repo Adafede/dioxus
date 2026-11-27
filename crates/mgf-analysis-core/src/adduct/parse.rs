@@ -107,6 +107,22 @@ pub(crate) fn parse_polarity_tokens(
     }
 }
 
+fn split_leading_count(trimmed: &str) -> Option<(Option<f64>, &str)> {
+    let digits_end = trimmed
+        .bytes()
+        .position(|b| !b.is_ascii_digit())
+        .unwrap_or(trimmed.len());
+    if digits_end == 0 {
+        return Some((None, trimmed));
+    }
+    let count = trimmed.get(..digits_end)?.parse::<u32>().ok()?;
+    if count == 0 {
+        return None;
+    }
+    let rem = trimmed.get(digits_end..).unwrap_or("").trim();
+    Some((Some(f64::from(count)), rem))
+}
+
 /// Computes the exact neutral/ionic mass contribution of an adduct token (e.g. `"2H"`, `"ACN"`).
 #[must_use]
 pub(crate) fn parse_adduct_term_mass(token: &str) -> Option<f64> {
@@ -114,20 +130,8 @@ pub(crate) fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("M") {
         return None;
     }
-    let digits_end = trimmed
-        .chars()
-        .position(|ch| !ch.is_ascii_digit())
-        .unwrap_or(trimmed.len());
-    let multiplier = if digits_end == 0 {
-        1.0
-    } else {
-        let count = trimmed.get(..digits_end)?.parse::<u32>().ok()?;
-        if count == 0 {
-            return None;
-        }
-        f64::from(count)
-    };
-    let symbol = trimmed.get(digits_end..).unwrap_or("").trim();
+    let (count_opt, symbol) = split_leading_count(trimmed)?;
+    let multiplier = count_opt.unwrap_or(1.0);
     let term_mass = match symbol {
         "FA" | "HCOOH" | "FORMICACID" | "HFA" => FORMIC_ACID_MASS,
         "HCOO" | "FORMAT" | "FORMATE" => FORMATE_MASS,
@@ -161,11 +165,57 @@ pub(crate) fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     Some(term_mass * multiplier)
 }
 
+struct AdductAccumulator {
+    multiplier: f64,
+    shift: f64,
+    saw_molecule_term: bool,
+    saw_unsupported_token: bool,
+}
+
+impl AdductAccumulator {
+    const fn new() -> Self {
+        Self {
+            multiplier: 1.0,
+            shift: 0.0,
+            saw_molecule_term: false,
+            saw_unsupported_token: false,
+        }
+    }
+
+    fn apply_token(&mut self, token: &str, sign: f64) {
+        if token.is_empty() {
+            self.saw_unsupported_token = true;
+            return;
+        }
+        if let Some(token_mass) = parse_adduct_term_mass(token) {
+            self.shift = sign.mul_add(token_mass, self.shift);
+        } else if let Some(token_multiplier) = parse_multiplicity_token(token)
+            && sign > 0.0
+            && !self.saw_molecule_term
+        {
+            self.multiplier = token_multiplier;
+            self.saw_molecule_term = true;
+        } else {
+            self.saw_unsupported_token = true;
+        }
+    }
+}
+
 pub(crate) fn parse_adduct_mass_components(adduct: &str) -> Option<(f64, f64)> {
-    let normalized = adduct.trim().replace(' ', "").to_ascii_uppercase();
-    if normalized.is_empty() {
+    let trimmed = adduct.trim();
+    if trimmed.is_empty() {
         return None;
     }
+    if (trimmed.contains('[') || trimmed.contains(']'))
+        && (!trimmed.starts_with('[') || trimmed.find(']') <= Some(1))
+    {
+        return None;
+    }
+    let normalized = if trimmed.contains(' ') {
+        trimmed.replace(' ', "").to_ascii_uppercase()
+    } else {
+        trimmed.to_ascii_uppercase()
+    };
     let body = if normalized.contains('[') || normalized.contains(']') {
         let close_idx = normalized.find(']')?;
         if !normalized.starts_with('[') || close_idx <= 1 {
@@ -185,6 +235,9 @@ pub(crate) fn parse_adduct_mass_components(adduct: &str) -> Option<(f64, f64)> {
         normalized.as_str()
     };
 
+    if body.is_empty() {
+        return None;
+    }
     if parse_adduct_polarity(Some(adduct)) == Some(Polarity::Negative) {
         if body == "M+FA" {
             return Some((1.0, FORMATE_MASS));
@@ -194,65 +247,20 @@ pub(crate) fn parse_adduct_mass_components(adduct: &str) -> Option<(f64, f64)> {
         }
     }
 
-    let mut multiplier = 1.0f64;
-    let mut shift = 0.0f64;
-    let mut current = String::new();
+    let mut acc = AdductAccumulator::new();
+    let mut start = 0usize;
     let mut sign = 1.0f64;
-    let mut saw_molecule_term = false;
-    let mut saw_unsupported_token = false;
 
-    for ch in body.chars() {
-        match ch {
-            '+' | '-' => {
-                apply_adduct_token(
-                    &current,
-                    sign,
-                    &mut multiplier,
-                    &mut shift,
-                    &mut saw_molecule_term,
-                    &mut saw_unsupported_token,
-                );
-                current.clear();
-                sign = if ch == '+' { 1.0 } else { -1.0 };
-            }
-            _ => current.push(ch),
+    for (idx, byte) in body.bytes().enumerate() {
+        if matches!(byte, b'+' | b'-') {
+            acc.apply_token(body.get(start..idx).unwrap_or(""), sign);
+            start = idx + 1;
+            sign = if byte == b'+' { 1.0 } else { -1.0 };
         }
     }
-    apply_adduct_token(
-        &current,
-        sign,
-        &mut multiplier,
-        &mut shift,
-        &mut saw_molecule_term,
-        &mut saw_unsupported_token,
-    );
+    acc.apply_token(body.get(start..).unwrap_or(""), sign);
 
-    (!saw_unsupported_token && saw_molecule_term && !body.is_empty()).then_some((multiplier, shift))
-}
-
-fn apply_adduct_token(
-    current: &str,
-    sign: f64,
-    multiplier: &mut f64,
-    shift: &mut f64,
-    saw_molecule_term: &mut bool,
-    saw_unsupported_token: &mut bool,
-) {
-    if current.is_empty() {
-        *saw_unsupported_token = true;
-        return;
-    }
-    if let Some(token_mass) = parse_adduct_term_mass(current) {
-        *shift = sign.mul_add(token_mass, *shift);
-    } else if let Some(token_multiplier) = parse_multiplicity_token(current)
-        && sign > 0.0
-        && !*saw_molecule_term
-    {
-        *multiplier = token_multiplier;
-        *saw_molecule_term = true;
-    } else {
-        *saw_unsupported_token = true;
-    }
+    (!acc.saw_unsupported_token && acc.saw_molecule_term).then_some((acc.multiplier, acc.shift))
 }
 
 fn is_valid_adduct_suffix(suffix: &str) -> bool {
@@ -270,20 +278,10 @@ fn parse_multiplicity_token(token: &str) -> Option<f64> {
     if trimmed.eq_ignore_ascii_case("M") {
         return Some(1.0);
     }
-    let digits_end = trimmed
-        .chars()
-        .position(|ch| !ch.is_ascii_digit())
-        .unwrap_or(trimmed.len());
-    if digits_end == 0 {
+    let (Some(mult), rem) = split_leading_count(trimmed)? else {
         return None;
-    }
-    let mult = trimmed.get(..digits_end)?;
-    let rem = trimmed.get(digits_end..)?;
-    if !rem.eq_ignore_ascii_case("M") {
-        return None;
-    }
-    let count = mult.parse::<u32>().ok()?;
-    (count > 0).then(|| f64::from(count))
+    };
+    rem.eq_ignore_ascii_case("M").then_some(mult)
 }
 
 pub(crate) fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {

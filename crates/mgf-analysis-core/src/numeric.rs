@@ -49,6 +49,16 @@ impl PartialOrd for OrderedF64 {
     }
 }
 
+/// Converts an absolute error in Da into parts-per-million relative to `reference_mz`.
+#[must_use]
+pub(crate) fn da_to_ppm(delta_da: f64, reference_mz: f64) -> f64 {
+    if reference_mz > 0.0 {
+        delta_da * 1e6 / reference_mz
+    } else {
+        0.0
+    }
+}
+
 /// Deterministic `SplitMix64` reservoir index in `0..seen.max(1)`.
 #[must_use]
 pub(crate) fn reservoir_index(seen: usize) -> usize {

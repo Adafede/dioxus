@@ -23,8 +23,15 @@ fn keeps_full_precision_when_computing_error() {
 
     let mut smiles_cache = HashMap::new();
     let mut formula_cache = HashMap::new();
+    let mut adduct_cache = HashMap::new();
     let mut metrics = PrecursorStats::default();
-    record_block(&mut metrics, &block, &mut smiles_cache, &mut formula_cache);
+    record_block(
+        &mut metrics,
+        &block,
+        &mut smiles_cache,
+        &mut formula_cache,
+        &mut adduct_cache,
+    );
 
     assert_eq!(metrics.spectra, 1);
     let expected_error = 100.1234_f64 - 100.123_456_789_f64;

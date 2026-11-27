@@ -6,13 +6,22 @@
 pub(crate) mod parse;
 
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::collections::HashMap;
+use std::hash::BuildHasher;
 
-thread_local! {
-    static ADDUCT_SPEC_CACHE: RefCell<HashMap<String, Option<(f64, f64)>>> =
-        RefCell::new(HashMap::new());
-}
+const CANONICAL_ADDUCTS: &[(&str, &[&str], &str)] = &[
+    ("M", &["", "+"], "[M]+"),
+    ("M", &["++", "2+"], "[M]2+"),
+    ("M+2NA", &["", "2+", "++"], "[M+2Na]2+"),
+    ("M+H", &["", "+"], "[M+H]+"),
+    ("M+K", &["", "+"], "[M+K]+"),
+    ("M+NH4", &["", "+"], "[M+NH4]+"),
+    ("M+NA", &["", "+"], "[M+Na]+"),
+    ("M+2H", &["", "++", "2+"], "[M+2H]2+"),
+    ("M-H", &["", "-", "1-"], "[M-H]-"),
+    ("M-2H", &["", "2-", "--"], "[M-2H]2-"),
+    ("4M-H", &["", "-", "1-"], "[4M-H]-"),
+];
 
 /// Ion polarity mode (`+` / `positive` vs `-` / `negative`).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -113,25 +122,21 @@ fn fallback_proton_spec(polarity: Option<Polarity>, charge_value: f64) -> (f64, 
     (1.0, shift)
 }
 
-/// Computes expected precursor *m/z* from neutral mass and optional adduct, charge, and ion mode.
+/// Computes expected precursor *m/z* using an already-resolved `(multiplier, shift)` spec.
 #[must_use]
-pub(crate) fn expected_precursor_mz(
+pub(crate) fn expected_precursor_mz_with_spec(
     neutral_mass: f64,
+    adduct_spec: Option<(f64, f64)>,
     adduct: Option<&str>,
     charge: Option<&str>,
     ion_mode: Option<&str>,
 ) -> f64 {
-    let normalized_adduct = adduct.unwrap_or("").trim();
     let charge_value = parse::parse_charge_value(charge, adduct).unwrap_or(1.0);
     let polarity =
         parse::parse_polarity_tokens(charge, ion_mode).or_else(|| parse_adduct_polarity(adduct));
 
-    let (multiplier, shift) = if normalized_adduct.is_empty() {
-        fallback_proton_spec(polarity, charge_value)
-    } else {
-        parse_adduct_mass_spec_cached(normalized_adduct)
-            .unwrap_or_else(|| fallback_proton_spec(polarity, charge_value))
-    };
+    let (multiplier, shift) =
+        adduct_spec.unwrap_or_else(|| fallback_proton_spec(polarity, charge_value));
     let electron_adjustment = match polarity {
         Some(Polarity::Positive) => -parse::ELECTRON_MASS * charge_value,
         Some(Polarity::Negative) => parse::ELECTRON_MASS * charge_value,
@@ -140,6 +145,22 @@ pub(crate) fn expected_precursor_mz(
 
     let base_mz = neutral_mass.mul_add(multiplier, shift) + electron_adjustment;
     base_mz / charge_value.max(1.0)
+}
+
+/// Computes expected precursor *m/z* from neutral mass and optional adduct, charge, and ion mode.
+#[cfg(test)]
+#[must_use]
+pub(crate) fn expected_precursor_mz(
+    neutral_mass: f64,
+    adduct: Option<&str>,
+    charge: Option<&str>,
+    ion_mode: Option<&str>,
+) -> f64 {
+    let adduct_spec = adduct
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .and_then(parse::parse_adduct_mass_components);
+    expected_precursor_mz_with_spec(neutral_mass, adduct_spec, adduct, charge, ion_mode)
 }
 
 /// Extracts [`Polarity`] from an adduct string (suffix after `]` or known unbracketed suffix).
@@ -159,7 +180,10 @@ pub(crate) fn parse_adduct_polarity(adduct: Option<&str>) -> Option<Polarity> {
     parse::parse_unbracketed_polarity(adduct)
 }
 
-fn parse_adduct_mass_spec_cached(adduct: &str) -> Option<(f64, f64)> {
+pub(crate) fn resolve_adduct_mass_spec_cached(
+    adduct: &str,
+    cache: &mut HashMap<String, Option<(f64, f64)>, impl BuildHasher>,
+) -> Option<(f64, f64)> {
     let trimmed = adduct.trim();
     if trimmed.is_empty() {
         return None;
@@ -169,15 +193,12 @@ fn parse_adduct_mass_spec_cached(adduct: &str) -> Option<(f64, f64)> {
     } else {
         Cow::Borrowed(trimmed)
     };
-    ADDUCT_SPEC_CACHE.with(|cache| {
-        let mut cache = cache.borrow_mut();
-        if let Some(&mass_spec) = cache.get(key.as_ref()) {
-            return mass_spec;
-        }
-        let mass_spec = parse::parse_adduct_mass_components(&key);
-        cache.insert(key.into_owned(), mass_spec);
-        mass_spec
-    })
+    if let Some(&mass_spec) = cache.get(key.as_ref()) {
+        return mass_spec;
+    }
+    let mass_spec = parse::parse_adduct_mass_components(&key);
+    cache.insert(key.into_owned(), mass_spec);
+    mass_spec
 }
 
 /// Normalizes common adduct spellings into canonical notation (`[M+H]+`, `[M+Na]+`, etc.).
@@ -195,37 +216,17 @@ pub(crate) fn normalize_adduct_label(adduct: &str) -> &str {
     let body = body.trim().trim_matches(|ch| ch == '[' || ch == ']').trim();
     let suffix = suffix.trim();
 
-    if body.eq_ignore_ascii_case("M") {
-        if matches!(suffix, "" | "+") {
-            return "[M]+";
+    for &(canonical_body, valid_suffixes, normalized) in CANONICAL_ADDUCTS {
+        if body.eq_ignore_ascii_case(canonical_body) && valid_suffixes.contains(&suffix) {
+            return normalized;
         }
-        if matches!(suffix, "++" | "2+") {
-            return "[M]2+";
-        }
-    } else if body.eq_ignore_ascii_case("M+2NA") && matches!(suffix, "" | "2+" | "++") {
-        return "[M+2Na]2+";
-    } else if body.eq_ignore_ascii_case("M+H") && matches!(suffix, "" | "+") {
-        return "[M+H]+";
-    } else if body.eq_ignore_ascii_case("M+K") && matches!(suffix, "" | "+") {
-        return "[M+K]+";
-    } else if body.eq_ignore_ascii_case("M+NH4") && matches!(suffix, "" | "+") {
-        return "[M+NH4]+";
-    } else if body.eq_ignore_ascii_case("M+NA") && matches!(suffix, "" | "+") {
-        return "[M+Na]+";
-    } else if body.eq_ignore_ascii_case("M+2H") && matches!(suffix, "" | "++" | "2+") {
-        return "[M+2H]2+";
-    } else if body.eq_ignore_ascii_case("M-H") && matches!(suffix, "" | "-" | "1-") {
-        return "[M-H]-";
-    } else if body.eq_ignore_ascii_case("M-2H") && matches!(suffix, "" | "2-" | "--") {
-        return "[M-2H]2-";
-    } else if body.eq_ignore_ascii_case("4M-H") && matches!(suffix, "" | "-" | "1-") {
-        return "[4M-H]-";
     }
     trimmed
 }
 
 /// Returns `true` when `adduct` parses into a valid mass transformation.
+#[cfg(test)]
 #[must_use]
 pub(crate) fn is_supported_adduct(adduct: &str) -> bool {
-    parse_adduct_mass_spec_cached(adduct).is_some()
+    parse::parse_adduct_mass_components(adduct).is_some()
 }

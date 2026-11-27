@@ -12,6 +12,10 @@ use std::collections::BinaryHeap;
 use crate::adduct::AdductFamily;
 use crate::numeric::OrderedF64;
 
+/// Reference mDa compliance thresholds.
+pub(crate) const MDA_THRESHOLDS: [f64; 4] = [0.1, 0.5, 1.0, 5.0];
+/// Reference ppm compliance thresholds.
+pub(crate) const PPM_THRESHOLDS: [f64; 4] = [0.5, 1.0, 5.0, 10.0];
 /// Reservoir cap for raw plot point retention.
 pub(crate) const MAX_PLOT_POINTS: usize = 10_000;
 /// Reservoir cap for empirical CDF values.
@@ -40,8 +44,8 @@ impl ErrorUnit {
     #[must_use]
     pub const fn plot_thresholds(self) -> &'static [f64] {
         match self {
-            Self::Mda => &[0.1, 0.5, 1.0, 5.0],
-            Self::Ppm => &[0.5, 1.0, 5.0, 10.0],
+            Self::Mda => &MDA_THRESHOLDS,
+            Self::Ppm => &PPM_THRESHOLDS,
         }
     }
 }

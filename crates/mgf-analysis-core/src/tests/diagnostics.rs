@@ -68,35 +68,37 @@ fn push_measurement_keeps_parallel_series_synchronized_and_tracks_stream_max() {
     }
 }
 
+fn sample_measurement(
+    pepmass_header: f64,
+    ms2_precursor_peak: Option<f64>,
+    calculated_mass: Option<f64>,
+    expected_mass: Option<f64>,
+) -> ErrorMeasurement<'static> {
+    ErrorMeasurement {
+        abs_error_da: 0.01,
+        abs_ppm: 20.0,
+        adduct_family: AdductFamily::Protonated,
+        ppm_error: 20.0,
+        signed_error_da: 0.01,
+        pepmass_header,
+        ms2_precursor_peak,
+        smiles: None,
+        calculated_mass,
+        expected_mass,
+        formula: None,
+    }
+}
+
 #[test]
 fn compute_recalibration_diagnostics_pins_none_and_tof_improvement() {
     let mut metrics = PrecursorStats::default();
-    metrics.record_error(ErrorMeasurement {
-        abs_error_da: 0.01,
-        abs_ppm: 20.0,
-        adduct_family: AdductFamily::Protonated,
-        ppm_error: 20.0,
-        signed_error_da: 0.01,
-        pepmass_header: 500.0,
-        ms2_precursor_peak: Some(500.01),
-        smiles: None,
-        calculated_mass: Some(500.0),
-        expected_mass: Some(500.0),
-        formula: None,
-    });
-    metrics.record_error(ErrorMeasurement {
-        abs_error_da: 0.01,
-        abs_ppm: 20.0,
-        adduct_family: AdductFamily::Protonated,
-        ppm_error: 20.0,
-        signed_error_da: 0.01,
-        pepmass_header: 600.0,
-        ms2_precursor_peak: Some(600.01),
-        smiles: None,
-        calculated_mass: None,
-        expected_mass: None,
-        formula: None,
-    });
+    metrics.record_error(sample_measurement(
+        500.0,
+        Some(500.01),
+        Some(500.0),
+        Some(500.0),
+    ));
+    metrics.record_error(sample_measurement(600.0, Some(600.01), None, None));
 
     assert!(compute_recalibration_diagnostics(&metrics, CalibrationModel::None).is_none());
 
@@ -111,19 +113,7 @@ fn compute_recalibration_diagnostics_pins_none_and_tof_improvement() {
     assert_close(diag.mean_error_improvement_ppm(), 20.0, 1e-6, "improvement");
 
     let mut no_ms2 = PrecursorStats::default();
-    no_ms2.record_error(ErrorMeasurement {
-        abs_error_da: 0.01,
-        abs_ppm: 20.0,
-        adduct_family: AdductFamily::Protonated,
-        ppm_error: 20.0,
-        signed_error_da: 0.01,
-        pepmass_header: 500.0,
-        ms2_precursor_peak: None,
-        smiles: None,
-        calculated_mass: Some(500.0),
-        expected_mass: Some(500.0),
-        formula: None,
-    });
+    no_ms2.record_error(sample_measurement(500.0, None, Some(500.0), Some(500.0)));
     let diag_no_ms2 =
         compute_recalibration_diagnostics(&no_ms2, CalibrationModel::tof(1.0)).unwrap();
     assert_eq!(

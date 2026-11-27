@@ -95,19 +95,21 @@ impl PrecursorStats {
     }
 
     fn update_error_buckets(&mut self, abs_error_mda: f64, abs_ppm: f64) {
+        let [t0, t1, t2, t3] = crate::metrics::MDA_THRESHOLDS;
         match abs_error_mda {
-            v if v <= 0.1 => self.within_0_1_mda = self.within_0_1_mda.saturating_add(1),
-            v if v <= 0.5 => self.within_0_5_mda = self.within_0_5_mda.saturating_add(1),
-            v if v <= 1.0 => self.within_1_mda = self.within_1_mda.saturating_add(1),
-            v if v <= 5.0 => self.within_5_mda = self.within_5_mda.saturating_add(1),
+            v if v <= t0 => self.within_0_1_mda = self.within_0_1_mda.saturating_add(1),
+            v if v <= t1 => self.within_0_5_mda = self.within_0_5_mda.saturating_add(1),
+            v if v <= t2 => self.within_1_mda = self.within_1_mda.saturating_add(1),
+            v if v <= t3 => self.within_5_mda = self.within_5_mda.saturating_add(1),
             _ => self.above_5_mda = self.above_5_mda.saturating_add(1),
         }
 
+        let [p0, p1, p2, p3] = crate::metrics::PPM_THRESHOLDS;
         match abs_ppm {
-            v if v <= 0.5 => self.within_0_5_ppm = self.within_0_5_ppm.saturating_add(1),
-            v if v <= 1.0 => self.within_1_ppm = self.within_1_ppm.saturating_add(1),
-            v if v <= 5.0 => self.within_5_ppm = self.within_5_ppm.saturating_add(1),
-            v if v <= 10.0 => self.within_10_ppm = self.within_10_ppm.saturating_add(1),
+            v if v <= p0 => self.within_0_5_ppm = self.within_0_5_ppm.saturating_add(1),
+            v if v <= p1 => self.within_1_ppm = self.within_1_ppm.saturating_add(1),
+            v if v <= p2 => self.within_5_ppm = self.within_5_ppm.saturating_add(1),
+            v if v <= p3 => self.within_10_ppm = self.within_10_ppm.saturating_add(1),
             _ => self.above_10_ppm = self.above_10_ppm.saturating_add(1),
         }
     }
@@ -121,24 +123,13 @@ impl PrecursorStats {
         }
         if let Some(entry) = self.high_error_smiles.get_mut(smiles) {
             entry.count = entry.count.saturating_add(1);
-            if entry.calculated_mass.is_none() && update.calculated_mass.is_some() {
-                entry.calculated_mass = update.calculated_mass;
-            }
-            if entry.expected_mass.is_none() && update.expected_mass.is_some() {
-                entry.expected_mass = update.expected_mass;
-            }
-            if entry.formula.is_none() {
-                entry.formula = update.formula.map(str::to_string);
-            }
-            if entry.observed_precursor_mz.is_none() {
-                entry.observed_precursor_mz = Some(update.pepmass_header);
-            }
-            if entry
+            let is_new_max = entry
                 .max_abs_error_da
-                .is_none_or(|existing| update.abs_error_da > existing)
-            {
+                .is_none_or(|existing| update.abs_error_da > existing);
+            if is_new_max {
                 entry.max_abs_error_da = Some(update.abs_error_da);
                 entry.max_abs_error_ppm = Some(update.abs_ppm);
+                entry.observed_precursor_mz = Some(update.pepmass_header);
                 if update.calculated_mass.is_some() {
                     entry.calculated_mass = update.calculated_mass;
                 }
@@ -148,7 +139,19 @@ impl PrecursorStats {
                 if update.formula.is_some() {
                     entry.formula = update.formula.map(str::to_string);
                 }
-                entry.observed_precursor_mz = Some(update.pepmass_header);
+            } else {
+                if entry.calculated_mass.is_none() {
+                    entry.calculated_mass = update.calculated_mass;
+                }
+                if entry.expected_mass.is_none() {
+                    entry.expected_mass = update.expected_mass;
+                }
+                if entry.formula.is_none() {
+                    entry.formula = update.formula.map(str::to_string);
+                }
+                if entry.observed_precursor_mz.is_none() {
+                    entry.observed_precursor_mz = Some(update.pepmass_header);
+                }
             }
             return;
         }
