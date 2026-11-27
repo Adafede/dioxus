@@ -31,5 +31,5 @@ cargo nextest run -p lipid-core -p lipid-selecto-rs --locked
 
 ## License
 
-`AGPL-3.0-only` --- see [`LICENSE`](https://www.gnu.org/licenses/agpl-3.0.html)
-for details.
+`AGPL-3.0-only` --- see
+[`LICENSE`](https://github.com/Adafede/dioxus/blob/main/LICENSE) for details.
