@@ -20,7 +20,6 @@ impl PrecursorStats {
         }
         self.total_spectra += 1;
         self.spectra += 1;
-        self.spectra_with_reference_mass += 1;
         let total_spectra = usize_to_f64(self.spectra);
 
         self.update_extrema_and_moments(
@@ -78,17 +77,9 @@ impl PrecursorStats {
         if self.spectra == 1 {
             self.observed_precursor_min = pepmass_header;
             self.observed_precursor_max = pepmass_header;
-            self.abs_error_da_min = abs_error_da;
-            self.abs_error_da_max = abs_error_da;
-            self.abs_error_ppm_min = abs_ppm;
-            self.abs_error_ppm_max = abs_ppm;
         } else {
             self.observed_precursor_min = self.observed_precursor_min.min(pepmass_header);
             self.observed_precursor_max = self.observed_precursor_max.max(pepmass_header);
-            self.abs_error_da_min = self.abs_error_da_min.min(abs_error_da);
-            self.abs_error_da_max = self.abs_error_da_max.max(abs_error_da);
-            self.abs_error_ppm_min = self.abs_error_ppm_min.min(abs_ppm);
-            self.abs_error_ppm_max = self.abs_error_ppm_max.max(abs_ppm);
         }
 
         self.observed_precursor_mean +=

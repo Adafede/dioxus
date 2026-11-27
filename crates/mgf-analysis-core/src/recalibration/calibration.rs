@@ -19,7 +19,7 @@ pub(crate) fn recalibrate_fragment_mz(
     match model {
         CalibrationModel::TOFDa { lambda } => lambda.get().mul_add(-delta, mz),
         CalibrationModel::OrbitrapPPM { lambda } => {
-            if !pepmass.is_finite() || pepmass <= 0.0 || !mz.is_finite() || mz <= 0.0 {
+            if !pepmass.is_finite() || pepmass <= 0.0 || mz <= 0.0 {
                 return mz;
             }
             let denom = 1.0 + lambda.get() * delta / pepmass;

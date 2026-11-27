@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-//! Bounded streaming [`PrecursorStats`] accumulator definition and query methods.
+//! Streaming [`PrecursorStats`] accumulator definition and query methods.
 
 use std::collections::BTreeMap;
 
 use super::{ErrorBucket, HighErrorSmilesDetail, MedianTracker, PlotPoint, WarningDetail};
 use crate::numeric::reservoir_index;
 
-/// Streaming precursor mass-error accumulator bounded via reservoir sampling.
+/// Streaming precursor mass-error accumulator.
+///
+/// Reservoir arrays (`MAX_ECDF_POINTS`, `MAX_PLOT_POINTS`) and scalar moments use
+/// bounded memory, whereas exact running medians keep `O(N)` dual-heap trackers.
 #[derive(Clone, Debug, Default)]
 pub struct PrecursorStats {
     /// Spectra with both a precursor measurement and usable reference mass + supported adduct.
@@ -17,8 +20,6 @@ pub struct PrecursorStats {
     pub total_spectra: usize,
     /// Blocks skipped due to unresolved mass or unsupported adduct.
     pub skipped_spectra: usize,
-    /// Count of spectra with a resolved reference mass.
-    pub spectra_with_reference_mass: usize,
     /// Count of spectra skipped due to unparsable SMILES/formula.
     pub unparsed_smiles: usize,
     /// Unparsable SMILES counts keyed by SMILES text.
@@ -31,20 +32,12 @@ pub struct PrecursorStats {
     pub observed_precursor_mean: f64,
     /// Exact running median observed precursor `m/z`.
     pub observed_precursor_median: f64,
-    /// Minimum absolute error (Da).
-    pub abs_error_da_min: f64,
-    /// Maximum absolute error (Da).
-    pub abs_error_da_max: f64,
     /// Mean absolute error (Da).
     pub abs_error_da_mean: f64,
     /// Median absolute error (Da).
     pub abs_error_da_median: f64,
     /// Root-mean-square error (Da).
     pub abs_error_da_rms: f64,
-    /// Minimum absolute error (ppm).
-    pub abs_error_ppm_min: f64,
-    /// Maximum absolute error (ppm).
-    pub abs_error_ppm_max: f64,
     /// Mean absolute error (ppm).
     pub abs_error_ppm_mean: f64,
     /// Median absolute error (ppm).

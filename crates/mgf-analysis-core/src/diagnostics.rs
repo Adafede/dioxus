@@ -76,7 +76,6 @@ pub fn compute_recalibration_diagnostics(
         let error_ppm_before = ppm(error_da_before, theoretical_mass);
 
         let delta_da_ms2_ms1 = precursor_ms2 - precursor_ms1;
-        let delta_ppm_ms2_ms1 = ppm(delta_da_ms2_ms1, precursor_ms1);
 
         let precursor_ms2_after =
             recalibrate_fragment_mz(precursor_ms2, delta_da_ms2_ms1, precursor_ms1, model);
@@ -86,16 +85,11 @@ pub fn compute_recalibration_diagnostics(
 
         diag.push_measurement(RecalibrationMeasurement {
             error_ppm_ms1,
-            delta_ppm_ms2_ms1,
             error_ppm_before,
             error_ppm_after,
             error_da_ms1,
-            delta_da_ms2_ms1,
             error_da_before,
             error_da_after,
-            precursor_ms1,
-            precursor_ms2_before: precursor_ms2,
-            precursor_ms2_after,
             adduct_family: Some(point.adduct_family.as_str()),
             max_samples: 5000,
         });

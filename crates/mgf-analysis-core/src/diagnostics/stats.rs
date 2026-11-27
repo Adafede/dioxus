@@ -65,8 +65,6 @@ impl RecalibrationStats {
         self.total_count += 1;
         self.stream_ppm_before.push(error_ppm_before);
         self.stream_ppm_after.push(error_ppm_after);
-        self.stream_da_before.push(error_da_before);
-        self.stream_da_after.push(error_da_after);
 
         if self.sample_count < max_samples {
             self.error_ppm_before.push(error_ppm_before);
@@ -84,46 +82,28 @@ impl RecalibrationStats {
             }
         }
         if let Some(family) = adduct_family {
-            self.record_adduct_errors(family, error_ppm_before, error_ppm_after);
+            self.record_adduct_error(family, error_ppm_before);
         }
     }
 
-    /// Pushes a complete four-stage measurement with aligned precursor `m/z` values.
+    /// Pushes a complete measurement paired with its MS1 reference baseline.
     pub(crate) fn push_measurement(&mut self, measurement: RecalibrationMeasurement<'_>) {
         self.total_count += 1;
-        self.stream_ppm_ms1.push(measurement.error_ppm_ms1);
-        self.stream_delta_ppm.push(measurement.delta_ppm_ms2_ms1);
         self.stream_ppm_before.push(measurement.error_ppm_before);
         self.stream_ppm_after.push(measurement.error_ppm_after);
-        self.stream_da_ms1.push(measurement.error_da_ms1);
-        self.stream_delta_da.push(measurement.delta_da_ms2_ms1);
-        self.stream_da_before.push(measurement.error_da_before);
-        self.stream_da_after.push(measurement.error_da_after);
 
         if self.sample_count < measurement.max_samples {
             self.error_ppm_ms1.push(measurement.error_ppm_ms1);
-            self.delta_ppm_ms2_ms1.push(measurement.delta_ppm_ms2_ms1);
             self.error_ppm_before.push(measurement.error_ppm_before);
             self.error_ppm_after.push(measurement.error_ppm_after);
             self.error_da_ms1.push(measurement.error_da_ms1);
-            self.delta_da_ms2_ms1.push(measurement.delta_da_ms2_ms1);
             self.error_da_before.push(measurement.error_da_before);
             self.error_da_after.push(measurement.error_da_after);
-            self.precursor_ms1_values.push(measurement.precursor_ms1);
-            self.precursor_ms2_before
-                .push(measurement.precursor_ms2_before);
-            self.precursor_ms2_after
-                .push(measurement.precursor_ms2_after);
             self.sample_count += 1;
         } else {
             let idx = reservoir_index(self.total_count);
             if idx < measurement.max_samples {
                 write_reservoir_slot(&mut self.error_ppm_ms1, idx, measurement.error_ppm_ms1);
-                write_reservoir_slot(
-                    &mut self.delta_ppm_ms2_ms1,
-                    idx,
-                    measurement.delta_ppm_ms2_ms1,
-                );
                 write_reservoir_slot(
                     &mut self.error_ppm_before,
                     idx,
@@ -131,60 +111,24 @@ impl RecalibrationStats {
                 );
                 write_reservoir_slot(&mut self.error_ppm_after, idx, measurement.error_ppm_after);
                 write_reservoir_slot(&mut self.error_da_ms1, idx, measurement.error_da_ms1);
-                write_reservoir_slot(
-                    &mut self.delta_da_ms2_ms1,
-                    idx,
-                    measurement.delta_da_ms2_ms1,
-                );
                 write_reservoir_slot(&mut self.error_da_before, idx, measurement.error_da_before);
                 write_reservoir_slot(&mut self.error_da_after, idx, measurement.error_da_after);
-                write_reservoir_slot(
-                    &mut self.precursor_ms1_values,
-                    idx,
-                    measurement.precursor_ms1,
-                );
-                write_reservoir_slot(
-                    &mut self.precursor_ms2_before,
-                    idx,
-                    measurement.precursor_ms2_before,
-                );
-                write_reservoir_slot(
-                    &mut self.precursor_ms2_after,
-                    idx,
-                    measurement.precursor_ms2_after,
-                );
             }
         }
         if let Some(family) = measurement.adduct_family {
-            self.record_adduct_errors(
-                family,
-                measurement.error_ppm_before,
-                measurement.error_ppm_after,
-            );
+            self.record_adduct_error(family, measurement.error_ppm_before);
         }
     }
 
-    fn record_adduct_errors(&mut self, family: &str, err_before: f64, err_after: f64) {
+    fn record_adduct_error(&mut self, family: &str, err_before: f64) {
         self.error_by_adduct_before
             .entry(family.to_string())
             .or_default()
             .push(err_before);
-        self.error_by_adduct_after
-            .entry(family.to_string())
-            .or_default()
-            .push(err_after);
     }
 
     /// Finalizes stream-wide summary statistics (mean, MAE, RMS, max).
     pub fn compute_statistics(&mut self) {
-        (self.mean_error_ppm_ms1, self.rms_error_ppm_ms1, _, _) =
-            self.stream_ppm_ms1.finish(&self.error_ppm_ms1);
-        (
-            self.mean_delta_ppm_ms2_ms1,
-            self.rms_delta_ppm_ms2_ms1,
-            _,
-            _,
-        ) = self.stream_delta_ppm.finish(&self.delta_ppm_ms2_ms1);
         (
             self.mean_error_ppm_before,
             self.rms_error_ppm_before,
@@ -197,23 +141,6 @@ impl RecalibrationStats {
             self.mae_error_ppm_after,
             self.max_abs_error_ppm_after,
         ) = self.stream_ppm_after.finish(&self.error_ppm_after);
-
-        (self.mean_error_da_ms1, self.rms_error_da_ms1, _, _) =
-            self.stream_da_ms1.finish(&self.error_da_ms1);
-        (self.mean_delta_da_ms2_ms1, self.rms_delta_da_ms2_ms1, _, _) =
-            self.stream_delta_da.finish(&self.delta_da_ms2_ms1);
-        (
-            self.mean_error_da_before,
-            self.rms_error_da_before,
-            self.mae_error_da_before,
-            _,
-        ) = self.stream_da_before.finish(&self.error_da_before);
-        (
-            self.mean_error_da_after,
-            self.rms_error_da_after,
-            self.mae_error_da_after,
-            _,
-        ) = self.stream_da_after.finish(&self.error_da_after);
     }
 
     /// MAE reduction in ppm after recalibration.

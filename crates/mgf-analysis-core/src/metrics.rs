@@ -178,7 +178,7 @@ pub struct PlotPoint {
     pub expected_mass: Option<f64>,
 }
 
-/// Single observation recorded into [`PrecursorStats`](stats::PrecursorStats).
+/// Single observation folded into [`PrecursorStats`](stats::PrecursorStats) accumulators and reservoirs.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ErrorMeasurement<'a> {
     /// Absolute mass error (Da).
