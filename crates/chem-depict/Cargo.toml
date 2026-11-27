@@ -12,7 +12,7 @@ categories = ["science", "visualization"]
 publish = false
 
 [dependencies]
-chematic = { workspace = true, features = ["chem", "depict", "smiles"] }
+chematic = { workspace = true, features = ["depict", "smiles"] }
 thiserror = { workspace = true }
 
 [lints]

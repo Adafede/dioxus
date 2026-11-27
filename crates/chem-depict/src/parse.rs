@@ -13,7 +13,7 @@ use crate::error::ChemParseError;
 /// Maximum accepted SMILES byte length before invoking `chematic::smiles::parse`.
 pub(crate) const MAX_SMILES_LEN: usize = 16_384;
 
-pub(crate) fn panic_payload_message(payload: &(dyn std::any::Any + Send)) -> String {
+fn panic_payload_message(payload: &(dyn std::any::Any + Send)) -> String {
     payload
         .downcast_ref::<&str>()
         .map(|msg| (*msg).to_string())

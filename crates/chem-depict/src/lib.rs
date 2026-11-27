@@ -4,9 +4,9 @@
 //! Size-guarded `chematic` SMILES parsing and local 2D SVG depiction.
 //!
 //! Enforces SMILES byte-length (`16_384`) and atom-count (`512`) bounds before
-//! calling `chematic::smiles` or `chematic::depict`. On unwind targets,
-//! `std::panic::catch_unwind` recovers from internal parser or layout panics;
-//! `wasm32-unknown-unknown` builds (`panic = "abort"`) rely on those pre-guards.
+//! calling `chematic::smiles` or `chematic::depict`. When built with `panic = "unwind"`
+//! (host targets and `[profile.wasm-release]`), `std::panic::catch_unwind` recovers from
+//! internal parser or layout panics; `panic = "abort"` builds rely on those pre-guards.
 //!
 //! # Example
 //!

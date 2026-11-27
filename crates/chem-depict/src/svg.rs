@@ -11,7 +11,7 @@ use chematic::depict::{depict_svg, depict_svg_highlighted};
 
 use crate::parse::parse_smiles_safe;
 
-const MAX_DEPICT_ATOMS: usize = 512;
+pub(crate) const MAX_DEPICT_ATOMS: usize = 512;
 
 /// Standard fallback SVG rendered when depiction fails (`220x60`).
 #[must_use]
@@ -38,15 +38,23 @@ fn validate_svg_or(
         .unwrap_or_else(fallback)
 }
 
+fn render_molecule_guarded(
+    molecule: &Molecule,
+    fallback: fn() -> String,
+    render: impl FnOnce(&Molecule) -> String,
+) -> String {
+    if molecule.atom_count() == 0 || molecule.atom_count() > MAX_DEPICT_ATOMS {
+        return fallback();
+    }
+    let rendered = catch_unwind(AssertUnwindSafe(|| render(molecule)));
+    validate_svg_or(rendered, fallback)
+}
+
 /// Renders an already-parsed [`Molecule`] into a compact inline SVG, falling back
 /// to [`empty_compact_svg`] on empty/oversized graphs, layout panic, or invalid output.
 #[must_use]
 pub fn render_molecule_svg_compact(molecule: &Molecule) -> String {
-    if molecule.atom_count() == 0 || molecule.atom_count() > MAX_DEPICT_ATOMS {
-        return empty_compact_svg();
-    }
-    let rendered = catch_unwind(AssertUnwindSafe(|| depict_svg(molecule)));
-    validate_svg_or(rendered, empty_compact_svg)
+    render_molecule_guarded(molecule, empty_compact_svg, depict_svg)
 }
 
 /// Parses `smiles` and renders it to an inline SVG, falling back to `empty_svg`.
@@ -71,12 +79,9 @@ pub fn render_smiles_svg_highlighted(smiles: &str, highlight_atoms: &[usize]) ->
     let Ok(mol) = parse_smiles_safe(smiles) else {
         return empty_svg();
     };
-    if mol.atom_count() == 0 || mol.atom_count() > MAX_DEPICT_ATOMS {
-        return empty_svg();
-    }
-    let rendered = catch_unwind(AssertUnwindSafe(|| {
+    render_molecule_guarded(&mol, empty_svg, |mol| {
         if highlight_atoms.is_empty() {
-            return depict_svg(&mol);
+            return depict_svg(mol);
         }
         let atoms: HashSet<AtomIdx> = highlight_atoms
             .iter()
@@ -87,7 +92,6 @@ pub fn render_smiles_svg_highlighted(smiles: &str, highlight_atoms: &[usize]) ->
             .filter(|(_, b)| atoms.contains(&b.atom1) && atoms.contains(&b.atom2))
             .map(|(idx, _)| idx)
             .collect();
-        depict_svg_highlighted(&mol, &atoms, &bonds)
-    }));
-    validate_svg_or(rendered, empty_svg)
+        depict_svg_highlighted(mol, &atoms, &bonds)
+    })
 }

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::svg::empty_svg;
+use crate::parse::MAX_SMILES_LEN;
+use crate::svg::{MAX_DEPICT_ATOMS, empty_svg};
 use crate::{
     ChemParseError, empty_compact_svg, parse_smiles_safe, render_molecule_svg_compact,
     render_smiles_svg, render_smiles_svg_compact, render_smiles_svg_highlighted,
@@ -90,14 +91,14 @@ fn guards_reject_oversized_and_empty_inputs_and_check_svg_closing_tag() {
     assert_eq!(render_molecule_svg_compact(&empty_mol), empty_compact_svg());
     assert!(empty_compact_svg().contains("viewBox=\"0 0 80 24\""));
 
-    let huge_smiles = "C".repeat(16_385);
+    let huge_smiles = "C".repeat(MAX_SMILES_LEN + 1);
     assert!(matches!(
         parse_smiles_safe(&huge_smiles),
         Err(ChemParseError::InvalidSmiles { .. })
     ));
     assert_eq!(render_smiles_svg(&huge_smiles), empty_svg());
 
-    let over_atoms = "C".repeat(513);
+    let over_atoms = "C".repeat(MAX_DEPICT_ATOMS + 1);
     assert_eq!(render_smiles_svg(&over_atoms), empty_svg());
     assert_eq!(render_smiles_svg_compact(&over_atoms), empty_compact_svg());
     assert!(render_smiles_svg("CCO").trim().ends_with("</svg>"));
