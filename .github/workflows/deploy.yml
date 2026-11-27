@@ -76,32 +76,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false, fetch-depth: 1 }
 
-      # rustup is preinstalled on the runner, and it reads `rust-toolchain.toml`
-      # from the working directory on first use -- including `profile`,
-      # `components` and `targets`, verified by deleting a pinned toolchain and
-      # running `rustc` in a scratch directory. So the one file that names the
-      # compiler is the only file that names it, and this step is what turns a
-      # missing toolchain into a named failure rather than a surprise later in
-      # the job.
-      #
-      # It has to come before the cache step, which shells out to `rustc -vV` to
-      # key the cache: with no toolchain installed yet, that is the invocation
-      # that triggers the install, so the key would be derived from it anyway --
-      # but a named step that says so beats relying on a side effect.
-      - name: Install the pinned toolchain
-        run: rustup show active-toolchain
-
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - uses: $/.github/actions/setup-dx
         with:
-          # One key shared by every matrix leg, so the first leg to run pays for
-          # compiling the dependency graph and the rest reuse it.
           shared-key: pages
-
-      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
-        with:
-          tool: |
-            cargo-make@0.37.24
-            dioxus-cli@0.7.10
 
       - name: Build the app
         env:

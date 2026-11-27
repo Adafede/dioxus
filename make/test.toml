@@ -43,6 +43,22 @@ cwd = "${REPO_ROOT}"
 description = "Run the doctests, including the examples in the module docs."
 script = "cargo test --workspace --doc --locked --quiet"
 
+[tasks."bench-smoke"]
+cwd = "${REPO_ROOT}"
+description = "Run release-mode benchmark smoke harnesses across workspace crates and standalone CLI."
+script = """
+cargo run --release -p workspace-gates --example bench_smoke --locked
+cargo run --release --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --example bench_smoke --locked
+"""
+
+[tasks."test-evoliposuction"]
+cwd = "${REPO_ROOT}"
+description = "Clippy and test the excluded standalone smarts-evoliposuction CLI crate (--locked)."
+script = """
+cargo clippy --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --all-targets --locked -- -D warnings
+cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --locked
+"""
+
 # The `#[ignore]`d network tests.
 #
 # There are none today: the SPARQL layer is tested through `lotus-search`'s

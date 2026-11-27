@@ -46,44 +46,13 @@ dx build --profile wasm-release --package "$APP" ${BASE_PATH:+--base-path "$BASE
 [tasks."web-build-all"]
 cwd = "${REPO_ROOT}"
 description = "Build every wasm app for production."
-dependencies = [
-  "web-build-cxsmiles-yoga",
-  "web-build-index",
-  "web-build-json-count-rs",
-  "web-build-lipid-selecto-rs",
-  "web-build-mgf",
-  "web-build-smellfish-rs",
-]
-
-[tasks."web-build-cxsmiles-yoga"]
-cwd = "${REPO_ROOT}"
-description = "Build cxsmiles-yoga for production."
-script = "dx build --profile wasm-release --package cxsmiles-yoga"
-
-[tasks."web-build-index"]
-cwd = "${REPO_ROOT}"
-description = "Build index for production."
-script = "dx build --profile wasm-release --package index"
-
-[tasks."web-build-json-count-rs"]
-cwd = "${REPO_ROOT}"
-description = "Build json-count-rs for production."
-script = "dx build --profile wasm-release --package json-count-rs"
-
-[tasks."web-build-lipid-selecto-rs"]
-cwd = "${REPO_ROOT}"
-description = "Build lipid-selecto-rs for production."
-script = "dx build --profile wasm-release --package lipid-selecto-rs"
-
-[tasks."web-build-mgf"]
-cwd = "${REPO_ROOT}"
-description = "Build mgf-precursor-erro-rs for production."
-script = "dx build --profile wasm-release --package mgf-precursor-erro-rs"
-
-[tasks."web-build-smellfish-rs"]
-cwd = "${REPO_ROOT}"
-description = "Build smellfish-rs for production."
-script = "dx build --profile wasm-release --package smellfish-rs"
+script = """
+#!/usr/bin/env bash
+set -euo pipefail
+for pkg in cxsmiles-yoga index json-count-rs lipid-selecto-rs mgf-precursor-erro-rs smellfish-rs; do
+  dx build --profile wasm-release --package "$pkg"
+done
+"""
 
 # The size of what each app actually ships.
 #

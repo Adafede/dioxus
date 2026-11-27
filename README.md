@@ -131,27 +131,29 @@ Run `./mk --list` to list the standard `./mk` gates and `local:*` tasks, or
 
 Pure domain crates and UI/upload adapters run unit, integration, and doc tests on
 the host (`./mk test`). Because host builds skip `#[cfg(target_arch = "wasm32")]`
-code, always run `./mk local:lint-wasm` and `./mk wasm` (mapped to `check-wasm`)
-before pushing WASM changes.
+code, always run `./mk wasm` (mapped to `lint-wasm`) before pushing WASM changes.
 
 The offline SMARTS generator CLI at
 `apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction` is intentionally
 excluded from the workspace so native-only bioinformatics dependencies never
-enter WASM builds. Build and test it separately with `--locked`:
+enter WASM builds. Run `./mk local:test-evoliposuction` (or invoke `--locked`
+directly):
 
 ```bash
 cargo clippy --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --all-targets --locked -- -D warnings
 cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --locked
 ```
 
+Run `./mk local:bench-smoke` to run the release benchmark smoke harnesses across
+both the workspace crates and `smarts-evoliposuction`.
+
 ## Adding a new app
 
 1. Start from an existing app directory such as `apps/index`.
 2. Set the package `name` in `Cargo.toml` and `title` in `Dioxus.toml`.
 3. Add `"apps/<new-app>"` to `[workspace].members` in the root `Cargo.toml`.
-4. Wire the package into `make/build.toml` (`check-wasm`), `make/lint.toml`
-   (`lint-wasm`), `make/web.toml` (`web-build-all`, `web-dev`, `web-build`), and
-   `.github/workflows/deploy.yml`.
+4. Wire the package into `make/lint.toml` (`lint-wasm`), `make/web.toml`
+   (`web-build-all`, `web-dev`, `web-build`), and `.github/workflows/deploy.yml`.
 5. Ensure the app defines `DocumentHead`, `skip_link`, `id: "main-content"`,
    `crates/ui` components, and EDAM annotations, which are checked by
    `crates/workspace-gates/tests/gate_consistency/`.
@@ -161,12 +163,13 @@ cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction
 
 Workflows under `.github/workflows/` run through `./mk`:
 
-- **CI (`ci.yml`)**: runs `./mk ci` (formatting, TOML check/lint, spelling, SPDX
-  headers, shellcheck, commit format, ratchet check, host
+- **CI (`ci.yml`)**: runs `./mk ci-core` (formatting, TOML check/lint, spelling,
+  SPDX headers, shellcheck, commit format, ratchet check, host
   check/clippy/tests/doctests/doc, dependency audit/deny/machete, `msrv`,
-  `echoes`, `refquiem`, `semver`, `wasm`, `mutants-diff`, `local:readme-check`,
-  `local:lint-wasm`, `local:feature-powerset`) and links all six WASM bundles
-  via `./mk web-build-all` + `./mk web-size`.
+  `echoes`, `refquiem`, `semver`, unified `wasm` (`lint-wasm`),
+  `local:readme-check`, `local:feature-powerset`), `mutants-diff` shards, links
+  all six WASM bundles via `./mk web-build-all` + `./mk web-size`, and checks
+  the standalone CLI via `./mk local:test-evoliposuction`.
 - **Nightly (`nightly.yml`)**: scheduled daily `./mk ci-nightly` (`mutants`,
   `coverage`, `powerset`, `miri`, `outdated`).
 - **Deploy (`deploy.yml`)**: builds all six apps with `BASE_PATH` and deploys to

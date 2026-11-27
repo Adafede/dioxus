@@ -16,156 +16,17 @@
 # command in the gate. That is how a test calling a method that does not exist
 # survived here -- the host build never sees those modules at all.
 #
-# Not `--workspace --target wasm32`: `upload`'s `download.rs` has a host-only
-# path, so a workspace-wide wasm lint cannot pass.
+# Not `--workspace --target wasm32`: `workspace-gates` is a host-only crate.
 [tasks."lint-wasm"]
 cwd = "${REPO_ROOT}"
-description = "Clippy each wasm crate for wasm32-unknown-unknown, warnings denied."
-dependencies = [
-  "lint-wasm-chem-depict",
-  "lint-wasm-cxsmiles-core",
-  "lint-wasm-cxsmiles-yoga",
-  "lint-wasm-index",
-  "lint-wasm-json-count-core",
-  "lint-wasm-json-count-rs",
-  "lint-wasm-lipid-core",
-  "lint-wasm-lipid-selecto-rs",
-  "lint-wasm-mgf",
-  "lint-wasm-mgf-analysis-core",
-  "lint-wasm-mgf-crate",
-  "lint-wasm-smellfish-core",
-  "lint-wasm-smellfish-rs",
-  "lint-wasm-stream-io",
-  "lint-wasm-ui",
-  "lint-wasm-upload",
-]
-
-[tasks."lint-wasm-cxsmiles-yoga"]
-cwd = "${REPO_ROOT}"
-description = "Clippy cxsmiles-yoga for wasm32, warnings denied."
+description = "Clippy all 16 wasm crates and apps for wasm32-unknown-unknown, warnings denied."
 script = """
-cargo clippy -p cxsmiles-yoga --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-index"]
-cwd = "${REPO_ROOT}"
-description = "Clippy index for wasm32, warnings denied."
-script = """
-cargo clippy -p index --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-json-count-rs"]
-cwd = "${REPO_ROOT}"
-description = "Clippy json-count-rs for wasm32, warnings denied."
-script = """
-cargo clippy -p json-count-rs --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-lipid-selecto-rs"]
-cwd = "${REPO_ROOT}"
-description = "Clippy lipid-selecto-rs for wasm32, warnings denied."
-script = """
-cargo clippy -p lipid-selecto-rs --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-mgf"]
-cwd = "${REPO_ROOT}"
-description = "Clippy mgf-precursor-erro-rs for wasm32, warnings denied."
-script = """
-cargo clippy -p mgf-precursor-erro-rs --target wasm32-unknown-unknown \\
-  --all-targets --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-smellfish-rs"]
-cwd = "${REPO_ROOT}"
-description = "Clippy smellfish-rs for wasm32, warnings denied."
-script = """
-cargo clippy -p smellfish-rs --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-upload"]
-cwd = "${REPO_ROOT}"
-description = "Clippy the wasm-only upload crate for wasm32, tests included."
-script = """
-cargo clippy -p upload --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-ui"]
-cwd = "${REPO_ROOT}"
-description = "Clippy ui for wasm32, tests included."
-script = """
-cargo clippy -p ui --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-stream-io"]
-cwd = "${REPO_ROOT}"
-description = "Clippy stream-io for wasm32, tests included."
-script = """
-cargo clippy -p stream-io --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-chem-depict"]
-cwd = "${REPO_ROOT}"
-description = "Clippy chem-depict for wasm32, tests included."
-script = """
-cargo clippy -p chem-depict --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-lipid-core"]
-cwd = "${REPO_ROOT}"
-description = "Clippy lipid-core for wasm32, tests included."
-script = """
-cargo clippy -p lipid-core --target wasm32-unknown-unknown --all-targets \
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-mgf-crate"]
-cwd = "${REPO_ROOT}"
-description = "Clippy mgf for wasm32, tests included."
-script = """
-cargo clippy -p mgf --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-cxsmiles-core"]
-cwd = "${REPO_ROOT}"
-description = "Clippy cxsmiles-core for wasm32, tests included."
-script = """
-cargo clippy -p cxsmiles-core --target wasm32-unknown-unknown --all-targets \
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-json-count-core"]
-cwd = "${REPO_ROOT}"
-description = "Clippy json-count-core for wasm32, tests included."
-script = """
-cargo clippy -p json-count-core --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-mgf-analysis-core"]
-cwd = "${REPO_ROOT}"
-description = "Clippy mgf-analysis-core for wasm32, tests included."
-script = """
-cargo clippy -p mgf-analysis-core --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
-"""
-
-[tasks."lint-wasm-smellfish-core"]
-cwd = "${REPO_ROOT}"
-description = "Clippy smellfish-core for wasm32, tests included."
-script = """
-cargo clippy -p smellfish-core --target wasm32-unknown-unknown --all-targets \\
-  --locked -- -D warnings
+cargo clippy --target wasm32-unknown-unknown --all-targets --locked \
+  -p chem-depict -p cxsmiles-core -p cxsmiles-yoga -p index \
+  -p json-count-core -p json-count-rs -p lipid-core -p lipid-selecto-rs \
+  -p mgf -p mgf-analysis-core -p mgf-precursor-erro-rs \
+  -p smellfish-core -p smellfish-rs -p stream-io -p ui -p upload \
+  -- -D warnings
 """
 
 # The unsafe audit. `unsafe_code = "forbid"` in the workspace lints covers this

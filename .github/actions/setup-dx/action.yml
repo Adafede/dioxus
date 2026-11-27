@@ -1,0 +1,35 @@
+name: Setup Dioxus toolchain and cache
+description: Pinned Rust toolchain, Cargo cache, cargo-make, and optional dioxus-cli.
+
+inputs:
+  shared-key:
+    description: Swatinem/rust-cache shared key
+    required: true
+  install-dx:
+    description: Whether to install dioxus-cli alongside cargo-make
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Install the pinned toolchain
+      shell: bash
+      run: rustup show active-toolchain
+
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      with:
+        shared-key: ${{ inputs.shared-key }}
+
+    - name: Install cargo-make and dioxus-cli
+      if: inputs.install-dx == 'true'
+      uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+      with:
+        tool: |
+          cargo-make@0.37.24
+          dioxus-cli@0.7.10
+
+    - name: Install cargo-make
+      if: inputs.install-dx != 'true'
+      uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+      with:
+        tool: cargo-make@0.37.24

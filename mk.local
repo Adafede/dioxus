@@ -21,10 +21,10 @@ LOCAL_SETUP=(install-panache)
 
 # Standard gates this repository runs its own way.
 LOCAL_OVERRIDES=(
-  wasm=check-wasm  # each app for wasm32, one by one with its own features
+  wasm=lint-wasm  # clippy + check all 16 wasm32 crates and apps in one pass
 )
 # Repository gates added to ./mk ci.
-LOCAL_CI_GATES=(license-headers check readme-check lint-wasm feature-powerset)
+LOCAL_CI_GATES=(license-headers readme-check feature-powerset)
 
 # Ratchet: may only go up (./mk ratchet). Set with ./mk coverage-baseline.
 COVERAGE_FAIL_UNDER_LINES="73"

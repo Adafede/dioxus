@@ -76,9 +76,11 @@ while remaining `wasm32-unknown-unknown` compatible.
   `ChunkSource` or `lotus_search::Http` with no blocking I/O; browser adapters
   yield across chunk boundaries, prevent concurrent import races, and memoize
   expensive SVG/sort derivations.
-- **Dual-target verification**: `./mk wasm` and `./mk local:lint-wasm` verify
-  `wasm32-unknown-unknown` builds across all Layer 0 crates, `ui`, `upload`, and all
-  six apps, while `./mk test` runs native unit, integration, and doc tests.
+- **Dual-target verification**: `./mk wasm` (mapped to `lint-wasm`) verifies
+  `wasm32-unknown-unknown` compilation and clippy across all Layer 0 crates,
+  `ui`, `upload`, and all six apps in one pass, while `./mk test` runs native
+  unit, integration, and doc tests (`./mk local:test-evoliposuction` covers the
+  standalone CLI).
 - **WASM release profile & `chem-depict` guards**: `[profile.wasm-release]` keeps
   `strip = "debuginfo"` to preserve `__wasm_bindgen_unstable` custom sections on
   LLVM 23+. On `wasm32-unknown-unknown` (which compiles with `panic = "abort"`),

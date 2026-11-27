@@ -63,12 +63,12 @@ Run `./mk --list` for the available standard gates and `local:*` tasks, or
   | `./mk tools`, `./mk actions`, `./mk shell`                                             | pinned tool versions match `mk.versions`, workflow security (`zizmor`), shell scripts (`shellcheck`)                                                                            |
   | `commits`, `ratchet`                                                                   | Conventional Commits subjects and non-decreasing coverage/debt ratchets (`mk.local`, `Cargo.toml`)                                                                              |
   | `fmt`, `tombi`, `typos`                                                                | `rustfmt`, TOML formatting & schema (`tombi`), and spelling (`.typos.toml`)                                                                                                     |
-  | `lint`, `lints-inherit`, `wasm`, `local:lint-wasm`                                     | host `--all-targets --all-features` clippy (`-D warnings`), `[lints] workspace = true`, and per-app `wasm32-unknown-unknown` check & clippy                                     |
+  | `lint`, `lints-inherit`, `wasm` (`lint-wasm`)                                          | host `--all-targets --all-features` clippy (`-D warnings`), `[lints] workspace = true`, and unified `wasm32-unknown-unknown` clippy across all 16 crates/apps             |
   | `test`                                                                                 | `cargo nextest run --workspace --locked` (host unit & integration tests, including `crates/workspace-gates/tests/gate_consistency/`) followed by `cargo test --workspace --doc --locked` |
   | `doc`                                                                                  | rustdoc across all workspace crates with `-D warnings`                                                                                                                          |
   | `deny`, `audit`, `machete`, `msrv`, `echoes`, `refquiem`, `semver`                     | licenses/bans (`deny.toml`), advisories, unused deps, declared MSRV check, duplicate code/doctest detection, removed-name check, and semver check                               |
   | `mutants-diff`                                                                         | mutation testing (`cargo-mutants`) on `.rs` diffs against the base branch                                                                                                       |
-  | `local:license-headers`, `local:check`, `local:readme-check`, `local:feature-powerset` | SPDX headers, JSON validation + unsafe audit, generated README sync (`./mk local:readme-write`), and feature powerset check (`cargo-hack`)                                      |
+  | `local:license-headers`, `local:readme-check`, `local:feature-powerset`                | SPDX headers, generated README sync (`./mk local:readme-write`), and feature powerset check (`cargo-hack`)                                                                      |
 
 `./mk ci-nightly` runs the slower scheduled suite (`mutants`, `coverage`,
 `powerset`, `miri`, `outdated`). `.cargo/mutants.toml` scopes heavy UI/SVG/WASM
@@ -82,12 +82,14 @@ links, and `docs/DEBT.md` ratchets).
 
 ## Required status checks
 
-`.github/workflows/ci.yml` defines two blocking CI jobs:
+`.github/workflows/ci.yml` defines the blocking CI jobs:
 
-  | Job                | Command                                | What it protects                                                                          |
-  | ---                | ---                                    | ---                                                                                       |
-  | `./mk ci`          | `./mk ci`                              | Full lint, test, doctest, WASM check/lint, hygiene, MSRV, and supply-chain gate           |
-  | `WASM bundle size` | `./mk web-build-all` + `./mk web-size` | Links all six production WASM bundles (`--profile wasm-release`) and reports bundle sizes |
+  | Job                           | Command                                | What it protects                                                                          |
+  | ---                           | ---                                    | ---                                                                                       |
+  | `./mk ci-core`                | `./mk ci-core`                         | Lint, test, doctest, unified WASM check/clippy, hygiene, MSRV, and supply-chain gate      |
+  | `mutants-diff`                | `./mk mutants-diff`                    | Sharded mutation testing across workspace `.rs` changes                                   |
+  | `WASM bundle size`            | `./mk web-build-all` + `./mk web-size` | Links all six production WASM bundles (`--profile wasm-release`) and reports bundle sizes |
+  | `./mk local:test-evoliposuction` | `./mk local:test-evoliposuction`    | Clippy and unit/CLI tests for the standalone `smarts-evoliposuction` crate                |
 
 ## Standalone CLI crate
 
@@ -109,6 +111,8 @@ Run manually when needed (not part of every PR gate unless listed above):
   `README.tpl` + `//!` docs and formats them with `panache`.
 - `./mk local:mutants-ui` / `./mk local:mutants-mgf`: opt-in mutation sweeps
   outside `MUTANTS_PACKAGES`.
+- `./mk local:bench-smoke`: runs release benchmark smoke harnesses across
+  workspace crates and `smarts-evoliposuction`.
 - `./mk outdated` / `./mk udeps`: advisory dependency freshness / nightly
   unused-dependency checks.
 - `./mk unsafe` / `make/scripts/unsafe-audit.sh`: advisory transitive `unsafe`
@@ -145,7 +149,7 @@ None of the following is configured yet:
 ## Pull request checklist
 
 - [ ] Tests added or updated for behavior changes
-- [ ] `./mk ci` and `./mk local:lint-wasm` pass locally
+- [ ] `./mk ci` passes locally
 - [ ] Standalone `smarts-evoliposuction` `--locked` tests/clippy run if touched
 - [ ] Any `//!` / `README.tpl` changes regenerated with
   `./mk local:readme-write`
