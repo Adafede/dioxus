@@ -12,7 +12,7 @@ categories = ["science"]
 publish = false
 
 [dependencies]
-chematic = { workspace = true, features = ["chem", "fp", "smarts", "smiles"] }
+chematic = { workspace = true, features = ["fp", "smarts", "smiles"] }
 rustc-hash = { workspace = true }
 thiserror = { workspace = true }
 

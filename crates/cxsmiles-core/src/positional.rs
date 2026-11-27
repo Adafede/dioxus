@@ -3,6 +3,8 @@
 
 //! Positional-isomer CX construction (`m:` blocks).
 
+use std::fmt::Write as _;
+
 use chematic::core::{AtomIdx, BondOrder, Molecule};
 use chematic::smarts::{QueryMolecule, find_matches, find_mcs};
 use chematic::smiles::{canonical_smiles, parse};
@@ -10,13 +12,14 @@ use chematic::smiles::{canonical_smiles, parse};
 use crate::aromatic::expand_aromatic_equiv;
 use crate::error::CxError;
 use crate::fragment::{
-    FloatingDef, build_base_smiles, extract_subgraph, fragment_smiles, matches_multiset,
+    FloatingDef, build_base_smiles_with_frags, extract_subgraph, fragment_smiles, matches_multiset,
     reorder_attachment_first, reverse_match_table,
 };
 use crate::graph::{
-    atom_usize, best_match, components, matched_mask, multiset, subgraph, unmatched_atoms,
+    atom_usize, best_match, components, matched_mask, multiset, subgraph, u32_to_usize,
+    unmatched_atoms, usize_to_u32,
 };
-use crate::roundtrip::{enumerate, evaluate_construct};
+use crate::roundtrip::{enumerate, evaluate_construct_canons};
 use crate::types::{AttachmentTarget, ConstructKind, CxResult, FloatingPart};
 
 struct ExtractedScaffold {
@@ -26,8 +29,18 @@ struct ExtractedScaffold {
     keep: Vec<bool>,
 }
 
+#[cfg(test)]
 pub(crate) fn build_positional_with_options(
     group: &[Molecule],
+    aromatic: bool,
+) -> Result<CxResult, CxError> {
+    let group_canons: Vec<String> = group.iter().map(canonical_smiles).collect();
+    build_positional_with_canons(group, &group_canons, aromatic)
+}
+
+pub(crate) fn build_positional_with_canons(
+    group: &[Molecule],
+    group_canons: &[String],
     aromatic: bool,
 ) -> Result<CxResult, CxError> {
     let Some(rep) = group.first() else {
@@ -40,7 +53,6 @@ pub(crate) fn build_positional_with_options(
         .iter()
         .map(|fc| floating_defs(rep, fc, &sc.keep))
         .collect();
-    let defs: Vec<FloatingDef> = comp_defs.iter().flatten().cloned().collect();
     let comp_positions = collect_positions(
         &sc.floating_comps,
         rep,
@@ -49,12 +61,16 @@ pub(crate) fn build_positional_with_options(
         &sc.mol,
         aromatic,
     );
-    let targets = build_targets(&comp_defs, &comp_positions);
+    let targets = build_targets(&comp_defs, comp_positions);
+    let defs: Vec<FloatingDef> = comp_defs.into_iter().flatten().collect();
+    let frag_smiles: Vec<String> = defs.iter().map(fragment_smiles).collect();
     let (base_smiles, star_indices, attach_idx) =
-        build_base_smiles(&sc.smiles, &defs, sc.mol.atom_count());
+        build_base_smiles_with_frags(&sc.smiles, &defs, &frag_smiles, sc.mol.atom_count());
     let ext = format_m_extension(&targets, &star_indices, &attach_idx);
     let enumerated = enumerate(&sc.mol, &defs, &targets)?;
-    let (construct, coverage) = evaluate_construct(&enumerated, group, ConstructKind::Positional);
+    let (construct, coverage) =
+        evaluate_construct_canons(&enumerated, group_canons, ConstructKind::Positional);
+    let floating = build_floating_parts(&defs, frag_smiles, targets);
     Ok(CxResult {
         cx_smiles: if ext.is_empty() {
             base_smiles
@@ -63,7 +79,7 @@ pub(crate) fn build_positional_with_options(
         },
         construct,
         scaffold_smiles: sc.smiles,
-        floating: build_floating_parts(&defs, &targets),
+        floating,
         repeat_unit: None,
         coverage,
         enumerated,
@@ -75,10 +91,10 @@ fn extract_scaffold(rep: &Molecule, group: &[Molecule]) -> Result<ExtractedScaff
     let hit = best_match(&mcs, rep)?;
     let matched = matched_mask(&hit, rep);
     let comps = components(&unmatched_atoms(&matched), rep);
-    let (floating_comps, recovered) = split_floating_and_recovered(&comps, &matched, rep);
+    let (floating_comps, recovered) = split_floating_and_recovered(comps, &matched, rep);
     let mut keep = matched;
     for r in &recovered {
-        if let Some(slot) = keep.get_mut(usize::try_from(*r).unwrap_or(usize::MAX)) {
+        if let Some(slot) = keep.get_mut(u32_to_usize(*r)) {
             *slot = true;
         }
     }
@@ -116,11 +132,11 @@ fn collect_positions(
 
 fn build_targets(
     comp_defs: &[Vec<FloatingDef>],
-    comp_positions: &[Vec<usize>],
+    comp_positions: Vec<Vec<usize>>,
 ) -> Vec<AttachmentTarget> {
     let mut targets = Vec::with_capacity(comp_defs.iter().map(Vec::len).sum());
     for (cdefs, positions) in comp_defs.iter().zip(comp_positions) {
-        targets.push(AttachmentTarget::Variable(positions.clone()));
+        targets.push(AttachmentTarget::Variable(positions));
         if cdefs.len() != 1 {
             targets.push(AttachmentTarget::Fixed(targets.len() - 1));
         }
@@ -133,35 +149,45 @@ fn format_m_extension(
     star_indices: &[usize],
     attach_idx: &[usize],
 ) -> String {
-    targets
-        .iter()
-        .zip(star_indices)
-        .map(|(target, &star)| {
-            let pos = match target {
-                AttachmentTarget::Variable(p) => p
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>()
-                    .join("."),
-                AttachmentTarget::Fixed(other) => attach_idx
-                    .get(*other)
-                    .map_or_else(String::new, ToString::to_string),
-            };
-            format!("m:{star}:{pos}")
-        })
-        .collect::<Vec<_>>()
-        .join(",")
+    let mut out = String::new();
+    for (idx, (target, &star)) in targets.iter().zip(star_indices).enumerate() {
+        if idx > 0 {
+            out.push(',');
+        }
+        let _ = write!(out, "m:{star}:");
+        match target {
+            AttachmentTarget::Variable(positions) => {
+                for (pi, &pos) in positions.iter().enumerate() {
+                    if pi > 0 {
+                        out.push('.');
+                    }
+                    let _ = write!(out, "{pos}");
+                }
+            }
+            AttachmentTarget::Fixed(other) => {
+                if let Some(&attach) = attach_idx.get(*other) {
+                    let _ = write!(out, "{attach}");
+                }
+            }
+        }
+    }
+    out
 }
 
-fn build_floating_parts(defs: &[FloatingDef], targets: &[AttachmentTarget]) -> Vec<FloatingPart> {
+fn build_floating_parts(
+    defs: &[FloatingDef],
+    frag_smiles: Vec<String>,
+    targets: Vec<AttachmentTarget>,
+) -> Vec<FloatingPart> {
     defs.iter()
+        .zip(frag_smiles)
         .zip(targets)
-        .map(|(def, target)| FloatingPart {
+        .map(|((def, fragment_smiles), target)| FloatingPart {
             equiv: match target {
-                AttachmentTarget::Variable(p) => p.clone(),
+                AttachmentTarget::Variable(p) => p,
                 AttachmentTarget::Fixed(_) => Vec::new(),
             },
-            fragment_smiles: fragment_smiles(def),
+            fragment_smiles,
             split: def.split,
         })
         .collect()
@@ -202,12 +228,11 @@ pub(crate) fn floating_defs(rep: &Molecule, frag: &[u32], keep: &[bool]) -> Vec<
         .neighbors(AtomIdx(attach))
         .find(|(n, _)| rest.contains(&n.0))
         .map_or(BondOrder::Single, |(_, bi)| rep.bond(bi).order);
-    let (a1, _, _) = extract_subgraph(rep, std::slice::from_ref(&attach));
     let (a2, b2, att2) = extract_subgraph(rep, &rest);
     let (ra2, rb2, ratt2) = reorder_attachment_first(a2, b2, att2);
     vec![
         FloatingDef {
-            atoms: a1,
+            atoms: vec![rep.atom(AtomIdx(attach)).clone()],
             bonds: Vec::new(),
             attachment: 0,
             attach_order: scaffold_order,
@@ -223,6 +248,54 @@ pub(crate) fn floating_defs(rep: &Molecule, frag: &[u32], keep: &[bool]) -> Vec<
     ]
 }
 
+fn unmatched_from_rev(rev: &[Option<usize>]) -> Vec<u32> {
+    rev.iter()
+        .enumerate()
+        .filter(|(_, slot)| slot.is_none())
+        .map(|(i, _)| usize_to_u32(i))
+        .collect()
+}
+
+fn best_hit_positions(
+    hits: Vec<crate::graph::Match>,
+    mol: &Molecule,
+    target_multiset: Option<&[u8]>,
+    seen_pos: &[bool],
+    scratch: &mut Vec<u8>,
+) -> Option<Vec<usize>> {
+    let mut best_new: Option<Vec<usize>> = None;
+    for hit in hits {
+        let rev = reverse_match_table(&hit, mol);
+        let unf = unmatched_from_rev(&rev);
+        let mut candidate = Vec::new();
+        for mc in components(&unf, mol) {
+            if let Some(target) = target_multiset
+                && !matches_multiset(&mc, mol, target, scratch)
+            {
+                continue;
+            }
+            for &u in &mc {
+                for (nbr, _) in mol.neighbors(AtomIdx(u)) {
+                    if let Some(qi) = rev.get(atom_usize(nbr)).copied().flatten()
+                        && seen_pos.get(qi) == Some(&false)
+                        && !candidate.contains(&qi)
+                    {
+                        candidate.push(qi);
+                    }
+                }
+            }
+        }
+        candidate.sort_unstable();
+        if best_new
+            .as_ref()
+            .is_none_or(|prev| (candidate.len(), &candidate) < (prev.len(), prev))
+        {
+            best_new = Some(candidate);
+        }
+    }
+    best_new
+}
+
 /// Equivalent scaffold attachment positions for one floating component.
 pub(crate) fn equiv_positions(
     rep: &Molecule,
@@ -236,37 +309,13 @@ pub(crate) fn equiv_positions(
     let mut scratch = Vec::new();
     for mol in group {
         let hits = find_matches(scaffold_q, mol);
-        let mut best_new: Option<Vec<usize>> = None;
-        for hit in hits {
-            let rev = reverse_match_table(&hit, mol);
-            let unf = unmatched_atoms(&matched_mask(&hit, mol));
-            let mut candidate = Vec::new();
-            for mc in components(&unf, mol) {
-                if let Some(target) = &target_multiset
-                    && !matches_multiset(&mc, mol, target, &mut scratch)
-                {
-                    continue;
-                }
-                for &u in &mc {
-                    for (nbr, _) in mol.neighbors(AtomIdx(u)) {
-                        if let Some(qi) = rev.get(atom_usize(nbr)).copied().flatten()
-                            && seen_pos.get(qi) == Some(&false)
-                            && !candidate.contains(&qi)
-                        {
-                            candidate.push(qi);
-                        }
-                    }
-                }
-            }
-            candidate.sort_unstable();
-            let take = best_new
-                .as_ref()
-                .is_none_or(|prev| (candidate.len(), &candidate) < (prev.len(), prev));
-            if take {
-                best_new = Some(candidate);
-            }
-        }
-        if let Some(new_positions) = best_new {
+        if let Some(new_positions) = best_hit_positions(
+            hits,
+            mol,
+            target_multiset.as_deref(),
+            &seen_pos,
+            &mut scratch,
+        ) {
             for qi in new_positions {
                 if let Some(slot) = seen_pos.get_mut(qi)
                     && !*slot
@@ -285,17 +334,17 @@ pub(crate) fn equiv_positions(
 }
 
 pub(crate) fn split_floating_and_recovered(
-    comps: &[Vec<u32>],
+    comps: Vec<Vec<u32>>,
     matched: &[bool],
     mol: &Molecule,
 ) -> (Vec<Vec<u32>>, Vec<u32>) {
     let mut floating = Vec::new();
     let mut recovered = Vec::new();
     for comp in comps {
-        if boundary_edges(comp, matched, mol) == 1 {
-            floating.push(comp.clone());
+        if boundary_edges(&comp, matched, mol) == 1 {
+            floating.push(comp);
         } else {
-            recovered.extend_from_slice(comp);
+            recovered.extend_from_slice(&comp);
         }
     }
     (floating, recovered)
@@ -314,5 +363,5 @@ pub(crate) fn boundary_edges(comp: &[u32], matched: &[bool], mol: &Molecule) -> 
 }
 
 pub(crate) fn is_matched(matched: &[bool], a: u32) -> bool {
-    matched.get(usize::try_from(a).unwrap_or(usize::MAX)) == Some(&true)
+    matched.get(u32_to_usize(a)) == Some(&true)
 }

@@ -28,9 +28,13 @@ pub(crate) fn enumerate(
             AttachmentTarget::Fixed(_) => None,
         })
         .collect();
+    let mut rem_h = Vec::with_capacity(scaffold.atom_count());
+    let base_rem_h: Vec<u8> = (0..scaffold.atom_count())
+        .map(|i| scaffold.implicit_hydrogen_count(crate::graph::atom_idx(i)))
+        .collect();
     if ranges.is_empty() {
         return Ok(dedup_sort(
-            build_one(scaffold, defs, targets, &[])
+            build_one(scaffold, defs, targets, &[], &base_rem_h, &mut rem_h)
                 .into_iter()
                 .map(|m| canonical_smiles(&m))
                 .collect(),
@@ -48,7 +52,7 @@ pub(crate) fn enumerate(
                 });
             }
         }
-        if let Some(mol) = build_one(scaffold, defs, targets, &combo) {
+        if let Some(mol) = build_one(scaffold, defs, targets, &combo, &base_rem_h, &mut rem_h) {
             out.push(canonical_smiles(&mol));
         }
         if !next_combo(&mut combo, &ranges) {
@@ -124,11 +128,12 @@ fn build_one(
     defs: &[FloatingDef],
     targets: &[AttachmentTarget],
     combo: &[usize],
+    base_rem_h: &[u8],
+    rem_h: &mut Vec<u8>,
 ) -> Option<Molecule> {
     let mut b = MoleculeBuilder::new();
-    let mut rem_h: Vec<u8> = (0..scaffold.atom_count())
-        .map(|i| scaffold.implicit_hydrogen_count(crate::graph::atom_idx(i)))
-        .collect();
+    rem_h.clear();
+    rem_h.extend_from_slice(base_rem_h);
     let sc: Vec<AtomIdx> = scaffold
         .atoms()
         .map(|(_, atom)| b.add_atom(atom.clone()))
@@ -185,16 +190,10 @@ pub(crate) fn enumerate_repeating(
         });
     }
     let nonrepeat = scaffold.atom_count().saturating_sub(unit.atoms.len());
-    let expanded_repeat =
-        unit.max
-            .checked_mul(unit.atoms.len())
-            .ok_or(CxError::ExpansionOverflow {
-                min: unit.min,
-                max: unit.max,
-                unit_len: unit.atoms.len(),
-            })?;
-    let widest = nonrepeat
-        .checked_add(expanded_repeat)
+    let widest = unit
+        .max
+        .checked_mul(unit.atoms.len())
+        .and_then(|expanded| nonrepeat.checked_add(expanded))
         .ok_or(CxError::ExpansionOverflow {
             min: unit.min,
             max: unit.max,
@@ -215,37 +214,35 @@ pub(crate) fn enumerate_repeating(
     Ok(dedup_sort(out))
 }
 
-/// Evaluate sorted canonical round-trip coverage via `O(log M)` binary search.
+/// Evaluate sorted canonical round-trip coverage from precomputed canonical SMILES.
 #[must_use]
-pub(crate) fn roundtrip_coverage(enumerated_sorted: &[String], group: &[Molecule]) -> Coverage {
-    let covered = group
-        .iter()
-        .filter(|mol| {
-            enumerated_sorted
-                .binary_search(&canonical_smiles(mol))
-                .is_ok()
-        })
-        .count();
-    Coverage {
-        covered,
-        total: group.len(),
-    }
-}
-
-/// Evaluate coverage and demote `clean_kind` to `ConstructKind::BestEffort` if incomplete.
-#[must_use]
-pub(crate) fn evaluate_construct(
+pub(crate) fn evaluate_construct_canons(
     enumerated_sorted: &[String],
-    mols: &[Molecule],
+    group_canons: &[String],
     clean_kind: ConstructKind,
 ) -> (ConstructKind, Coverage) {
-    let coverage = roundtrip_coverage(enumerated_sorted, mols);
+    let covered = group_canons
+        .iter()
+        .filter(|smi| enumerated_sorted.binary_search(smi).is_ok())
+        .count();
+    let coverage = Coverage {
+        covered,
+        total: group_canons.len(),
+    };
     let kind = if coverage.is_clean() {
         clean_kind
     } else {
         ConstructKind::BestEffort
     };
     (kind, coverage)
+}
+
+/// Evaluate sorted canonical round-trip coverage via `O(log M)` binary search.
+#[cfg(test)]
+#[must_use]
+pub(crate) fn roundtrip_coverage(enumerated_sorted: &[String], group: &[Molecule]) -> Coverage {
+    let group_canons: Vec<String> = group.iter().map(canonical_smiles).collect();
+    evaluate_construct_canons(enumerated_sorted, &group_canons, ConstructKind::BestEffort).1
 }
 
 /// Sort and deduplicate a list of SMILES strings.

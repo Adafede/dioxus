@@ -26,12 +26,12 @@ pub(crate) fn parse_list(smiles: &[String]) -> Result<Vec<Molecule>, CxError> {
     Ok(mols)
 }
 
-/// Single-linkage clustering by ECFP4/Tanimoto similarity above `threshold`.
+/// Single-linkage clustering returning index buckets into `mols`.
 #[expect(
     clippy::indexing_slicing,
     reason = "n == 0 returns early; every index is in 0..n on vecs of length n"
 )]
-pub(crate) fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
+pub(crate) fn cluster_indices(mols: &[Molecule], threshold: f64) -> Vec<Vec<usize>> {
     let n = mols.len();
     if n == 0 {
         return Vec::new();
@@ -52,20 +52,34 @@ pub(crate) fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
     let mut order: Vec<usize> = (0..n).collect();
     order.sort_by_key(|&i| roots[i]);
 
-    let mut buckets: Vec<Vec<Molecule>> = Vec::new();
+    let mut buckets: Vec<Vec<usize>> = Vec::new();
     let mut cur = roots[order[0]];
-    let mut bucket = vec![mols[order[0]].clone()];
+    let mut bucket = vec![order[0]];
     for &i in &order[1..] {
         if roots[i] == cur {
-            bucket.push(mols[i].clone());
+            bucket.push(i);
         } else {
             buckets.push(bucket);
             cur = roots[i];
-            bucket = vec![mols[i].clone()];
+            bucket = vec![i];
         }
     }
     buckets.push(bucket);
     buckets
+}
+
+/// Single-linkage clustering by ECFP4/Tanimoto similarity above `threshold`.
+#[cfg(test)]
+pub(crate) fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
+    cluster_indices(mols, threshold)
+        .into_iter()
+        .map(|bucket| {
+            bucket
+                .into_iter()
+                .filter_map(|i| mols.get(i).cloned())
+                .collect()
+        })
+        .collect()
 }
 
 /// Union-find path-compressing root lookup bounded by `p.len()`.

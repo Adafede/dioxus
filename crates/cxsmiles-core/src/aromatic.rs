@@ -4,10 +4,11 @@
 //! `O(V + E)` aromatic ring component expansion for positional sites.
 
 use chematic::core::{BondOrder, Molecule};
+use rustc_hash::FxHashSet;
 
 use crate::graph::{atom_idx, atom_usize};
 
-fn aromatic_components(scaffold: &Molecule) -> Vec<Option<usize>> {
+pub(crate) fn aromatic_components(scaffold: &Molecule) -> Vec<Option<usize>> {
     let n = scaffold.atom_count();
     let mut comp = vec![None; n];
     let mut stack = Vec::new();
@@ -43,52 +44,41 @@ fn aromatic_components(scaffold: &Molecule) -> Vec<Option<usize>> {
     comp
 }
 
+fn aromatic_signature(scaffold: &Molecule, atom_pos: usize) -> (u8, usize, i8, bool) {
+    let idx = atom_idx(atom_pos);
+    let atom = scaffold.atom(idx);
+    (
+        atom.element.atomic_number(),
+        scaffold.neighbors(idx).count(),
+        atom.charge,
+        scaffold.implicit_hydrogen_count(idx) > 0,
+    )
+}
+
 /// Expand `positions` with equivalent atoms in the same aromatic component (`O(V + E)`).
 pub(crate) fn expand_aromatic_equiv(positions: &[usize], scaffold: &Molecule) -> Vec<usize> {
-    let n = scaffold.atom_count();
     let comp = aromatic_components(scaffold);
-    let sigs: Vec<(u8, usize, i8, bool)> = (0..n)
-        .map(|i| {
-            let idx = atom_idx(i);
-            let atom = scaffold.atom(idx);
-            (
-                atom.element.atomic_number(),
-                scaffold.neighbors(idx).count(),
-                atom.charge,
-                scaffold.implicit_hydrogen_count(idx) > 0,
-            )
-        })
-        .collect();
     let mut out = Vec::new();
-    let mut targets: Vec<(usize, u8, usize, i8, bool)> = Vec::new();
+    let mut targets: FxHashSet<(usize, u8, usize, i8, bool)> = FxHashSet::default();
     for &p in positions {
-        match (comp.get(p), sigs.get(p)) {
-            (Some(Some(cid)), Some(&(el, deg, chg, has_h))) => {
-                if !targets.contains(&(*cid, el, deg, chg, has_h)) {
-                    targets.push((*cid, el, deg, chg, has_h));
-                }
+        match comp.get(p) {
+            Some(Some(cid)) => {
+                let (el, deg, chg, has_h) = aromatic_signature(scaffold, p);
+                targets.insert((*cid, el, deg, chg, has_h));
             }
-            (Some(None), Some(_)) => out.push(p),
-            _ => {}
+            Some(None) => out.push(p),
+            None => {}
         }
     }
-    for (q, (c, &(el, deg, chg, has_h))) in comp.iter().zip(&sigs).enumerate() {
-        if let Some(cid) = c
-            && targets.contains(&(*cid, el, deg, chg, has_h))
-        {
-            out.push(q);
+    for (q, c) in comp.iter().enumerate() {
+        if let Some(cid) = c {
+            let (el, deg, chg, has_h) = aromatic_signature(scaffold, q);
+            if targets.contains(&(*cid, el, deg, chg, has_h)) {
+                out.push(q);
+            }
         }
     }
     out.sort_unstable();
     out.dedup();
     out
-}
-
-/// Whether `start` and `target` share an aromatic-bond component in `scaffold`.
-#[cfg(test)]
-pub(crate) fn same_aromatic_ring(scaffold: &Molecule, start: u32, target: u32) -> bool {
-    let comp = aromatic_components(scaffold);
-    let su = usize::try_from(start).unwrap_or(usize::MAX);
-    let tu = usize::try_from(target).unwrap_or(usize::MAX);
-    matches!((comp.get(su), comp.get(tu)), (Some(Some(a)), Some(Some(b))) if a == b)
 }

@@ -11,6 +11,11 @@ use crate::positional::build_positional_with_options;
 use crate::repeating::build_repeating;
 use crate::types::{ConstructKind, CxOptions};
 
+const BIPHENYL_CL_SERIES: &str =
+    "Clc1ccccc1-c2ccccc2\nClc1cccc(-c2ccccc2)c1\nClc1ccc(-c2ccccc2)cc1";
+const PFAS_SERIES: &str =
+    "OC(=O)C(F)(F)C(F)F\nOC(=O)C(F)(F)C(F)(F)C(F)F\nOC(=O)C(F)(F)C(F)(F)C(F)(F)C(F)F";
+
 #[test]
 fn parse_canonical_write_roundtrip() {
     let m = mol("Clc1ccccc1-c2ccccc2");
@@ -40,9 +45,8 @@ fn empty_and_singleton_fast_paths() {
 
 #[test]
 fn positional_biphenyl_cl_and_omf_and_acetyl_double_m() {
-    let cl_in = "Clc1ccccc1-c2ccccc2\nClc1cccc(-c2ccccc2)c1\nClc1ccc(-c2ccccc2)cc1";
-    let cl_mols = parse_list(&lines(cl_in)).unwrap();
-    let cl = generate(&lines(cl_in)).unwrap();
+    let cl_mols = parse_list(&lines(BIPHENYL_CL_SERIES)).unwrap();
+    let cl = generate(&lines(BIPHENYL_CL_SERIES)).unwrap();
     assert_eq!(cl.construct, ConstructKind::Positional);
     assert_roundtrip(&cl, &cl_mols);
     assert!(cl.coverage.is_clean());
@@ -91,9 +95,8 @@ Clc1ccc(-c2ccccc2F)cc1";
 
 #[test]
 fn repeating_pfas_and_alkyl_and_custom_gcd_series() {
-    let pfas_in = "OC(=O)C(F)(F)C(F)F\nOC(=O)C(F)(F)C(F)(F)C(F)F\nOC(=O)C(F)(F)C(F)(F)C(F)(F)C(F)F";
-    let pfas_mols = parse_list(&lines(pfas_in)).unwrap();
-    let pfas = generate(&lines(pfas_in)).unwrap();
+    let pfas_mols = parse_list(&lines(PFAS_SERIES)).unwrap();
+    let pfas = generate(&lines(PFAS_SERIES)).unwrap();
     assert_eq!(pfas.construct, ConstructKind::Repeating);
     assert_roundtrip(&pfas, &pfas_mols);
     assert!(pfas.coverage.is_clean());
@@ -153,10 +156,9 @@ Clc1cc(-c2ccccc2)ccc1";
     assert!(four_r.coverage.is_clean());
     assert_roundtrip(&four_r, &four_mols);
 
-    let biphenyl_in = "Clc1ccccc1-c2ccccc2\nClc1cccc(-c2ccccc2)c1\nClc1ccc(-c2ccccc2)cc1";
-    let bip_mols = parse_list(&lines(biphenyl_in)).unwrap();
+    let bip_mols = parse_list(&lines(BIPHENYL_CL_SERIES)).unwrap();
     let bip_arom = generate_with_options(
-        &lines(biphenyl_in),
+        &lines(BIPHENYL_CL_SERIES),
         CxOptions {
             expand_aromatic: true,
         },

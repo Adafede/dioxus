@@ -1,17 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the cxsmiles-yoga project
 
-use chematic::core::{Atom, BondOrder, Molecule, MoleculeBuilder};
+use chematic::core::{Atom, AtomIdx, BondOrder, Molecule, MoleculeBuilder};
 use chematic::smiles::canonical_smiles;
 
 use super::mol;
-use crate::aromatic::{expand_aromatic_equiv, same_aromatic_ring};
+use crate::aromatic::{aromatic_components, expand_aromatic_equiv};
 use crate::fragment::{add_atoms_and_bonds, extract_subgraph, reorder_attachment_first};
-use crate::graph::molecule_to_query;
+use crate::graph::{molecule_to_query, u32_to_usize};
 use crate::positional::{
     boundary_edges, equiv_positions, is_matched, split_floating_and_recovered,
 };
-use chematic::core::AtomIdx;
+
+fn same_aromatic_ring(scaffold: &Molecule, start: u32, target: u32) -> bool {
+    let comp = aromatic_components(scaffold);
+    matches!(
+        (comp.get(u32_to_usize(start)), comp.get(u32_to_usize(target))),
+        (Some(Some(a)), Some(Some(b))) if a == b
+    )
+}
 
 #[test]
 fn a_mask_answers_only_about_atoms_it_covers() {
@@ -61,7 +68,7 @@ fn components_join_the_scaffold_once_become_floating_and_the_rest_recovered() {
     let c = mol("CCC");
     let matched = [false, true, false];
     let (floating, recovered) =
-        split_floating_and_recovered(&[vec![0], vec![2], vec![1]], &matched, &c);
+        split_floating_and_recovered(vec![vec![0], vec![2], vec![1]], &matched, &c);
     assert_eq!(floating, vec![vec![0], vec![2]], "both ends are pendant");
     assert_eq!(recovered, vec![1], "the matched atom is recovered");
 }

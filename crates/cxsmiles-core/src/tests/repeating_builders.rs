@@ -22,7 +22,7 @@ fn copied_bonds(scaffold: &Molecule, a: (u32, u32), b: (u32, u32)) -> Vec<(u32, 
         .atoms()
         .map(|(_, atom)| builder.add_atom(atom.clone()))
         .collect();
-    add_scaffold_bonds(&mut builder, scaffold, &mapped, a.0, a.1, b.0, b.1);
+    add_scaffold_bonds(&mut builder, scaffold, &mapped, &[(a.0, a.1), (b.0, b.1)]);
     let out = builder.build();
     out.bonds()
         .map(|(_, be)| (be.atom1.0, be.atom2.0))

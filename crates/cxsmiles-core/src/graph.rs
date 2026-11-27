@@ -8,23 +8,31 @@ use chematic::smarts::{
     AtomPrimitive, AtomQuery, BondPrimitive, BondQuery, QueryAtom, QueryBond, QueryMolecule,
     find_matches,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 
 use crate::error::CxError;
 
 /// A single embedding of a query into a molecule: query-atom index -> molecule atom.
 pub(crate) type Match = FxHashMap<usize, AtomIdx>;
 
+pub(crate) fn usize_to_u32(value: usize) -> u32 {
+    u32::try_from(value).unwrap_or(u32::MAX)
+}
+
+pub(crate) fn u32_to_usize(value: u32) -> usize {
+    usize::try_from(value).unwrap_or(usize::MAX)
+}
+
 pub(crate) fn atom_idx(index: usize) -> AtomIdx {
-    AtomIdx(u32::try_from(index).unwrap_or(u32::MAX))
+    AtomIdx(usize_to_u32(index))
 }
 
 pub(crate) fn atom_usize(idx: AtomIdx) -> usize {
-    usize::try_from(idx.0).unwrap_or(usize::MAX)
+    u32_to_usize(idx.0)
 }
 
 pub(crate) fn usize_to_f64(value: usize) -> f64 {
-    f64::from(u32::try_from(value).unwrap_or(u32::MAX))
+    f64::from(usize_to_u32(value))
 }
 
 /// Convert `Molecule` to `QueryMolecule` (atomic number, formal charge, aromaticity, isotope, bond order).
@@ -109,8 +117,9 @@ pub(crate) fn subgraph(mol: &Molecule, keep: &[bool]) -> Molecule {
 
 /// Connected components of `atoms` (`u32` indices) along `mol` edges.
 pub(crate) fn components(atoms: &[u32], mol: &Molecule) -> Vec<Vec<u32>> {
-    let set: FxHashSet<u32> = atoms.iter().copied().collect();
-    let mut seen: FxHashSet<u32> = FxHashSet::default();
+    let mut set: FxHashSet<u32> = FxHashSet::with_capacity_and_hasher(atoms.len(), FxBuildHasher);
+    set.extend(atoms.iter().copied());
+    let mut seen: FxHashSet<u32> = FxHashSet::with_capacity_and_hasher(atoms.len(), FxBuildHasher);
     let mut comps: Vec<Vec<u32>> = Vec::new();
     for &start in atoms {
         if seen.contains(&start) {
@@ -157,7 +166,7 @@ pub(crate) fn unmatched_atoms(matched: &[bool]) -> Vec<u32> {
         .iter()
         .enumerate()
         .filter(|(_, is_matched)| !**is_matched)
-        .map(|(i, _)| u32::try_from(i).unwrap_or(u32::MAX))
+        .map(|(i, _)| usize_to_u32(i))
         .collect()
 }
 

@@ -3,23 +3,38 @@
 
 //! Repeating-unit CX construction (`Sg:n:`) using zero-clone backtracking DFS.
 
+use std::fmt::Write as _;
+
 use chematic::core::{AtomIdx, BondOrder, Molecule};
 use chematic::smarts::{QueryMolecule, find_matches};
-use chematic::smiles::{canonical_smiles, parse, write};
-use rustc_hash::FxHashMap;
+#[cfg(test)]
+use chematic::smiles::canonical_smiles;
+use chematic::smiles::{parse, write};
 
 use crate::error::CxError;
-use crate::graph::{components, matched_mask, molecule_to_query, multiset_into, unmatched_atoms};
-use crate::roundtrip::{dedup_sort, enumerate_repeating, evaluate_construct};
+use crate::graph::{
+    components, matched_mask, molecule_to_query, multiset_into, u32_to_usize, unmatched_atoms,
+    usize_to_u32,
+};
+use crate::roundtrip::{dedup_sort, enumerate_repeating, evaluate_construct_canons};
 use crate::types::{ConstructKind, CxResult, RepeatUnit};
 
 const MAX_FRAGMENTS: usize = 200_000;
 
 /// Build an `Sg:n:` repeating CX-SMILES from an atom-count homologous series.
+#[cfg(test)]
 pub(crate) fn build_repeating(group: &[Molecule]) -> Result<CxResult, CxError> {
-    let mut ordered = group.to_vec();
-    ordered.sort_by_key(Molecule::atom_count);
-    let (Some(shortest), Some(longest)) = (ordered.first(), ordered.last()) else {
+    let group_canons: Vec<String> = group.iter().map(canonical_smiles).collect();
+    build_repeating_with_canons(group, &group_canons)
+}
+
+pub(crate) fn build_repeating_with_canons(
+    group: &[Molecule],
+    group_canons: &[String],
+) -> Result<CxResult, CxError> {
+    let mut ordered: Vec<&Molecule> = group.iter().collect();
+    ordered.sort_by_key(|m| m.atom_count());
+    let (Some(&shortest), Some(&longest)) = (ordered.first(), ordered.last()) else {
         return Err(CxError::EmptyGroup("build_repeating"));
     };
     if shortest.atom_count() == longest.atom_count() {
@@ -42,12 +57,13 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> Result<CxResult, CxError> {
     };
     let cx_smiles = format_repeat_cx(&scaffold_smiles, &repeat_unit.atoms);
     let enumerated = enumerate_repeating(&scaffold, &repeat_unit)?;
-    let (construct, coverage) = evaluate_construct(&enumerated, group, ConstructKind::Repeating);
+    let (construct, coverage) =
+        evaluate_construct_canons(&enumerated, group_canons, ConstructKind::Repeating);
     let distinct_reproduced = dedup_sort(
-        group
+        group_canons
             .iter()
-            .map(canonical_smiles)
             .filter(|smi| enumerated.binary_search(smi).is_ok())
+            .cloned()
             .collect(),
     );
     if distinct_reproduced.len() < 2 {
@@ -64,22 +80,26 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> Result<CxResult, CxError> {
     })
 }
 
-fn compute_unit_size(ordered: &[Molecule], shortest_atoms: usize) -> usize {
-    let deltas: Vec<usize> = ordered
+fn compute_unit_size(ordered: &[&Molecule], shortest_atoms: usize) -> usize {
+    ordered
         .iter()
         .skip(1)
-        .map(|m| m.atom_count() - shortest_atoms)
-        .collect();
-    gcd_vec(&deltas).max(1)
+        .fold(0usize, |acc, m| gcd(acc, m.atom_count() - shortest_atoms))
+        .max(1)
 }
 
 fn format_repeat_cx(scaffold_smiles: &str, atoms: &[usize]) -> String {
-    let atoms_field = atoms
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<_>>()
-        .join(",");
-    format!("{scaffold_smiles} |Sg:n:{atoms_field}:n:ht|")
+    let mut out = String::with_capacity(scaffold_smiles.len() + 16 + atoms.len() * 3);
+    out.push_str(scaffold_smiles);
+    out.push_str(" |Sg:n:");
+    for (idx, &atom) in atoms.iter().enumerate() {
+        if idx > 0 {
+            out.push(',');
+        }
+        let _ = write!(out, "{atom}");
+    }
+    out.push_str(":n:ht|");
+    out
 }
 
 /// Extra component from aligning `scaffold_q` into `longest` that represents repeats.
@@ -93,29 +113,38 @@ pub(crate) fn repeat_pattern(
         .next()
         .ok_or(CxError::NoRepeatScaffoldMatch)?;
     let matched = matched_mask(&hit, longest);
-    let comps = components(&unmatched_atoms(&matched), longest);
-    comps
-        .iter()
-        .filter(|c| c.len() % unit_size == 0 && c.len() >= unit_size)
-        .min_by_key(|c| c.len())
-        .or_else(|| comps.iter().min_by_key(|c| c.len()))
-        .cloned()
-        .ok_or(CxError::NoRepeatPattern)
+    let mut comps = components(&unmatched_atoms(&matched), longest);
+    let best_idx = (0..comps.len())
+        .filter(|&i| {
+            comps
+                .get(i)
+                .is_some_and(|c| c.len() % unit_size == 0 && c.len() >= unit_size)
+        })
+        .min_by_key(|&i| comps.get(i).map_or(usize::MAX, Vec::len))
+        .or_else(|| (0..comps.len()).min_by_key(|&i| comps.get(i).map_or(usize::MAX, Vec::len)))
+        .ok_or(CxError::NoRepeatPattern)?;
+    Ok(comps.swap_remove(best_idx))
 }
 
 /// Sorted atomic-number multiset of one repeat unit derived from `pattern`.
 pub(crate) fn unit_multiset(pattern: &[u32], longest: &Molecule, unit_size: usize) -> Vec<u8> {
     let k = pattern.len().saturating_div(unit_size).max(1);
-    let mut counts: FxHashMap<u8, usize> = FxHashMap::default();
+    let mut counts = [0usize; 128];
     for &i in pattern {
         let el = longest.atom(AtomIdx(i)).element.atomic_number();
-        *counts.entry(el).or_insert(0) += 1;
+        if let Some(slot) = counts.get_mut(usize::from(el)) {
+            *slot += 1;
+        }
     }
-    let mut v: Vec<u8> = counts
-        .iter()
-        .flat_map(|(el, &c)| std::iter::repeat_n(*el, c / k))
-        .collect();
-    v.sort_unstable();
+    let mut v = Vec::new();
+    for (el, &c) in counts.iter().enumerate() {
+        let reps = c / k;
+        if reps > 0
+            && let Ok(el_u8) = u8::try_from(el)
+        {
+            v.extend(std::iter::repeat_n(el_u8, reps));
+        }
+    }
     v
 }
 
@@ -132,6 +161,7 @@ struct SearchState {
     frag: Vec<u32>,
     sorted: Vec<u32>,
     multiset: Vec<u8>,
+    ext_stack: Vec<u32>,
     best: Option<Vec<u32>>,
 }
 
@@ -160,11 +190,12 @@ pub(crate) fn locate_repeat_in_scaffold(
         frag: Vec::with_capacity(unit_size),
         sorted: Vec::with_capacity(unit_size),
         multiset: Vec::with_capacity(unit_size),
+        ext_stack: Vec::with_capacity(n),
         best: None,
     };
-    let n_u32 = u32::try_from(n).unwrap_or(u32::MAX);
+    let n_u32 = usize_to_u32(n);
     for start in 0..n_u32 {
-        let su = usize::try_from(start).unwrap_or(usize::MAX);
+        let su = u32_to_usize(start);
         state.frag.push(start);
         if let Some(slot) = state.visited.get_mut(su) {
             *slot = true;
@@ -172,10 +203,20 @@ pub(crate) fn locate_repeat_in_scaffold(
         if unit_size == 1 {
             evaluate_candidate(&ctx, &mut state);
         } else {
-            let mut root_ext = Vec::new();
-            extend_neighbors(scaffold, &mut state.visited, start, start, &mut root_ext);
-            esu_repeat(&ctx, &mut state, start, &root_ext)?;
-            clear_visited(&mut state.visited, &root_ext);
+            state.ext_stack.clear();
+            extend_neighbors(
+                scaffold,
+                &mut state.visited,
+                start,
+                start,
+                &mut state.ext_stack,
+            );
+            let ext_end = state.ext_stack.len();
+            esu_repeat(&ctx, &mut state, start, 0, ext_end)?;
+            clear_visited(
+                &mut state.visited,
+                state.ext_stack.get(..ext_end).unwrap_or_default(),
+            );
         }
         state.frag.pop();
         if let Some(slot) = state.visited.get_mut(su) {
@@ -184,11 +225,7 @@ pub(crate) fn locate_repeat_in_scaffold(
     }
     state
         .best
-        .map(|v| {
-            v.into_iter()
-                .map(|a| usize::try_from(a).unwrap_or(usize::MAX))
-                .collect()
-        })
+        .map(|v| v.into_iter().map(u32_to_usize).collect())
         .ok_or(CxError::RepeatNotFound)
 }
 
@@ -200,7 +237,7 @@ fn extend_neighbors(
     out: &mut Vec<u32>,
 ) {
     for (nbr, _) in scaffold.neighbors(AtomIdx(atom)) {
-        let nu = usize::try_from(nbr.0).unwrap_or(usize::MAX);
+        let nu = u32_to_usize(nbr.0);
         if nbr.0 > start && visited.get(nu).copied() == Some(false) {
             if let Some(slot) = visited.get_mut(nu) {
                 *slot = true;
@@ -212,7 +249,7 @@ fn extend_neighbors(
 
 fn clear_visited(visited: &mut [bool], vertices: &[u32]) {
     for &v in vertices {
-        let vu = usize::try_from(v).unwrap_or(usize::MAX);
+        let vu = u32_to_usize(v);
         if let Some(slot) = visited.get_mut(vu) {
             *slot = false;
         }
@@ -223,9 +260,13 @@ fn esu_repeat(
     ctx: &SearchCtx<'_>,
     state: &mut SearchState,
     start: u32,
-    ext: &[u32],
+    ext_start: usize,
+    ext_end: usize,
 ) -> Result<(), CxError> {
-    for (i, &w) in ext.iter().enumerate() {
+    for i in ext_start..ext_end {
+        let Some(&w) = state.ext_stack.get(i) else {
+            break;
+        };
         state.budget = state.budget.saturating_sub(1);
         if state.budget == 0 {
             return Err(CxError::RepeatBudgetExceeded {
@@ -240,16 +281,26 @@ fn esu_repeat(
             state.frag.pop();
             continue;
         }
-        let tail = ext.get(i + 1..).unwrap_or_default();
-        let mut next_ext = Vec::with_capacity(tail.len() + 4);
-        next_ext.extend_from_slice(tail);
-        let tail_end = next_ext.len();
-        extend_neighbors(ctx.scaffold, &mut state.visited, w, start, &mut next_ext);
-        esu_repeat(ctx, state, start, &next_ext)?;
+        let next_start = state.ext_stack.len();
+        state.ext_stack.extend_from_within((i + 1)..ext_end);
+        let new_nbrs_start = state.ext_stack.len();
+        extend_neighbors(
+            ctx.scaffold,
+            &mut state.visited,
+            w,
+            start,
+            &mut state.ext_stack,
+        );
+        let next_end = state.ext_stack.len();
+        esu_repeat(ctx, state, start, next_start, next_end)?;
         clear_visited(
             &mut state.visited,
-            next_ext.get(tail_end..).unwrap_or_default(),
+            state
+                .ext_stack
+                .get(new_nbrs_start..next_end)
+                .unwrap_or_default(),
         );
+        state.ext_stack.truncate(next_start);
         state.frag.pop();
     }
     Ok(())
@@ -266,11 +317,14 @@ fn evaluate_candidate(ctx: &SearchCtx<'_>, state: &mut SearchState) {
     state.sorted.clear();
     state.sorted.extend_from_slice(&state.frag);
     state.sorted.sort_unstable();
-    let is_better = state.best.as_ref().is_none_or(|b| {
-        center_dist(&state.sorted, ctx.atom_count) < center_dist(b, ctx.atom_count)
-    });
-    if is_better {
-        state.best = Some(state.sorted.clone());
+    match &mut state.best {
+        None => state.best = Some(state.sorted.clone()),
+        Some(best)
+            if center_dist(&state.sorted, ctx.atom_count) < center_dist(best, ctx.atom_count) =>
+        {
+            best.clone_from(&state.sorted);
+        }
+        _ => {}
     }
 }
 
@@ -307,6 +361,7 @@ pub(crate) fn center_dist(atoms: &[u32], n: usize) -> i64 {
         .abs()
 }
 
+#[cfg(test)]
 pub(crate) fn gcd_vec(xs: &[usize]) -> usize {
     xs.iter().copied().fold(0, gcd)
 }

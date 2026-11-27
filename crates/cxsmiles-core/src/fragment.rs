@@ -38,10 +38,14 @@ pub(crate) fn write_fragment_first(def: &FloatingDef) -> String {
     if def.atoms.is_empty() {
         return String::new();
     }
-    let (atoms, bonds, _) =
-        reorder_attachment_first(def.atoms.clone(), def.bonds.clone(), def.attachment);
     let mut b = MoleculeBuilder::new();
-    drop(add_atoms_and_bonds(&mut b, &atoms, &bonds));
+    if def.attachment == 0 || def.attachment >= def.atoms.len() {
+        drop(add_atoms_and_bonds(&mut b, &def.atoms, &def.bonds));
+    } else {
+        let (atoms, bonds, _) =
+            reorder_attachment_first(def.atoms.clone(), def.bonds.clone(), def.attachment);
+        drop(add_atoms_and_bonds(&mut b, &atoms, &bonds));
+    }
     write(&b.build())
 }
 
@@ -54,23 +58,40 @@ pub(crate) fn fragment_smiles(def: &FloatingDef) -> String {
     )
 }
 
+/// Assemble base SMILES plus star and attachment atom indices for `m:` blocks
+/// using precomputed fragment SMILES aligned 1:1 with `defs`.
+pub(crate) fn build_base_smiles_with_frags(
+    scaffold_smiles: &str,
+    defs: &[FloatingDef],
+    frag_smiles: &[String],
+    scaffold_len: usize,
+) -> (String, Vec<usize>, Vec<usize>) {
+    let total_len =
+        scaffold_smiles.len() + frag_smiles.iter().map(|frag| 1 + frag.len()).sum::<usize>();
+    let mut out = String::with_capacity(total_len);
+    out.push_str(scaffold_smiles);
+    let mut star_idx: Vec<usize> = Vec::with_capacity(defs.len());
+    let mut attach_idx: Vec<usize> = Vec::with_capacity(defs.len());
+    let mut offset = scaffold_len;
+    for (def, frag) in defs.iter().zip(frag_smiles) {
+        star_idx.push(offset);
+        attach_idx.push(offset + 1);
+        offset += 1 + def.atoms.len();
+        out.push('.');
+        out.push_str(frag);
+    }
+    (out, star_idx, attach_idx)
+}
+
 /// Assemble base SMILES plus star and attachment atom indices for `m:` blocks.
+#[cfg(test)]
 pub(crate) fn build_base_smiles(
     scaffold_smiles: &str,
     defs: &[FloatingDef],
     scaffold_len: usize,
 ) -> (String, Vec<usize>, Vec<usize>) {
-    let mut frags: Vec<String> = vec![scaffold_smiles.to_string()];
-    let mut star_idx: Vec<usize> = Vec::with_capacity(defs.len());
-    let mut attach_idx: Vec<usize> = Vec::with_capacity(defs.len());
-    let mut offset = scaffold_len;
-    for def in defs {
-        star_idx.push(offset);
-        attach_idx.push(offset + 1);
-        offset += 1 + def.atoms.len();
-        frags.push(fragment_smiles(def));
-    }
-    (frags.join("."), star_idx, attach_idx)
+    let frag_smiles: Vec<String> = defs.iter().map(fragment_smiles).collect();
+    build_base_smiles_with_frags(scaffold_smiles, defs, &frag_smiles, scaffold_len)
 }
 
 /// Reorder `(atoms, bonds, attachment)` so that the attachment atom is index 0.
@@ -128,7 +149,7 @@ pub(crate) fn extract_subgraph(
         .iter()
         .position(|&a| {
             mol.neighbors(AtomIdx(a))
-                .any(|(n, _)| !subset.contains(&n.0) && n.0 != a)
+                .any(|(n, _)| !map.contains_key(&n.0) && n.0 != a)
         })
         .unwrap_or(0);
     (atoms, bonds, attach)
