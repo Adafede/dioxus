@@ -104,26 +104,6 @@ impl BlockExtractor {
     }
 }
 
-/// Extract [`SpectrumBlock`] records from any line iterator.
-#[cfg(test)]
-#[must_use]
-pub(crate) fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> + 'a>>(
-    lines: I,
-) -> Vec<SpectrumBlock> {
-    let mut extractor = BlockExtractor::default();
-    for line in lines {
-        extractor.push_line(line.as_ref());
-    }
-    extractor.finish()
-}
-
-/// Convenience wrapper splitting in-memory MGF or SMILES text into blocks.
-#[cfg(test)]
-#[must_use]
-pub(crate) fn extract_blocks(content: &str) -> Vec<SpectrumBlock> {
-    extract_blocks_from_lines(content.lines())
-}
-
 fn try_parse_smiles(s: &str) -> Option<Molecule> {
     (!s.contains(char::is_whitespace))
         .then(|| chem_depict::parse_smiles_safe(s).ok())

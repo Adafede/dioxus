@@ -35,30 +35,6 @@ impl ElementCounts {
         let halogens = f64::from(self.halogens);
         carbon - hydrogen / 2.0 - halogens / 2.0 + f64::midpoint(nitrogen, phosphorus) + 1.0
     }
-
-    /// Molecular formula formatted in Hill order (e.g. `C16H32O2`).
-    #[cfg(test)]
-    #[must_use]
-    pub(crate) fn formula_string(&self) -> String {
-        use std::fmt::Write as _;
-        let mut out = String::new();
-        for (symbol, count) in [
-            ("C", self.carbon),
-            ("H", self.hydrogen),
-            ("Cl", self.halogens),
-            ("N", self.nitrogen),
-            ("O", self.oxygen),
-            ("P", self.phosphorus),
-            ("S", self.sulfur),
-        ] {
-            if count == 1 {
-                out.push_str(symbol);
-            } else if count > 1 {
-                let _ = write!(out, "{symbol}{count}");
-            }
-        }
-        out
-    }
 }
 
 /// Result of classifying a single spectrum.

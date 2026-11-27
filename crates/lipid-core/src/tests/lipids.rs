@@ -3,12 +3,8 @@
 
 use std::collections::HashMap;
 
-use chematic::smiles;
-
 use crate::LipidFamily;
-use crate::lipids::classify::{
-    classify_formula, classify_smiles, classify_spectrum, counts_from_molecule, formula_counts,
-};
+use crate::lipids::classify::{classify_formula, classify_smiles, formula_counts};
 
 fn class_of(smiles: &str) -> Option<LipidFamily> {
     classify_smiles(smiles).map(|c| c.family)
@@ -89,19 +85,27 @@ fn formula_fallback_matches_and_rejects_boundaries() {
 }
 
 #[test]
-fn counts_and_spectrum_fallback_work_as_expected() {
-    let mol = smiles::parse("CCCCCCCCCCCCCCCC(=O)O").unwrap();
-    let counts = counts_from_molecule(&mol);
-    assert_eq!((counts.carbon, counts.hydrogen, counts.oxygen), (16, 32, 2));
-    assert_eq!(counts.formula_string(), "C16H32O2");
+fn spectrum_formula_fallback_and_missing_annotations_work_as_expected() {
+    let classes = crate::lmsd_classes();
+    let mut from_none = crate::parser::block::SpectrumBlock::new(1);
+    from_none.formula = Some("C16H32O2".to_string());
+    from_none.classify_and_match(classes);
+    let cls = from_none.classification.as_ref().unwrap();
+    assert_eq!(cls.family, LipidFamily::FattyAcyls);
+    assert!(!cls.derived_from_smiles);
 
-    let from_none = classify_spectrum(None, Some("C16H32O2")).unwrap();
-    assert_eq!(from_none.family, LipidFamily::FattyAcyls);
-    assert!(!from_none.derived_from_smiles);
+    let mut from_blank = crate::parser::block::SpectrumBlock::new(2);
+    from_blank.psm_smiles = Some("  ".to_string());
+    from_blank.formula = Some("C16H32O2".to_string());
+    from_blank.classify_and_match(classes);
+    assert_eq!(
+        from_blank.classification.as_ref().map(|c| c.family),
+        Some(LipidFamily::FattyAcyls)
+    );
 
-    let from_blank = classify_spectrum(Some("  "), Some("C16H32O2")).unwrap();
-    assert_eq!(from_blank.family, LipidFamily::FattyAcyls);
-    assert!(classify_spectrum(None, None).is_none());
+    let mut neither = crate::parser::block::SpectrumBlock::new(3);
+    neither.classify_and_match(classes);
+    assert!(neither.classification.is_none());
 
     let mut map = HashMap::from([
         ("C".to_string(), 10),

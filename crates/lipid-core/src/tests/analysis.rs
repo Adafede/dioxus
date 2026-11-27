@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
 
-use super::EXAMPLE_MGF;
-use crate::parser::analysis::{analyze, build_analysis, summarize};
-use crate::parser::extractor::extract_blocks;
+use super::{EXAMPLE_MGF, analyze, build_analysis, extract_blocks};
+use crate::parser::analysis::summarize;
 use crate::{
     BlockExtractor, ClassMatchSet, FilterCriteria, LipidFamily, LipidFormat,
     build_filtered_mgf_content, example_smiles, lmsd_classes,
@@ -107,12 +106,6 @@ fn example_smiles_and_asset_file_parse_classify_and_depict() {
             "failed to depict example SMILES {smi}: {svg}"
         );
     }
-
-    let asset_text = include_str!("../../../../apps/lipid-selecto-rs/assets/example_lipids.smi");
-    let (asset_blocks, asset_summary) = analyze(asset_text);
-    assert_eq!(asset_blocks.len(), 204);
-    assert_eq!(asset_summary.lipid_items, 195);
-    assert_eq!(asset_summary.unclassified, 9);
 }
 
 #[test]

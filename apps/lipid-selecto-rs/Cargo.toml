@@ -20,7 +20,6 @@ upload = { path = "../../crates/upload", version = "0.1" }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 gloo-timers = { workspace = true }
 stream-io = { path = "../../crates/stream-io", version = "0.1" }
-web-sys = { workspace = true }
 
 [lints]
 workspace = true

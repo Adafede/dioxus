@@ -38,36 +38,6 @@ impl LipidFormat {
         }
     }
 
-    /// Detect format by scanning up to ten leading non-empty lines of `content`.
-    #[cfg(test)]
-    #[must_use]
-    pub(crate) fn detect_from_content(content: &str) -> Option<Self> {
-        let trimmed = content.trim();
-        if trimmed.contains("BEGIN IONS") && trimmed.contains("END IONS") {
-            return Some(Self::Mgf);
-        }
-        for line in trimmed.lines().take(10) {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-            let has_smiles_chars = line.contains('C')
-                || line.contains('c')
-                || line.contains('N')
-                || line.contains('n')
-                || line.contains('O')
-                || line.contains('o')
-                || line.contains('[')
-                || line.contains(']')
-                || line.contains('=')
-                || line.contains('#');
-            if has_smiles_chars {
-                return Some(Self::Smiles);
-            }
-        }
-        None
-    }
-
     /// Canonical file extension (`"mgf"` or `"smi"`).
     #[must_use]
     pub const fn extension(self) -> &'static str {

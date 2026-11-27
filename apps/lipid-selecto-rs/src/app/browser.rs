@@ -10,8 +10,7 @@ use lipid_core::{
     lmsd_classes,
 };
 use stream_io::{BlobLines, ChunkSource, SliceSource};
-use upload::BlobSource;
-use web_sys::Blob;
+use upload::{Blob, BlobSource};
 
 use super::UploadCtx;
 

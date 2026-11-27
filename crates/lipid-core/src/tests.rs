@@ -7,6 +7,33 @@ mod export_and_filter;
 mod format;
 mod lipids;
 
+use crate::parser::analysis::{Summary, summarize};
+use crate::{
+    Analysis, BlockExtractor, SpectrumBlock, build_analysis_from_classified, classify_blocks,
+    lmsd_classes,
+};
+
+pub(super) fn extract_blocks(content: &str) -> Vec<SpectrumBlock> {
+    let mut extractor = BlockExtractor::default();
+    for line in content.lines() {
+        extractor.push_line(line);
+    }
+    extractor.finish()
+}
+
+pub(super) fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
+    let all_classes = lmsd_classes();
+    classify_blocks(&mut blocks, all_classes);
+    build_analysis_from_classified(blocks, gallery_limit, all_classes)
+}
+
+pub(super) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
+    let mut blocks = extract_blocks(content);
+    classify_blocks(&mut blocks, lmsd_classes());
+    let summary = summarize(&blocks);
+    (blocks, summary)
+}
+
 pub(super) const EXAMPLE_MGF: &str = "\
 BEGIN IONS SMILES=CCCCCCCCCCCCCCCC(=O)O PEPMASS=256.2
 CHARGE=1-

@@ -73,24 +73,6 @@ pub(crate) fn is_acyclic(molecule: &Molecule) -> bool {
     !smarts::has_match_with_config(query, molecule, &smarts::MatchConfig::default())
 }
 
-/// Extract elemental counts from a parsed `Molecule`.
-#[cfg(test)]
-pub(crate) fn counts_from_molecule(molecule: &Molecule) -> ElementCounts {
-    let halogens = chem::num_fluorines(molecule)
-        + chem::num_chlorines(molecule)
-        + chem::num_bromines(molecule)
-        + chem::num_iodines(molecule);
-    ElementCounts {
-        carbon: u32::try_from(chem::num_carbons(molecule)).unwrap_or(u32::MAX),
-        hydrogen: u32::try_from(chem::num_hydrogens(molecule)).unwrap_or(u32::MAX),
-        nitrogen: u32::try_from(chem::num_nitrogens(molecule)).unwrap_or(u32::MAX),
-        oxygen: u32::try_from(chem::num_oxygens(molecule)).unwrap_or(u32::MAX),
-        phosphorus: u32::try_from(chem::num_phosphorus(molecule)).unwrap_or(u32::MAX),
-        sulfur: u32::try_from(chem::num_sulfurs(molecule)).unwrap_or(u32::MAX),
-        halogens: u32::try_from(halogens).unwrap_or(u32::MAX),
-    }
-}
-
 /// Structural broad lipid classification for an already-confirmed acyclic molecule.
 #[must_use]
 pub(crate) fn classify_acyclic_molecule(molecule: &Molecule) -> Option<LipidFamily> {
@@ -205,24 +187,6 @@ pub(crate) fn classify_formula(formula: &str) -> Option<LipidFamily> {
     let map = chem::parse_formula(trimmed).ok()?;
     let counts = formula_counts(&map);
     classify_from_counts(&counts)
-}
-
-#[cfg(test)]
-pub(crate) fn classify_spectrum(
-    smiles: Option<&str>,
-    formula: Option<&str>,
-) -> Option<LipidClassification> {
-    if let Some(smi) = smiles.filter(|v| !v.trim().is_empty())
-        && let Some(class) = classify_smiles(smi)
-    {
-        return Some(class);
-    }
-    let formula_str = formula.filter(|v| !v.trim().is_empty())?;
-    let family = classify_formula(formula_str)?;
-    Some(LipidClassification {
-        family,
-        derived_from_smiles: false,
-    })
 }
 
 pub(crate) fn formula_counts(

@@ -2142,7 +2142,6 @@ dependencies = [
  "stream-io",
  "ui",
  "upload",
- "web-sys",
 ]
 
 [[package]]

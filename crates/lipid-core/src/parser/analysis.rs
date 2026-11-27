@@ -4,8 +4,6 @@
 //! Collection-level classification, summarization, and gallery construction.
 
 use super::block::SpectrumBlock;
-#[cfg(test)]
-use super::extractor::extract_blocks;
 use crate::bitset::ClassMatchSet;
 use crate::chemical_class::ChemicalClass;
 #[cfg(test)]
@@ -240,25 +238,6 @@ pub fn build_analysis_from_classified(
     }
 }
 
-/// Classify `blocks` against LMSD classes and assemble an [`Analysis`].
-#[cfg(test)]
-#[must_use]
-pub(crate) fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
-    let all_classes = lmsd_classes();
-    classify_blocks(&mut blocks, all_classes);
-    build_analysis_from_classified(blocks, gallery_limit, all_classes)
-}
-
-/// Parse, classify, and summarize in-memory MGF or SMILES text in one call.
-#[cfg(test)]
-#[must_use]
-pub(crate) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
-    let mut blocks = extract_blocks(content);
-    classify_blocks(&mut blocks, lmsd_classes());
-    let summary = summarize(&blocks);
-    (blocks, summary)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,7 +247,7 @@ mod tests {
     #[test]
     fn filtered_gallery_includes_classes_beyond_initial_cache_cap() {
         let input = example_smiles().join("\n");
-        let mut blocks = extract_blocks(&input);
+        let mut blocks = crate::tests::extract_blocks(&input);
         let classes = lmsd_classes();
         classify_blocks(&mut blocks, classes);
         let analysis = build_analysis_from_classified(blocks, 16, classes);

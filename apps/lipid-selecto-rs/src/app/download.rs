@@ -15,6 +15,7 @@ pub(super) fn download_filtered(
     criteria: &FilterCriteria<'_>,
     mut status: Signal<String>,
 ) {
+    let ext = format.extension();
     let (content, filename) = match format {
         LipidFormat::Mgf => (
             build_filtered_mgf_content(
@@ -23,7 +24,7 @@ pub(super) fn download_filtered(
                 analysis.all_classes,
                 criteria,
             ),
-            "lipids_filtered.mgf",
+            format!("lipids_filtered.{ext}"),
         ),
         LipidFormat::Smiles => (
             build_filtered_smiles_content(
@@ -32,10 +33,10 @@ pub(super) fn download_filtered(
                 analysis.all_classes,
                 criteria,
             ),
-            "lipids.smi",
+            format!("lipids.{ext}"),
         ),
     };
-    if let Err(err) = upload::download_text(&content, filename) {
+    if let Err(err) = upload::download_text(&content, &filename) {
         status.set(format!("Download failed: {err}"));
     }
 }

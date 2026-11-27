@@ -31,3 +31,28 @@ pub(crate) mod app;
 
 /// Root application component. The only externally consumed item.
 pub use app::app;
+
+#[cfg(test)]
+mod tests {
+    use lipid_core::{
+        BlockExtractor, build_analysis_from_classified, classify_blocks, example_smiles,
+        lmsd_classes,
+    };
+
+    #[test]
+    fn bundled_example_asset_matches_curated_dataset() {
+        let asset_text = include_str!("../assets/example_lipids.smi");
+        let mut extractor = BlockExtractor::default();
+        for line in asset_text.lines() {
+            extractor.push_line(line);
+        }
+        let mut blocks = extractor.finish();
+        let classes = lmsd_classes();
+        classify_blocks(&mut blocks, classes);
+        let analysis = build_analysis_from_classified(blocks, 16, classes);
+        assert_eq!(analysis.summary.total_items, example_smiles().len());
+        assert_eq!(analysis.summary.total_items, 204);
+        assert_eq!(analysis.summary.lipid_items, 195);
+        assert_eq!(analysis.summary.unclassified, 9);
+    }
+}

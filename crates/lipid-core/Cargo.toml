@@ -13,7 +13,7 @@ publish = false
 
 [dependencies]
 chem-depict = { path = "../chem-depict", version = "0.1" }
-chematic = { workspace = true, features = ["chem", "smarts", "smiles"] }
+chematic = { workspace = true, features = ["chem", "smarts"] }
 mgf = { path = "../mgf", version = "0.1" }
 
 [lints]

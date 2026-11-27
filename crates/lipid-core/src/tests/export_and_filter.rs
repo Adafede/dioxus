@@ -3,13 +3,12 @@
 
 use std::fmt::Write as _;
 
+use super::{analyze, build_analysis, extract_blocks};
 use crate::export::{
     ClassTags, block_class_tags, class_tags_from_block, class_tags_from_gallery,
     insert_class_comment,
 };
 use crate::filter::group_classes_by_family;
-use crate::parser::analysis::build_analysis;
-use crate::parser::extractor::extract_blocks;
 use crate::{
     BlockExtractor, ClassMatchSet, FilterCriteria, LipidFamily, LipidFormat,
     build_filtered_mgf_content, build_filtered_smiles_content, collect_adduct_options,
@@ -203,7 +202,7 @@ END IONS
 BEGIN IONS SMILES=CCO ADDUCT=[M+K]+
 END IONS
 ";
-    let (blocks, _) = crate::parser::analysis::analyze(mgf);
+    let (blocks, _) = analyze(mgf);
     assert_eq!(
         collect_adduct_options(&blocks),
         vec!["[M+H]+", "[M+NH4]+", "[M-H]-"]

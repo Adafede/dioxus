@@ -3,8 +3,6 @@
 
 //! Precompiled LMSD chemical class SMARTS definitions.
 
-#[cfg(test)]
-mod defaults;
 pub(crate) mod lmsd;
 mod lmsd_part1;
 mod lmsd_part2;
@@ -66,10 +64,5 @@ impl ChemicalClass {
             return false;
         };
         smarts::has_match_with_config(query, molecule, &smarts::MatchConfig::default())
-    }
-
-    #[cfg(test)]
-    pub(crate) fn defaults() -> Vec<Self> {
-        defaults::all()
     }
 }

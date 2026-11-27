@@ -1,44 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
 
-use std::collections::HashMap;
+use chem_depict::parse_smiles_safe;
 
-use chematic::smiles;
-
-use crate::{ChemicalClass, LipidFamily, lmsd_classes};
+use crate::{LipidFamily, lmsd_classes};
 
 #[test]
-fn defaults_include_all_families_and_preserve_order() {
-    let defaults = ChemicalClass::defaults();
-    let names: Vec<_> = defaults.iter().map(|c| c.name.as_str()).collect();
-    for expected in [
-        "FA", "MUFA", "PUFA", "TG(AAA)", "DG(AA)", "MG(A)", "PC(AA)", "PE(AA)", "LPC(A)", "LPE(A)",
-        "Cer(AS)", "SM(AS)", "ST", "PR", "SL", "PK",
-    ] {
-        assert!(names.contains(&expected), "missing default {expected}");
-    }
-
-    let fa = defaults.iter().find(|c| c.name == "FA").expect("FA class");
-    let palmitic = smiles::parse("CCCCCCCCCCCCCCCC(=O)O").expect("valid SMILES");
-    assert!(fa.matches(&palmitic));
-
-    let map: HashMap<_, _> = defaults.iter().map(|c| (c.name.as_str(), c)).collect();
-    assert_eq!(map.get("PC(AA)").map(|c| c.name.as_str()), Some("PC(AA)"));
-
-    let gp: Vec<_> = defaults
-        .iter()
-        .filter(|c| c.family == LipidFamily::Glycerophospholipids)
-        .map(|c| c.name.as_str())
-        .collect();
-    let inositol_pos = gp.iter().position(|&n| n == "PI(AA)").unwrap();
-    let glycerol_pos = gp.iter().position(|&n| n == "PG(AA)").unwrap();
-    assert!(inositol_pos < glycerol_pos);
-
+fn lmsd_classes_cover_all_families_with_valid_palettes_in_order() {
+    let classes = lmsd_classes();
     let mut seen = Vec::new();
-    for c in &defaults {
+    for c in classes {
         assert!(!c.name.is_empty() && !c.smarts.is_empty() && c.color.starts_with('#'));
         assert!(c.family.palette().contains(&c.color));
-        if !seen.contains(&c.family) {
+        if seen.last() != Some(&c.family) {
+            assert!(!seen.contains(&c.family), "non-contiguous family order");
             seen.push(c.family);
         }
     }
@@ -74,7 +49,7 @@ fn all_86_lmsd_classes_compile_and_reject_non_lipid_decoys() {
         "NC(C(O)C)C(=O)O",
     ];
     for decoy_smiles in decoys {
-        let mol = smiles::parse(decoy_smiles).expect("valid decoy SMILES");
+        let mol = parse_smiles_safe(decoy_smiles).expect("valid decoy SMILES");
         for class in classes {
             assert!(
                 !class.matches(&mol),
@@ -115,7 +90,7 @@ fn lmsd_classes_match_all_eight_lipid_families() {
     ];
 
     for (expected_family, smi) in cases {
-        let mol = smiles::parse(smi).expect("valid lipid SMILES");
+        let mol = parse_smiles_safe(smi).expect("valid lipid SMILES");
         assert!(
             classes
                 .iter()
@@ -125,16 +100,39 @@ fn lmsd_classes_match_all_eight_lipid_families() {
         );
     }
 
-    // Verify coarse defaults distinguish real lipids from decoys (PC vs phosphonate, ST vs bicyclic, SL vs phosphodiester).
-    let defaults = ChemicalClass::defaults();
-    let get = |name: &str| defaults.iter().find(|c| c.name == name).unwrap();
-    assert!(get("TG(AAA)").matches(&smiles::parse("CC(=O)OCC(OC(=O)C)COC(=O)C").unwrap()));
-    assert!(!get("TG(AAA)").matches(&smiles::parse("CC(=O)OC(OC(=O)C)(OC(=O)C)C").unwrap()));
-    assert!(
-        get("PC(AA)")
-            .matches(&smiles::parse("CC(=O)OCC(OC(=O)C)COP(=O)([O-])OCC[N+](C)(C)C").unwrap())
-    );
-    assert!(!get("PC(AA)").matches(&smiles::parse("CP(=O)(O)(O)[N+](C)(C)C").unwrap()));
-    assert!(get("ST").matches(&smiles::parse("CC12CCC3C(C1CCC2O)CCC4=CC(=O)CCC34C").unwrap()));
-    assert!(!get("ST").matches(&smiles::parse("C1CCC2C(C1)CCC2(C)C").unwrap()));
+    // Verify LMSD rules distinguish real lipids from structurally adjacent decoys per family.
+    for (family, real_smi, decoy_smi) in [
+        (
+            LipidFamily::Glycerolipids,
+            "CC(=O)OCC(OC(=O)C)COC(=O)C",
+            "CC(=O)OC(OC(=O)C)(OC(=O)C)C",
+        ),
+        (
+            LipidFamily::Glycerophospholipids,
+            "CC(=O)OCC(OC(=O)C)COP(=O)([O-])OCC[N+](C)(C)C",
+            "CP(=O)(O)(O)[N+](C)(C)C",
+        ),
+        (
+            LipidFamily::SterolLipids,
+            "CC12CCC3C(C1CCC2O)CCC4=CC(=O)CCC34C",
+            "C1CCC2C(C1)CCC2(C)C",
+        ),
+    ] {
+        let real_mol = parse_smiles_safe(real_smi).unwrap();
+        assert!(
+            classes
+                .iter()
+                .any(|c| c.family == family && c.matches(&real_mol)),
+            "real {real_smi} failed to match {}",
+            family.name()
+        );
+        let decoy_mol = parse_smiles_safe(decoy_smi).unwrap();
+        assert!(
+            !classes
+                .iter()
+                .any(|c| c.family == family && c.matches(&decoy_mol)),
+            "adjacent decoy {decoy_smi} falsely matched {}",
+            family.name()
+        );
+    }
 }
