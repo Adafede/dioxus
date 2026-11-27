@@ -245,7 +245,7 @@ fn label_for_record(record: &[String], label_idx: Option<usize>, line_no: usize)
 }
 
 /// Escapes a CSV field according to RFC 4180 and prefixes spreadsheet formula triggers.
-#[cfg_attr(not(test), expect(dead_code, reason = "tested directly in unit tests"))]
+#[cfg(test)]
 #[must_use]
 pub(crate) fn escape_csv(value: &str) -> String {
     let mut out = String::new();

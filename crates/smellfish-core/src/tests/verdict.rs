@@ -212,7 +212,6 @@ fn row_verdict_routes_errors_and_database_evidence() {
         score: 2.4,
         confidence: 0.9,
     });
-    err_row.motifs = vec!["Steroid".to_string()];
     err_row.motif_hits = vec![RdkitMotifHit {
         label: "Steroid".to_string(),
         source_class: SourceClass::Natural,
@@ -226,10 +225,6 @@ fn row_verdict_routes_errors_and_database_evidence() {
 
 #[test]
 fn count_evidence_feeds_classifier_for_novel_np() {
-    let motifs = [
-        "Steroid-like fused ring".to_string(),
-        "Flavone ring".to_string(),
-    ];
     let hits = [
         RdkitMotifHit {
             label: "Flavone ring".to_string(),
@@ -244,7 +239,7 @@ fn count_evidence_feeds_classifier_for_novel_np() {
             kingdoms: vec!["plants".to_string()],
         },
     ];
-    let counts = count_evidence(&motifs, &hits);
+    let counts = count_evidence(&hits);
     assert_eq!(counts.np_core, 2);
     assert_eq!(counts.scaffold, 2);
     assert_eq!(counts.natural, 2);
@@ -302,7 +297,6 @@ fn classification_enums_and_verdict_monotonicity_hold() {
         RingFamily::Acyclic,
     ] {
         assert_eq!(fam.to_string(), fam.as_str(), "Display matches as_str");
-        assert!(!fam.emoji().is_empty(), "emoji marker non-empty");
     }
 
     for ctx in [

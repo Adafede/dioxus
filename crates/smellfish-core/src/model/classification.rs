@@ -69,18 +69,6 @@ impl RingFamily {
                 | Self::Polycyclic
         )
     }
-
-    /// Display marker for the scaffold line in the UI.
-    #[must_use]
-    pub const fn emoji(self) -> &'static str {
-        if self.is_polyaromatic() {
-            "[polyaromatic]"
-        } else if self.is_np_skeleton() {
-            "[NP]"
-        } else {
-            "-"
-        }
-    }
 }
 
 impl fmt::Display for RingFamily {
@@ -201,7 +189,7 @@ pub struct Verdict {
 impl Verdict {
     /// Constructs a verdict from a category and message.
     #[must_use]
-    pub fn new(category: VerdictCategory, message: impl Into<String>) -> Self {
+    pub(crate) fn new(category: VerdictCategory, message: impl Into<String>) -> Self {
         Self {
             category,
             message: message.into(),
@@ -210,7 +198,7 @@ impl Verdict {
 
     /// Wraps a structure/inspection error as a neutral warning verdict.
     #[must_use]
-    pub fn error(err: &str) -> Self {
+    pub(crate) fn error(err: &str) -> Self {
         Self::new(VerdictCategory::Neutral, format!("Error: {err}"))
     }
 }

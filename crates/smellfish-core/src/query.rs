@@ -85,7 +85,6 @@ pub(crate) fn build_pubchem_sparql(chunk: &[String]) -> String {
 PREFIX cheminf: <http://semanticscience.org/resource/>
 PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX vocab: <http://rdf.ncbi.nlm.nih.gov/pubchem/vocabulary#>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
 SELECT DISTINCT ?inchikey ?related_cid WHERE {{
   VALUES ?inchikey {{ {values} }}
@@ -135,7 +134,7 @@ fn write_escaped_sparql_literal(out: &mut String, value: &str) {
 }
 
 /// Escapes backslashes, quotes, and ASCII control whitespace for a SPARQL string literal.
-#[cfg_attr(not(test), expect(dead_code, reason = "tested directly in unit tests"))]
+#[cfg(test)]
 #[must_use]
 pub(crate) fn escape_sparql_literal(value: &str) -> String {
     let mut out = String::with_capacity(value.len());

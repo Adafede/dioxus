@@ -40,7 +40,7 @@ impl EvidenceSignals {
 #[cfg(test)]
 #[must_use]
 pub(crate) fn row_verdict(row: &MoleculeRow) -> Verdict {
-    let counts = super::chemist::count_evidence(&row.motifs, &row.motif_hits);
+    let counts = super::chemist::count_evidence(&row.motif_hits);
     row_verdict_with_counts(row, counts)
 }
 
@@ -92,8 +92,7 @@ pub(crate) fn classify_np_evidence(signals: &EvidenceSignals) -> Verdict {
 }
 
 fn classify_without_model(signals: EvidenceSignals) -> Verdict {
-    if signals.lotus_scaffolds > 0 && !signals.synthetic_majority() && signals.structural_support()
-    {
+    if signals.lotus_scaffolds > 0 && signals.structural_support() {
         return Verdict::new(
             VerdictCategory::Likely,
             "LOTUS-prevalent scaffold + NP structure — supporting evidence (Ertl unavailable)",
@@ -224,10 +223,8 @@ fn classify_unbacked(signals: EvidenceSignals, score: f64) -> Verdict {
         format!("Citation needed — strong Ertl but unsupported structure (Ertl {score:+.2})")
     } else if confident && signals.structural_support() {
         format!("Citation needed — moderate NP-likeness, no DB (Ertl {score:+.2})")
-    } else if score >= 0.0 {
-        format!("Citation needed — ambiguous NP-likeness (Ertl {score:+.2})")
     } else {
-        format!("Citation needed (Ertl {score:+.2})")
+        format!("Citation needed — ambiguous NP-likeness (Ertl {score:+.2})")
     };
     Verdict::new(VerdictCategory::Skeptical, message)
 }

@@ -31,11 +31,11 @@ pub struct PreparedBatch {
     /// Sorted dataset-wide motif summaries.
     pub motifs: Vec<MotifSummary>,
     /// Dataset motif prevalence context for Pass-2 evaluation.
-    pub dataset_context: DatasetMotifContext,
+    pub(crate) dataset_context: DatasetMotifContext,
     /// Sorted deduplicated full `InChIKey`s to query remotely.
     pub unique_inchikeys: Vec<String>,
     /// Mapping from 14-char connectivity layer to indices in `rows`.
-    pub connectivity_index: HashMap<String, Vec<usize>>,
+    pub(crate) connectivity_index: HashMap<String, Vec<usize>>,
 }
 
 /// Final screening output produced by [`finalize_pass2`].
@@ -117,7 +117,6 @@ fn build_pass1_row(
     }
 
     let motif_hits = inspect.motifs.unwrap_or_default();
-    let motifs = motif_hits.iter().map(|h| h.label.clone()).collect();
     for hit in &motif_hits {
         let entry = motif_counts.entry(hit.label.clone()).or_insert_with(|| {
             (
@@ -160,7 +159,6 @@ fn build_pass1_row(
         smiles,
         inchikey,
         svg: sanitize_svg(inspect.svg),
-        motifs,
         motif_hits,
         substituents_counts,
         lotus_scaffolds: inspect.lotus_scaffolds,
@@ -185,12 +183,12 @@ pub fn finalize_pass2(mut batch: PreparedBatch, enrichment: EnrichmentOutcome) -
         .len();
 
     for row in &mut batch.rows {
-        let counts = count_evidence(&row.motifs, &row.motif_hits);
+        let counts = count_evidence(&row.motif_hits);
         if row.error.is_none() {
             let evidence = assess_np_evidence_with_counts(
                 &EvidenceInputs {
                     descriptors: &row.descriptors,
-                    motifs: &row.motifs,
+                    motif_hits: &row.motif_hits,
                     stereo_tags: &row.stereo_tags,
                     np_score: row.np_score,
                     dataset_context: &batch.dataset_context,

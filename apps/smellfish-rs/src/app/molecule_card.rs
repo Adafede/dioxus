@@ -105,7 +105,7 @@ pub(crate) fn MoleculeCard(row: MoleculeRow) -> Element {
                         }
                     }
                 }
-                if !row.motifs.is_empty() {
+                if !row.motif_hits.is_empty() {
                     div { class: "meta",
                         strong { "Functional groups" }
                         div { class: "motif-groups",

@@ -50,8 +50,6 @@ pub struct MoleculeRow {
     pub inchikey: String,
     /// Validated 2D depiction `<svg>` markup.
     pub svg: Option<String>,
-    /// Matched motif labels.
-    pub motifs: Vec<String>,
     /// Ertl substituent occurrence counts (`label -> count`).
     pub substituents_counts: BTreeMap<String, usize>,
     /// LOTUS 1%-prevalence scaffold SMILES matches.
@@ -105,11 +103,11 @@ pub struct MotifSummary {
 
 /// Dataset-level motif prevalence shared across Pass-2 row assessments.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct DatasetMotifContext {
+pub(crate) struct DatasetMotifContext {
     /// Number of molecules containing each motif label.
-    pub motif_counts: HashMap<String, usize>,
+    pub(crate) motif_counts: HashMap<String, usize>,
     /// Minimum molecule count for a motif to be flagged as dataset-common.
-    pub common_threshold: usize,
+    pub(crate) common_threshold: usize,
 }
 
 /// Whole-molecule `RDKit` descriptors used for ring-family classification.

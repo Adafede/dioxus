@@ -2,7 +2,16 @@
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 use crate::evidence::ring_family::classify_ring_family;
-use crate::model::{RdkitDescriptors, RingFamily};
+use crate::model::{RdkitDescriptors, RdkitMotifHit, RingFamily, SourceClass};
+
+fn hit(label: &str) -> [RdkitMotifHit; 1] {
+    [RdkitMotifHit {
+        label: label.to_string(),
+        source_class: SourceClass::Unknown,
+        kingdom: String::new(),
+        kingdoms: Vec::new(),
+    }]
+}
 
 #[test]
 fn descriptor_heuristics_classify_ring_families() {
@@ -59,23 +68,23 @@ fn descriptor_heuristics_classify_ring_families() {
 fn motif_labels_override_descriptor_heuristics() {
     let empty = RdkitDescriptors::default();
     assert_eq!(
-        classify_ring_family(&empty, &["Flavone ring".to_string()]),
+        classify_ring_family(&empty, &hit("Flavone ring")),
         RingFamily::Flavonoid
     );
     assert_eq!(
-        classify_ring_family(&empty, &["Indole ring".to_string()]),
+        classify_ring_family(&empty, &hit("Indole ring")),
         RingFamily::Heteroaromatic
     );
     assert_eq!(
-        classify_ring_family(&empty, &["Sugar-like oxygen ring".to_string()]),
+        classify_ring_family(&empty, &hit("Sugar-like oxygen ring")),
         RingFamily::Sugar
     );
     assert_eq!(
-        classify_ring_family(&empty, &["Steroid nucleus".to_string()]),
+        classify_ring_family(&empty, &hit("Steroid nucleus")),
         RingFamily::Steroid
     );
     assert_eq!(
-        classify_ring_family(&empty, &["Macrolide core".to_string()]),
+        classify_ring_family(&empty, &hit("Macrolide core")),
         RingFamily::Macrolide
     );
 }

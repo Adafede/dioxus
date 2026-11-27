@@ -51,8 +51,8 @@ pub(crate) const fn np_likeness_label(score: Option<f64>) -> &'static str {
 pub(crate) struct EvidenceInputs<'a> {
     /// Whole-molecule `RDKit` descriptors.
     pub(crate) descriptors: &'a RdkitDescriptors,
-    /// Matched motif labels.
-    pub(crate) motifs: &'a [String],
+    /// Matched motif hits.
+    pub(crate) motif_hits: &'a [crate::model::RdkitMotifHit],
     /// Stereocenter tags detected in the 2D depiction.
     pub(crate) stereo_tags: &'a [String],
     /// Loaded Ertl score and confidence (`None` if unloaded).
@@ -66,11 +66,8 @@ pub(crate) struct EvidenceInputs<'a> {
 /// Synthesizes evidence assessment for a molecule, computing motif counts directly.
 #[cfg(test)]
 #[must_use]
-pub(crate) fn assess_np_evidence(
-    inputs: &EvidenceInputs<'_>,
-    motif_hits: &[crate::model::RdkitMotifHit],
-) -> EvidenceAssessment {
-    let counts = super::chemist::count_evidence(inputs.motifs, motif_hits);
+pub(crate) fn assess_np_evidence(inputs: &EvidenceInputs<'_>) -> EvidenceAssessment {
+    let counts = super::chemist::count_evidence(inputs.motif_hits);
     assess_np_evidence_with_counts(inputs, counts)
 }
 
@@ -80,7 +77,7 @@ pub(crate) fn assess_np_evidence_with_counts(
     inputs: &EvidenceInputs<'_>,
     counts: EvidenceCounts,
 ) -> EvidenceAssessment {
-    let ring_family = classify_ring_family(inputs.descriptors, inputs.motifs);
+    let ring_family = classify_ring_family(inputs.descriptors, inputs.motif_hits);
     let natural_only = counts.natural.saturating_sub(counts.kingdom_enriched);
     let kingdom_support = counts.kingdom_enriched > 0;
     let finite_score = inputs.np_score.map(|np| np.score).filter(|s| s.is_finite());
@@ -99,7 +96,7 @@ pub(crate) fn assess_np_evidence_with_counts(
     notes.extend(motif_evidence_notes(
         counts,
         natural_only,
-        inputs.motifs,
+        inputs.motif_hits,
         inputs.dataset_context,
     ));
 
@@ -151,16 +148,16 @@ fn primary_evidence_notes(
 fn motif_evidence_notes(
     counts: EvidenceCounts,
     natural_only: usize,
-    motifs: &[String],
+    motif_hits: &[crate::model::RdkitMotifHit],
     dataset_context: &DatasetMotifContext,
 ) -> Vec<String> {
     let mut notes = Vec::new();
     if counts.np_core > 0 {
-        let shown = motifs
+        let shown = motif_hits
             .iter()
-            .filter(|m| is_known_np_motif(m))
+            .map(|h| h.label.as_str())
+            .filter(|label| is_known_np_motif(label))
             .take(3)
-            .map(String::as_str)
             .collect::<Vec<_>>()
             .join(", ");
         notes.push(format!(
@@ -192,12 +189,12 @@ fn motif_evidence_notes(
             counts.decoration
         ));
     }
-    let shared = motifs
+    let shared = motif_hits
         .iter()
-        .filter(|m| {
+        .filter(|h| {
             dataset_context
                 .motif_counts
-                .get(*m)
+                .get(&h.label)
                 .is_some_and(|&c| c >= dataset_context.common_threshold)
         })
         .count();

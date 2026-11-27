@@ -132,11 +132,11 @@ pub(crate) fn is_decoration_motif(label: &str) -> bool {
 /// Per-molecule structural evidence counts computed once and shared across assessment and verdict.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct EvidenceCounts {
-    /// Ertl NP-typical scaffold motifs found in `motifs`.
+    /// Ertl NP-typical scaffold motifs found in `motif_hits`.
     pub(crate) np_core: usize,
     /// Scaffold ring motif hits.
     pub(crate) scaffold: usize,
-    /// Side-chain / decoration motifs found in `motifs`.
+    /// Side-chain / decoration motifs found in `motif_hits`.
     pub(crate) decoration: usize,
     /// Motif hits classified as natural origin.
     pub(crate) natural: usize,
@@ -148,21 +148,18 @@ pub(crate) struct EvidenceCounts {
     pub(crate) kingdom_enriched: usize,
 }
 
-/// Computes structural evidence counts for a molecule once from motifs and motif hits.
+/// Computes structural evidence counts for a molecule once from `motif_hits`.
 #[must_use]
-pub(crate) fn count_evidence(motifs: &[String], motif_hits: &[RdkitMotifHit]) -> EvidenceCounts {
+pub(crate) fn count_evidence(motif_hits: &[RdkitMotifHit]) -> EvidenceCounts {
     let mut counts = EvidenceCounts::default();
 
-    for motif in motifs {
-        if is_known_np_motif(motif) {
+    for hit in motif_hits {
+        if is_known_np_motif(&hit.label) {
             counts.np_core += 1;
         }
-        if is_decoration_motif(motif) {
+        if is_decoration_motif(&hit.label) {
             counts.decoration += 1;
         }
-    }
-
-    for hit in motif_hits {
         if is_scaffold_motif(&hit.label) {
             counts.scaffold += 1;
         }

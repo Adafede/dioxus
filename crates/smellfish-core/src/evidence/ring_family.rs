@@ -3,15 +3,15 @@
 
 //! Scaffold ring-family classification from motif labels and `RDKit` descriptors.
 
-use crate::model::{RdkitDescriptors, RingFamily, matches_any};
+use crate::model::{RdkitDescriptors, RdkitMotifHit, RingFamily, matches_any};
 
 /// Classifies the molecule's core scaffold ring family.
 #[must_use]
 pub(crate) fn classify_ring_family(
     descriptors: &RdkitDescriptors,
-    motifs: &[String],
+    motif_hits: &[RdkitMotifHit],
 ) -> RingFamily {
-    let has_any = |keywords: &[&str]| motifs.iter().any(|m| matches_any(m, keywords));
+    let has_any = |keywords: &[&str]| motif_hits.iter().any(|h| matches_any(&h.label, keywords));
 
     if has_any(&["steroid"]) {
         RingFamily::Steroid

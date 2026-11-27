@@ -49,20 +49,21 @@ fn real_ertl_score_notes_stereocenters_and_ring_family() {
         aliphatic_ring_count: Some(2.0),
     };
     let ctx = DatasetMotifContext::default();
-    let assessment = assess_np_evidence(
-        &EvidenceInputs {
-            descriptors: &desc,
-            motifs: &["Steroid-like fused ring".to_string()],
-            stereo_tags: &["R/S".to_string(), "R/S".to_string()],
-            np_score: Some(NpScore {
-                score: 3.42,
-                confidence: 0.75,
-            }),
-            dataset_context: &ctx,
-            lotus_scaffolds: &[],
-        },
-        &[],
-    );
+    let assessment = assess_np_evidence(&EvidenceInputs {
+        descriptors: &desc,
+        motif_hits: &[motif_hit(
+            "Steroid-like fused ring",
+            SourceClass::Unknown,
+            "",
+        )],
+        stereo_tags: &["R/S".to_string(), "R/S".to_string()],
+        np_score: Some(NpScore {
+            score: 3.42,
+            confidence: 0.75,
+        }),
+        dataset_context: &ctx,
+        lotus_scaffolds: &[],
+    });
     assert_eq!(assessment.np_label, "strong natural product");
     assert_eq!(assessment.ring_family, RingFamily::Steroid);
     assert!(
@@ -81,17 +82,14 @@ fn model_unavailable_and_dataset_common_motif_notes() {
     };
     ctx.motif_counts.insert("Flavonoid core".to_string(), 3);
     let desc = RdkitDescriptors::default();
-    let assessment = assess_np_evidence(
-        &EvidenceInputs {
-            descriptors: &desc,
-            motifs: &["Flavonoid core".to_string()],
-            stereo_tags: &[],
-            np_score: None,
-            dataset_context: &ctx,
-            lotus_scaffolds: &[],
-        },
-        &[],
-    );
+    let assessment = assess_np_evidence(&EvidenceInputs {
+        descriptors: &desc,
+        motif_hits: &[motif_hit("Flavonoid core", SourceClass::Unknown, "")],
+        stereo_tags: &[],
+        np_score: None,
+        dataset_context: &ctx,
+        lotus_scaffolds: &[],
+    });
     assert_eq!(assessment.np_label, "unavailable");
     assert!(
         assessment
@@ -115,47 +113,36 @@ fn motif_balance_and_context_detection() {
 
     let desc = RdkitDescriptors::default();
     let ctx = DatasetMotifContext::default();
-    let empty = assess_np_evidence(
-        &EvidenceInputs {
-            descriptors: &desc,
-            motifs: &[],
-            stereo_tags: &[],
-            np_score: Some(NpScore {
-                score: 0.2,
-                confidence: 0.9,
-            }),
-            dataset_context: &ctx,
-            lotus_scaffolds: &[],
-        },
-        &[],
-    );
+    let empty = assess_np_evidence(&EvidenceInputs {
+        descriptors: &desc,
+        motif_hits: &[],
+        stereo_tags: &[],
+        np_score: Some(NpScore {
+            score: 0.2,
+            confidence: 0.9,
+        }),
+        dataset_context: &ctx,
+        lotus_scaffolds: &[],
+    });
     assert_eq!(empty.motif_context, MotifContext::NoneDetected);
     assert!(!empty.motif_context.is_detected());
 
-    let assessment = assess_np_evidence(
-        &EvidenceInputs {
-            descriptors: &desc,
-            motifs: &[
-                "Steroid".to_string(),
-                "Lactone".to_string(),
-                "Sugar".to_string(),
-                "Sulfonamide".to_string(),
-            ],
-            stereo_tags: &[],
-            np_score: Some(NpScore {
-                score: 1.5,
-                confidence: 0.9,
-            }),
-            dataset_context: &ctx,
-            lotus_scaffolds: &[],
-        },
-        &[
+    let assessment = assess_np_evidence(&EvidenceInputs {
+        descriptors: &desc,
+        motif_hits: &[
             motif_hit("Steroid", SourceClass::Natural, "plants"),
             motif_hit("Lactone", SourceClass::Natural, ""),
             motif_hit("Sugar", SourceClass::Natural, "fungi"),
             motif_hit("Sulfonamide", SourceClass::Synthetic, ""),
         ],
-    );
+        stereo_tags: &[],
+        np_score: Some(NpScore {
+            score: 1.5,
+            confidence: 0.9,
+        }),
+        dataset_context: &ctx,
+        lotus_scaffolds: &[],
+    });
     assert!(assessment.motif_context.is_detected());
     assert!(
         assessment
@@ -216,42 +203,36 @@ fn run_checks_evaluates_score_skeleton_and_databases() {
 fn motif_context_handles_mixed_kingdom_and_synthetic_majority() {
     let desc = RdkitDescriptors::default();
     let ctx = DatasetMotifContext::default();
-    let kingdom_dominant = assess_np_evidence(
-        &EvidenceInputs {
-            descriptors: &desc,
-            motifs: &["m1".into(), "m2".into(), "m3".into(), "m4".into()],
-            stereo_tags: &[],
-            np_score: None,
-            dataset_context: &ctx,
-            lotus_scaffolds: &[],
-        },
-        &[
+    let kingdom_dominant = assess_np_evidence(&EvidenceInputs {
+        descriptors: &desc,
+        motif_hits: &[
             motif_hit("m1", SourceClass::Natural, "plants"),
             motif_hit("m2", SourceClass::Natural, ""),
             motif_hit("m3", SourceClass::Natural, ""),
             motif_hit("m4", SourceClass::Synthetic, ""),
         ],
-    );
+        stereo_tags: &[],
+        np_score: None,
+        dataset_context: &ctx,
+        lotus_scaffolds: &[],
+    });
     assert_eq!(
         kingdom_dominant.motif_context,
         MotifContext::KingdomEnriched
     );
 
-    let synthetic_dominant = assess_np_evidence(
-        &EvidenceInputs {
-            descriptors: &desc,
-            motifs: &["s1".into(), "s2".into(), "s3".into()],
-            stereo_tags: &[],
-            np_score: None,
-            dataset_context: &ctx,
-            lotus_scaffolds: &[],
-        },
-        &[
+    let synthetic_dominant = assess_np_evidence(&EvidenceInputs {
+        descriptors: &desc,
+        motif_hits: &[
             motif_hit("s1", SourceClass::Natural, "plants"),
             motif_hit("s2", SourceClass::Synthetic, ""),
             motif_hit("s3", SourceClass::Synthetic, ""),
         ],
-    );
+        stereo_tags: &[],
+        np_score: None,
+        dataset_context: &ctx,
+        lotus_scaffolds: &[],
+    });
     assert_eq!(
         synthetic_dominant.motif_context,
         MotifContext::SyntheticLeaning
