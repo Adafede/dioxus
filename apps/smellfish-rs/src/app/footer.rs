@@ -42,7 +42,7 @@ pub(super) fn Footer() -> Element {
                     span { class: "footer-label", "References" }
                     ul { class: "footer-links", role: "list",
                         for paper in LITERATURE {
-                            li {
+                            li { key: "{paper.doi}",
                                 a { class: "footer-link purple", href: "https://doi.org/{paper.doi}", target: "_blank", rel: "noopener noreferrer", title: "{paper.note}", "{paper.title}" }
                             }
                         }

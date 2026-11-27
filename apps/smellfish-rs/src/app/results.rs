@@ -12,7 +12,7 @@ use dioxus::prelude::*;
 use smellfish_core::csv::format_csv_rows;
 use smellfish_core::model::{MoleculeRow, MotifSummary, SourceClass};
 
-use super::molecule_card::MoleculeCard;
+use super::molecule_card::render_molecule_card;
 use super::motif_display::{
     chip_class_for, display_label, is_natural_source, is_synthetic_source, is_unclassified_source,
 };
@@ -53,11 +53,12 @@ pub(super) fn MotifPanel(motifs: Signal<Vec<MotifSummary>>) -> Element {
             h2 { "Motifs" }
             div { class: "motif-groups",
                 for (heading, title, matches_group) in MOTIF_GROUPS {
-                    div { class: "motif-group",
+                    div { key: "{heading}", class: "motif-group",
                         h3 { class: "small", "{heading}" }
                         div { class: "chip-list",
                             for motif in motifs_ref.iter().filter(|m| matches_group(m.source_class)).take(12) {
                                 span {
+                                    key: "{motif.label}",
                                     class: "{chip_class_for(motif.source_class)}",
                                     title: "{title}",
                                     "{display_label(motif.source_class, &motif.label, &motif.kingdom, &motif.kingdoms)} ({motif.count})"
@@ -93,7 +94,7 @@ pub(super) fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
         }
         section { class: "cards",
             for row in rows_ref.iter() {
-                MoleculeCard { key: "{row.index}", row: row.clone() }
+                { render_molecule_card(row) }
             }
         }
     }

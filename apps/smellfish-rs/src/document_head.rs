@@ -11,7 +11,67 @@
 use crate::rdkit_bridge::RDKIT_BRIDGE_JS;
 use crate::styles::CSS;
 use dioxus::prelude::*;
-use ui::{DocumentHead, EdamAnnotations, EdamTerm, WebMcpConfig};
+use ui::{ColorScheme, DocumentHead, EdamAnnotations, EdamTerm, WebMcpConfig};
+
+const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
+    app_id: "smellfish-rs",
+    title: "Smellfish-rs",
+    description: "Smellfish-rs literature-backed NP-likeness scoring with RDKit.js, QLever enrichment, and explicit endpoint health checks",
+    inputs: &["smiles_csv"],
+    outputs: &["np_likeness", "motifs", "enrichment"],
+    edam: EdamAnnotations {
+        topics: &[
+            EdamTerm {
+                id: "topic_0154",
+                label: "Small molecules",
+            },
+            EdamTerm {
+                id: "topic_2258",
+                label: "Cheminformatics",
+            },
+            EdamTerm {
+                id: "topic_3172",
+                label: "Metabolomics",
+            },
+        ],
+        operations: &[
+            EdamTerm {
+                id: "operation_2480",
+                label: "Structure analysis",
+            },
+            EdamTerm {
+                id: "operation_2421",
+                label: "Database search",
+            },
+            EdamTerm {
+                id: "operation_0570",
+                label: "Structure visualisation",
+            },
+        ],
+        input_data: &[EdamTerm {
+            id: "data_2301",
+            label: "SMILES string",
+        }],
+        input_formats: &[
+            EdamTerm {
+                id: "format_3752",
+                label: "CSV",
+            },
+            EdamTerm {
+                id: "format_1196",
+                label: "SMILES",
+            },
+        ],
+        output_data: &[EdamTerm {
+            id: "data_2048",
+            label: "Report",
+        }],
+        output_formats: &[EdamTerm {
+            id: "format_3752",
+            label: "CSV",
+        }],
+    },
+};
 
 /// Renders the document `<head>` for smellfish-rs.
 #[component]
@@ -28,35 +88,10 @@ pub(crate) fn SmellfishDocumentHead() -> Element {
     rsx! {
         DocumentHead {
             title: "smellfish-rs".to_string(),
-            webmcp: Some(WebMcpConfig {
-                app_id: "smellfish-rs",
-                title: "Smellfish-rs",
-                description: "Smellfish-rs literature-backed NP-likeness scoring with RDKit.js, QLever enrichment, and explicit endpoint health checks",
-                inputs: &["smiles_csv"],
-                outputs: &["np_likeness", "motifs", "enrichment"],
-                edam: EdamAnnotations {
-                    topics: &[
-                        EdamTerm { id: "topic_0154", label: "Small molecules" },
-                        EdamTerm { id: "topic_2258", label: "Cheminformatics" },
-                        EdamTerm { id: "topic_3172", label: "Metabolomics" },
-                    ],
-                    operations: &[
-                        EdamTerm { id: "operation_2480", label: "Structure analysis" },
-                        EdamTerm { id: "operation_2421", label: "Database search" },
-                        EdamTerm { id: "operation_0570", label: "Structure visualisation" },
-                    ],
-                    input_data: &[EdamTerm { id: "data_2301", label: "SMILES string" }],
-                    input_formats: &[
-                        EdamTerm { id: "format_3752", label: "CSV" },
-                        EdamTerm { id: "format_1196", label: "SMILES" },
-                    ],
-                    output_data: &[EdamTerm { id: "data_2048", label: "Report" }],
-                    output_formats: &[EdamTerm { id: "format_3752", label: "CSV" }],
-                },
-            }),
+            webmcp: Some(WEBMCP_CONFIG),
             lang: "en".to_string(),
             description: Some(description.to_string()),
-            theme_colors: Some(("#f6f8fb", "#f6f8fb")),
+            theme_colors: Some((ColorScheme::LIGHT.bg, ColorScheme::LIGHT.bg)),
             scripts,
             inline_script: Some(RDKIT_BRIDGE_JS.to_string()),
         }

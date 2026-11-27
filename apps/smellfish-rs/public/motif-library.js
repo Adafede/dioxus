@@ -8,42 +8,21 @@ async function fetchText(path) {
 
 window.__SMELLFISH_MOTIFS = {
   MOTIF_LIBRARY: [],
-  GROUP_NAMES: [],
   ERTL_SUBSTITUENTS: [],
   ready: (async () => {
     try {
-      const [
-        ertlSourceText,
-        ertlKingdomText,
-        userSourceText,
-        userKingdomText,
-        namesText,
-        substText,
-      ] = await Promise.all([
+      const [ertlSourceText, ertlKingdomText, substText] = await Promise.all([
         fetchText("ertl_source_vs_synthetic.txt"),
         fetchText("ertl_kingdom_enrichment.txt"),
-        fetchText("user_source_vs_synthetic.txt"),
-        fetchText("user_kingdom_enrichment.txt"),
-        fetchText("group_names.txt"),
         fetchText("ertl_npsubstituents.txt"),
       ]);
 
       const ertlSourceRows = parseTable(ertlSourceText);
       const ertlKingdomRows = parseTable(ertlKingdomText);
-      const userSourceRows = parseTable(userSourceText);
-      const userKingdomRows = parseTable(userKingdomText);
-      const nameRows = parseGroupNames(namesText);
-      const motifs = buildMotifLibrary(
-        ertlSourceRows,
-        ertlKingdomRows,
-        userSourceRows,
-        userKingdomRows,
-        nameRows,
-      );
+      const motifs = buildMotifLibrary(ertlSourceRows, ertlKingdomRows);
       const substituents = parseSubstituents(substText);
 
       window.__SMELLFISH_MOTIFS.MOTIF_LIBRARY = motifs;
-      window.__SMELLFISH_MOTIFS.GROUP_NAMES = nameRows;
       window.__SMELLFISH_MOTIFS.ERTL_SUBSTITUENTS = substituents;
     } catch (err) {
       console.error("Failed to initialize smellfish motif library:", err);
@@ -68,27 +47,15 @@ function parseTable(text) {
   return rows;
 }
 
-function buildMotifLibrary(
-  ertlSourceRows,
-  ertlKingdomRows,
-  userSourceRows,
-  userKingdomRows,
-  nameRows,
-) {
-  const sourceMap = new Map(
-    [...ertlSourceRows, ...userSourceRows].map((row) => [row.label, row]),
-  );
-  const kingdomMap = new Map(
-    [...ertlKingdomRows, ...userKingdomRows].map((row) => [row.label, row]),
-  );
-  const nameMap = new Map(nameRows.map((row) => [row.smarts, row]));
+function buildMotifLibrary(ertlSourceRows, ertlKingdomRows) {
+  const sourceMap = new Map(ertlSourceRows.map((row) => [row.label, row]));
+  const kingdomMap = new Map(ertlKingdomRows.map((row) => [row.label, row]));
   const labels = new Set([...sourceMap.keys(), ...kingdomMap.keys()]);
   const motifs = [];
 
   for (const label of labels) {
     const source = sourceMap.get(label);
     const kingdom = kingdomMap.get(label);
-    const nameRow = nameMap.get(label) || nameMap.get(labelToSmarts(label));
     const sourceSplit = source
       ? classifySource(source.values)
       : kingdom
@@ -97,10 +64,10 @@ function buildMotifLibrary(
     const kingdomSplit = kingdom ? classifyKingdom(kingdom.values) : null;
 
     motifs.push({
-      label: nameRow?.label || label,
+      label,
       source_label: label,
       kind: classifyKind(label, sourceSplit),
-      smarts: nameRow?.smarts || labelToSmarts(label),
+      smarts: labelToSmarts(label),
       source_class: sourceSplit?.label || "unknown",
       kingdom: kingdomSplit?.label || "unknown",
       kingdoms: kingdomSplit?.kingdoms || [],
@@ -178,34 +145,6 @@ function classifyKind(label, sourceSplit) {
     return "ring";
   }
   return "decoration";
-}
-
-function parseGroupNames(text) {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("#"))
-    .map((line) => {
-      const tokens = line.match(/"[^"]*"|\S+/g) || [];
-      const parts = tokens.map(stripQuotes);
-      if (!parts.length) return null;
-      if (parts.length === 1) {
-        return { label: parts[0], smarts: parts[0], group_id: "" };
-      }
-      if (parts.length === 2) {
-        return { label: parts[0], smarts: parts[1], group_id: "" };
-      }
-      return {
-        label: parts.slice(0, -2).join(" "),
-        smarts: parts[parts.length - 2],
-        group_id: parts[parts.length - 1],
-      };
-    })
-    .filter(Boolean);
-}
-
-function stripQuotes(value) {
-  return value.replace(/^"(.*)"$/, "$1");
 }
 
 function labelToSmarts(label) {

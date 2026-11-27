@@ -36,7 +36,7 @@ CCCCCCCC=CCCCCCCCC(N)=O";
 ///
 /// Returns a rendering error only if the RSX tree fails to build.
 pub fn app() -> Element {
-    ui::shared_signal!(file_name, String::new);
+    let file_name = use_signal(String::new);
 
     let signals = browser::ImportSignals {
         generation: upload::use_upload_gen(),

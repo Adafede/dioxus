@@ -86,11 +86,6 @@ body {
   line-height: 1.5;
 }
 
-.hero .small.muted {
-  font-size: 0.84rem;
-  color: var(--text3);
-}
-
 /* ── Input split: CSV dropzone + SMILES paste, side by side ─────────── */
 .input-split {
   display: flex;
@@ -221,7 +216,6 @@ body {
 .chip.warn { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)); color: color-mix(in srgb, var(--yellow) 88%, var(--text)); border: 1px solid color-mix(in srgb, var(--yellow) 28%, var(--border)); }
 .chip.fail { background: color-mix(in srgb, var(--red) 10%, var(--surface)); color: var(--red); border: 1px solid color-mix(in srgb, var(--red) 28%, var(--border)); }
 .chip.chip-synth { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)); color: color-mix(in srgb, var(--yellow) 88%, var(--text)); border: 1px solid color-mix(in srgb, var(--yellow) 28%, var(--border)); }
-.chip-np,
 .chip.chip-np { background: color-mix(in srgb, var(--green) 10%, var(--surface)); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border)); }
 .chip.lotus { background: color-mix(in srgb, var(--wd-lotus) 12%, var(--surface)); color: var(--wd-lotus); border: 1px solid color-mix(in srgb, var(--wd-lotus) 40%, var(--border)); }
 .motif-groups {
@@ -397,12 +391,6 @@ a:hover { text-decoration: underline; }
 }
 .evidence details[open] summary {
   color: var(--accent);
-}
-.evidence details p {
-  margin: 4px 0;
-  padding-left: 4px;
-  border-left: 2px solid var(--border);
-  color: var(--text2);
 }
 .evidence-list {
   margin: 6px 0;

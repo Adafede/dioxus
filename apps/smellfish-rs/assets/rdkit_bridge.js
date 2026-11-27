@@ -194,9 +194,8 @@ const rdkitReady = (async () => {
   const RDKit = await init();
   const motifsObj = await waitForSmellfishMotifs();
   await (motifsObj?.ready ?? Promise.resolve());
-  const { MOTIF_LIBRARY, GROUP_NAMES, ERTL_SUBSTITUENTS } = motifsObj || {
+  const { MOTIF_LIBRARY, ERTL_SUBSTITUENTS } = motifsObj || {
     MOTIF_LIBRARY: [],
-    GROUP_NAMES: [],
     ERTL_SUBSTITUENTS: [],
   };
   function compilePattern(pattern, kind) {
@@ -401,15 +400,21 @@ const rdkitReady = (async () => {
           }
         }
 
+        function extractMatchedIndices(matches) {
+          return {
+            hitAtoms: uniqueSorted(
+              matches.flatMap((m) => (Array.isArray(m.atoms) ? m.atoms : [])),
+            ),
+            hitBonds: uniqueSorted(
+              matches.flatMap((m) => (Array.isArray(m.bonds) ? m.bonds : [])),
+            ),
+          };
+        }
+
         for (const motif of compiledMotifs) {
           const matches = extractSubstructMatches(mol, motif.qmol);
           if (!matches.length) continue;
-          const hitAtoms = uniqueSorted(
-            matches.flatMap((m) => (Array.isArray(m.atoms) ? m.atoms : [])),
-          );
-          const hitBonds = uniqueSorted(
-            matches.flatMap((m) => (Array.isArray(m.bonds) ? m.bonds : [])),
-          );
+          const { hitAtoms, hitBonds } = extractMatchedIndices(matches);
           if (!hitAtoms.length && !hitBonds.length) {
             continue;
           }
@@ -437,12 +442,7 @@ const rdkitReady = (async () => {
         for (const scaff of lotusScaffoldQueries) {
           const matches = extractSubstructMatches(mol, scaff.qmol);
           if (!matches.length) continue;
-          const hitAtoms = uniqueSorted(
-            matches.flatMap((m) => (Array.isArray(m.atoms) ? m.atoms : [])),
-          );
-          const hitBonds = uniqueSorted(
-            matches.flatMap((m) => (Array.isArray(m.bonds) ? m.bonds : [])),
-          );
+          const { hitAtoms, hitBonds } = extractMatchedIndices(matches);
           if (hitAtoms.length || hitBonds.length) {
             lotusScaffolds.push(scaff.smiles);
             atoms.push(...hitAtoms);
