@@ -51,9 +51,6 @@ pub struct DocumentHeadProps {
     /// Open Graph site name.
     #[props(default)]
     pub og_site_name: Option<String>,
-    /// JSON-LD structured data.
-    #[props(default)]
-    pub json_ld: Option<String>,
     /// Canonical URL.
     #[props(default)]
     pub canonical: Option<String>,
@@ -66,7 +63,6 @@ pub struct DocumentHeadProps {
 #[component]
 pub fn DocumentHead(props: DocumentHeadProps) -> Element {
     let lang = props.lang.trim().to_string();
-    let lang_for_effect = lang.clone();
 
     use_hook(move || {
         let doc = document();
@@ -75,10 +71,9 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         inject_meta_tags(&*doc, &props);
         inject_theme_meta(&*doc, props.theme_colors);
         inject_scripts(&*doc, &props.scripts, props.inline_script.as_deref());
-        inject_structured_data(&*doc, props.webmcp, props.json_ld.as_deref());
+        inject_structured_data(&*doc, props.webmcp);
     });
 
-    use_effect(move || sync_document_lang(&lang_for_effect));
     VNode::empty()
 }
 
@@ -160,26 +155,13 @@ fn inject_scripts(doc: &dyn Document, scripts: &[String], inline_script: Option<
     }
 }
 
-fn inject_structured_data(doc: &dyn Document, webmcp: Option<WebMcpConfig>, json_ld: Option<&str>) {
+fn inject_structured_data(doc: &dyn Document, webmcp: Option<WebMcpConfig>) {
     if let Some(cfg) = webmcp {
         doc.create_head_element("script", &[], Some(capabilities_script(cfg)));
-        if json_ld.is_none() {
-            doc.create_head_element(
-                "script",
-                &[("type", "application/ld+json".to_string())],
-                Some(bioschemas_json_ld(cfg)),
-            );
-        }
-    }
-    if let Some(ld) = json_ld {
-        let escaped = ld
-            .replace("</", "\\u003c/")
-            .replace('\u{2028}', "\\u2028")
-            .replace('\u{2029}', "\\u2029");
         doc.create_head_element(
             "script",
             &[("type", "application/ld+json".to_string())],
-            Some(escaped),
+            Some(bioschemas_json_ld(cfg)),
         );
     }
 }

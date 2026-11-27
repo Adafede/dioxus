@@ -59,11 +59,6 @@ macro_rules! shared_signal {
 #[macro_export]
 macro_rules! shared_signals {
     ( $( $name:ident : $init:expr ),* $(,)? ) => {
-        $(
-            #[cfg(target_arch = "wasm32")]
-            let $name = ::dioxus::prelude::use_signal($init);
-            #[cfg(not(target_arch = "wasm32"))]
-            let mut $name = ::dioxus::prelude::use_signal($init);
-        )*
+        $( $crate::shared_signal!($name, $init); )*
     };
 }

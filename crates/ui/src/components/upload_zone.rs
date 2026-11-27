@@ -76,6 +76,7 @@ pub fn UploadZone(props: UploadZoneProps) -> Element {
     let mut drag_active = props.drag_active;
     let is_drag_active = *drag_active.read();
     let is_busy = *props.busy.read();
+    let file_name = props.file_name.read();
     let status_text = props.status.read();
     let tone_color = status_color(&status_text, props.is_error, colors);
     let input_id = format!("{}-input", props.id_prefix);
@@ -116,16 +117,16 @@ pub fn UploadZone(props: UploadZoneProps) -> Element {
                 id: "{input_id}",
                 r#type: "file",
                 accept: props.accept,
-                disabled: *props.busy.read(),
+                disabled: is_busy,
                 onchange: move |evt: Event<FormData>| props.on_file_change.call(evt),
                 aria_describedby: "{status_id}",
                 style: hidden_input_style,
             }
         }
-        if !props.file_name.read().is_empty() {
+        if !file_name.is_empty() {
             p {
                 style: StyleBuilder::with_capacity(96).margin(&format!("{} 0 0", Spacing::MD)).color(colors.text2).font_size(Typography::BODY).build(),
-                "Selected: {props.file_name.read()}"
+                "Selected: {file_name}"
             }
         }
         p {

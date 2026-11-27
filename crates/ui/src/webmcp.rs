@@ -29,20 +29,6 @@ pub struct EdamTerm {
     pub label: &'static str,
 }
 
-impl EdamTerm {
-    /// Const constructor for an [`EdamTerm`].
-    #[must_use]
-    pub const fn new(id: &'static str, label: &'static str) -> Self {
-        Self { id, label }
-    }
-
-    /// Canonical EDAM URI (`http://edamontology.org/<id>`).
-    #[must_use]
-    pub fn uri(self) -> String {
-        format!("http://edamontology.org/{}", self.id)
-    }
-}
-
 /// EDAM bioinformatics and cheminformatics ontology annotations for a web tool.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct EdamAnnotations {

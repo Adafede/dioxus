@@ -32,7 +32,7 @@ pub fn SimpleAnalyticsBadge(
 
     if !is_valid_domain(&domain) {
         return rsx! {
-            div { style: "{container_style}" }
+            div { style: container_style }
         };
     }
 
@@ -54,19 +54,19 @@ pub fn SimpleAnalyticsBadge(
     );
 
     rsx! {
-        div { style: "{container_style}",
+        div { style: container_style,
             a {
-                href: "{href}",
+                href: href,
                 "referrerpolicy": "origin",
                 target: "_blank",
                 rel: "noopener noreferrer",
                 picture {
                     source {
-                        "srcset": "{dark_srcset}",
+                        "srcset": dark_srcset,
                         "media": "(prefers-color-scheme: dark)",
                     }
                     img {
-                        src: "{light_src}",
+                        src: light_src,
                         alt: "Simple Analytics",
                         width: "118",
                         height: "28",
@@ -78,7 +78,7 @@ pub fn SimpleAnalyticsBadge(
             }
         }
         img {
-            src: "{pixel_src}",
+            src: pixel_src,
             alt: "",
             width: "1",
             height: "1",

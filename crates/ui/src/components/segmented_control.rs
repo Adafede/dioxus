@@ -41,8 +41,8 @@ pub struct SegmentedControlProps {
     #[props(default = true)]
     pub wrap: bool,
     /// ARIA current attribute value when item is active.
-    #[props(default = "true")]
-    pub active_aria_current: &'static str,
+    #[props(default)]
+    pub active_aria_current: Option<&'static str>,
 }
 
 /// Segmented button control for selecting one option from a static list.
@@ -78,16 +78,16 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
 
 #[derive(Clone, Props, Debug, PartialEq)]
 struct SegmentedButtonProps {
-    pub label: &'static str,
-    pub value: &'static str,
-    pub active: bool,
-    pub on_select: EventHandler<String>,
+    label: &'static str,
+    value: &'static str,
+    active: bool,
+    on_select: EventHandler<String>,
     #[props(default)]
-    pub theme: Theme,
+    theme: Theme,
     #[props(default = false)]
-    pub stretch: bool,
-    #[props(default = "true")]
-    pub active_aria_current: &'static str,
+    stretch: bool,
+    #[props(default)]
+    active_aria_current: Option<&'static str>,
 }
 
 #[component]
@@ -126,7 +126,7 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
         button {
             r#type: "button",
             aria_pressed: if props.active { "true" } else { "false" },
-            aria_current: (props.active && props.active_aria_current != "true").then_some(props.active_aria_current),
+            aria_current: props.active.then_some(props.active_aria_current).flatten(),
             style: button_style,
             onclick: move |_| on_select.call(value.to_string()),
             "{props.label}"

@@ -77,8 +77,4 @@ pub enum JsonCountError {
     /// Stream ended unexpectedly inside a construct.
     #[error("Unexpected EOF: {0}")]
     UnexpectedEof(&'static str),
-
-    /// Construct exceeded the pass bound without terminating.
-    #[error("{0} did not terminate within the document")]
-    Unterminated(&'static str),
 }
