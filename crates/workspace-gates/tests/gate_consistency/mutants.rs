@@ -9,6 +9,25 @@
 // separately.
 use super::*;
 
+/// Reads the token pair rather than the structure around it, because the same
+/// command is written once as a task's inline script and once as a folded YAML
+/// scalar whose first line holds only `./mk` and whose arguments are on
+/// the lines after it.
+fn mutated_packages(text: &str) -> BTreeSet<&str> {
+    let mut names = BTreeSet::new();
+    for line in text.lines() {
+        let mut words = line.split_whitespace();
+        while let Some(word) = words.next() {
+            if word == "--package"
+                && let Some(name) = words.next()
+            {
+                names.insert(name);
+            }
+        }
+    }
+    names
+}
+
 /// `cargo-mutants` only reads `.cargo/mutants.toml` unless it is passed a
 /// `--config` flag, and nothing in the gate passes one. A config file at the
 /// repository root -- which is where most of the other config files in this
@@ -36,11 +55,12 @@ fn the_mutants_config_is_where_cargo_mutants_looks_for_it() {
 /// drift, the list is of a run nobody makes.
 #[test]
 fn the_mutants_task_names_a_scope() -> Result<()> {
-    let scope: BTreeSet<String> = read("mk.local")?
+    let mk_local = read("mk.local")?;
+    let scope: BTreeSet<&str> = mk_local
         .lines()
         .find_map(|line| line.trim().strip_prefix("MUTANTS_PACKAGES=("))
         .and_then(|rest| rest.split(')').next())
-        .map_or_default(|names| names.split_whitespace().map(str::to_string).collect());
+        .map_or_default(|names| names.split_whitespace().collect());
     assert!(
         !scope.is_empty(),
         "no `MUTANTS_PACKAGES` in `mk.local`, so `./mk mutants` mutates the whole \

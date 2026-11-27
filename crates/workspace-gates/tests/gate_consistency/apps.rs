@@ -9,6 +9,23 @@
 // separately.
 use super::*;
 
+/// The `id` every app's `<main>` must carry, because it is the `href`
+/// `ui::skip_link` hardcodes. Duplicated from `crates/ui/src/a11y.rs` on
+/// purpose: this test reads app source as text and cannot import the constant
+/// out of the component that renders it.
+const MAIN_LANDMARK_ID: &str = "id: \"main-content\"";
+
+fn app_dirs_with(marker: &str) -> Result<Vec<String>> {
+    let mut apps: Vec<String> = std::fs::read_dir(repo_root().join("apps"))?
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.path().join(marker).is_file())
+        .filter_map(|e| e.file_name().into_string().ok())
+        .collect();
+    apps.sort();
+    assert!(!apps.is_empty(), "found no apps with `{marker}` to check");
+    Ok(apps)
+}
+
 /// Every app, against the two halves of its skip link.
 ///
 /// A working skip link needs three things in three different places: an app
@@ -27,30 +44,18 @@ use super::*;
 #[test]
 fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
     let root = repo_root();
-    let mut apps: Vec<String> = std::fs::read_dir(root.join("apps"))?
-        .filter_map(std::result::Result::ok)
-        .filter(|e| e.path().join("Cargo.toml").is_file())
-        .filter_map(|e| e.file_name().into_string().ok())
-        .collect();
-    apps.sort();
-    assert!(!apps.is_empty(), "found no apps to check");
+    let apps = app_dirs_with("Cargo.toml")?;
 
     let mut broken: Vec<String> = Vec::new();
 
     for app in &apps {
         let src_dir = root.join("apps").join(app).join("src");
+        let mut rs_files = BTreeMap::new();
+        collect_dir(&root, &src_dir, true, &["rs"], &mut rs_files)?;
         let mut body = String::new();
-        let mut stack = vec![src_dir];
-        while let Some(dir) = stack.pop() {
-            for entry in std::fs::read_dir(&dir)? {
-                let path = entry?.path();
-                if path.is_dir() {
-                    stack.push(path);
-                } else if path.extension().is_some_and(|e| e == "rs") {
-                    body.push_str(&std::fs::read_to_string(&path)?);
-                    body.push('\n');
-                }
-            }
+        for path in rs_files.into_values() {
+            body.push_str(&std::fs::read_to_string(&path)?);
+            body.push('\n');
         }
 
         let mut fail = |reason: &str| broken.push(format!("{app}: {reason}"));
@@ -196,46 +201,19 @@ const MAX_FILE_LINES: usize = 800;
 const OVERSIZED: &[(&str, &str)] = &[];
 
 #[test]
-fn no_source_file_is_longer_than_the_limit() {
+fn no_source_file_is_longer_than_the_limit() -> Result<()> {
     let root = repo_root();
-    let mut stack = vec![root.clone()];
-    let mut over: Vec<(usize, String)> = Vec::new();
+    let mut rs_files = BTreeMap::new();
+    collect_dir(&root, &root, true, &["rs"], &mut rs_files)?;
 
-    while let Some(dir) = stack.pop() {
-        // An unreadable directory is skipped, not panicked on -- the same as an
-        // unreadable file below. A permission problem somewhere in the tree is not
-        // evidence that a file grew too long, and failing on it would have this
-        // gate report the wrong problem.
-        let Ok(entries) = std::fs::read_dir(&dir) else {
+    let mut over: Vec<(usize, String)> = Vec::new();
+    for (rel, path) in rs_files {
+        let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
         };
-        for entry in entries.filter_map(std::result::Result::ok) {
-            let path = entry.path();
-            let name = path
-                .file_name()
-                .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-            if name == "target" || name.starts_with('.') {
-                continue;
-            }
-            if path.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            if path.extension().is_none_or(|e| e != "rs") {
-                continue;
-            }
-            let rel = path
-                .strip_prefix(&root)
-                .unwrap_or(&path)
-                .to_string_lossy()
-                .replace('\\', "/");
-            let lines = match std::fs::read_to_string(&path) {
-                Ok(text) => text.lines().count(),
-                Err(_) => continue,
-            };
-            if lines > MAX_FILE_LINES && !OVERSIZED.iter().any(|(p, _)| *p == rel) {
-                over.push((lines, rel));
-            }
+        let lines = text.lines().count();
+        if lines > MAX_FILE_LINES && !OVERSIZED.iter().any(|(p, _)| *p == rel) {
+            over.push((lines, rel));
         }
     }
 
@@ -251,6 +229,7 @@ fn no_source_file_is_longer_than_the_limit() {
             .collect::<Vec<_>>()
             .join("\n  "),
     );
+    Ok(())
 }
 
 /// Every file on the [`OVERSIZED`] list still exists, and still needs to be there.
@@ -285,13 +264,7 @@ fn extract_quoted_values(raw: &str) -> Vec<&str> {
 #[test]
 fn every_app_dioxus_toml_references_existing_paths() -> Result<()> {
     let root = repo_root();
-    let mut apps: Vec<String> = std::fs::read_dir(root.join("apps"))?
-        .filter_map(std::result::Result::ok)
-        .filter(|e| e.path().join("Dioxus.toml").is_file())
-        .filter_map(|e| e.file_name().into_string().ok())
-        .collect();
-    apps.sort();
-    assert!(!apps.is_empty(), "found no apps/*/Dioxus.toml files");
+    let apps = app_dirs_with("Dioxus.toml")?;
 
     let mut problems = Vec::new();
     for app in apps {

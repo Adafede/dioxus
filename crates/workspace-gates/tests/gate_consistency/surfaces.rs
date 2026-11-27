@@ -4,9 +4,9 @@
 //! Anti-drift gates for documentation surface separation, doctests, and ratchets.
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use super::{Result, read, repo_root};
+use super::{Result, collect_dir, read, repo_root};
 
 const STALE_REMOVED_FILES: &[&str] = &[
     "PROJECT_METADATA.json",
@@ -31,48 +31,6 @@ const FORBIDDEN_SLOP_WORDS: &[&str] = &[
     "comprehensive",
     "powerful",
 ];
-
-fn normalize_rel(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .unwrap_or(path)
-        .to_string_lossy()
-        .replace('\\', "/")
-}
-
-fn has_extension(path: &Path, exts: &[&str]) -> bool {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .is_some_and(|ext| exts.contains(&ext))
-}
-
-fn collect_dir(
-    root: &Path,
-    dir: &Path,
-    recursive: bool,
-    exts: &[&str],
-    out: &mut BTreeMap<String, PathBuf>,
-) -> Result<()> {
-    let entries = std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    for entry in entries.filter_map(std::result::Result::ok) {
-        let path = entry.path();
-        let name = path
-            .file_name()
-            .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        if name == "target" || name.starts_with('.') {
-            continue;
-        }
-        if path.is_dir() {
-            if recursive {
-                collect_dir(root, &path, true, exts, out)?;
-            }
-            continue;
-        }
-        if has_extension(&path, exts) {
-            out.insert(normalize_rel(root, &path), path);
-        }
-    }
-    Ok(())
-}
 
 fn human_doc_files(include_templates: bool) -> Result<Vec<(String, PathBuf)>> {
     let root = repo_root();

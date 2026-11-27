@@ -9,6 +9,40 @@
 // separately.
 use super::*;
 
+/// Data that must never be committed, and the reason each one exists.
+///
+/// This is a list of paths, not a list of rules: it is here so that deleting a
+/// `.gitignore` line has to be done in two places, and so the two places can be
+/// compared. The largest of these is 33 MB of third-party LIPID MAPS data, and a
+/// licence is not something a later commit can take back.
+const LOCAL_ONLY_DATA: &[(&str, &str)] = &[
+    (
+        "/apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/LMSD.sdf.zip",
+        "downloaded from lipidmaps.org by `smarts-evoliposuction download`",
+    ),
+    (
+        "/apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/LMSD.sdf.tsv",
+        "the same records as the zip, converted to TSV",
+    ),
+    (
+        "/apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/example_lipids.smi",
+        "the scratch input used while developing a rule set",
+    ),
+    (
+        "/smarts_results.csv",
+        "the tool's default output name, so it lands in whatever directory it was run from",
+    ),
+    (
+        "/example_lipids.smi",
+        "a copy of the scratch input, left in the repository root",
+    ),
+    ("/smiles_sets/", "70 MB of SMILES split out of the TSV"),
+    (
+        "/smarts_results_tested_smarts/",
+        "the tested SMARTS per class",
+    ),
+];
+
 /// Every one of them has an ignore rule, and the rule is the path.
 ///
 /// Text, not `git check-ignore`: this has to run in a checkout with no `.git` at

@@ -112,7 +112,7 @@ fn no_workflow_expression_contains_rust() -> Result<()> {
         let text = read(&format!(".github/workflows/{name}"))?;
         for (line_no, line) in text.lines().enumerate() {
             for expr in expression_bodies(line) {
-                for call in re_macros(&expr) {
+                for call in re_macros(expr) {
                     offenders.push(format!(
                         "{name}:{}: `{call}!` is a Rust macro; GitHub's function is \
                          `{call}(...)` with no bang",
@@ -250,15 +250,19 @@ fn workflow_files() -> Result<Vec<String>> {
 }
 
 /// The bodies of every `${{ ... }}` on one line.
-fn expression_bodies(line: &str) -> Vec<String> {
+fn expression_bodies(line: &str) -> Vec<&str> {
     let mut out = Vec::new();
     let mut rest = line;
     while let Some(open) = rest.find("${{") {
-        let after = &rest[open + 3..];
+        let Some(after) = rest.get(open + 3..) else {
+            break;
+        };
         match after.find("}}") {
             Some(close) => {
-                out.push(after[..close].to_string());
-                rest = &after[close + 2..];
+                if let Some(body) = after.get(..close) {
+                    out.push(body);
+                }
+                rest = after.get(close + 2..).unwrap_or("");
             }
             None => break,
         }
@@ -268,11 +272,7 @@ fn expression_bodies(line: &str) -> Vec<String> {
 
 /// Names called with a `!` inside an expression body, ignoring anything in
 /// single quotes.
-///
-/// Scanning forward for `!` and reading the identifier backwards off the front of
-/// it is enough: a name only ever ends in one, and `take_while` over reversed
-/// chars stops at the first thing that cannot be part of an identifier.
-fn re_macros(expr: &str) -> Vec<String> {
+fn re_macros(expr: &str) -> Vec<&str> {
     let mut found = Vec::new();
     let mut in_quotes = false;
     for (i, c) in expr.char_indices() {
@@ -282,15 +282,13 @@ fn re_macros(expr: &str) -> Vec<String> {
         if c != '!' || in_quotes {
             continue;
         }
-        let name: String = expr[..i]
-            .chars()
-            .rev()
-            .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '_')
-            .collect::<Vec<char>>()
-            .into_iter()
-            .rev()
-            .collect();
-        if !name.is_empty() {
+        let prefix = expr.get(..i).unwrap_or("");
+        let start = prefix
+            .rfind(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_')
+            .map_or(0, |pos| pos + 1);
+        if let Some(name) = prefix.get(start..)
+            && !name.is_empty()
+        {
             found.push(name);
         }
     }

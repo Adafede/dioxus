@@ -17,23 +17,17 @@ use super::*;
 #[test]
 fn every_task_file_is_extended() -> Result<()> {
     let root = repo_root();
-    let mut on_disk: Vec<String> = std::fs::read_dir(root.join("make"))?
-        .filter_map(std::result::Result::ok)
-        .map(|entry| entry.path())
-        .filter(|p| p.extension().is_some_and(|x| x == "toml"))
-        // `all.toml` is the indirection `extend` names, so it is the one file
-        // in this directory that is not in the list it holds.
+    let on_disk: Vec<String> = make_toml_paths(&root)?
+        .into_iter()
         .filter(|p| p.file_name().is_some_and(|n| n != "all.toml"))
         .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
         .collect();
-    on_disk.sort();
 
     let all = read("make/all.toml")?;
-    let named: BTreeSet<String> = all
+    let named: BTreeSet<&str> = all
         .lines()
         .filter_map(|line| line.trim().strip_prefix("{ path = "))
         .filter_map(|rest| rest.split('"').nth(1))
-        .map(str::to_string)
         .collect();
 
     let missing: Vec<&String> = on_disk
