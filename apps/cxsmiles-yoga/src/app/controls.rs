@@ -44,7 +44,7 @@ pub(super) fn InputCard(input: Signal<String>, aromatic: Signal<bool>) -> Elemen
         .count();
     let card_style = StyleBuilder::new()
         .background_color(light.surface)
-        .border(&format!("1px solid {}", light.border))
+        .property_fmt("border", format_args!("1px solid {}", light.border))
         .border_radius(Radius::LG)
         .box_shadow(Shadow::MD)
         .padding(Spacing::LG)
@@ -62,7 +62,7 @@ pub(super) fn InputCard(input: Signal<String>, aromatic: Signal<bool>) -> Elemen
         .font_family("ui-monospace, monospace")
         .font_size(Typography::UI)
         .padding("0.6rem 0.7rem")
-        .border(&format!("1px solid {}", light.border))
+        .property_fmt("border", format_args!("1px solid {}", light.border))
         .border_radius(Radius::MD)
         .property("resize", "vertical")
         .color(light.text)

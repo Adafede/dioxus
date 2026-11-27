@@ -14,36 +14,21 @@ use super::clipboard::CopyCell;
 
 const CANDIDATE_PAGE_SIZE: usize = 60;
 
-#[derive(Clone, PartialEq, Eq)]
-struct DepictedResult {
-    scaffold_svg: String,
-    candidates: Vec<(String, String)>,
-}
-
-fn depict_result(res: &CxResult) -> DepictedResult {
+fn depict_scaffold(res: &CxResult) -> String {
     let highlight_atoms: Vec<usize> = res
         .floating
         .iter()
         .flat_map(|f| f.equiv.iter().copied())
         .chain(res.repeat_unit.iter().flat_map(|u| u.atoms.iter().copied()))
         .collect();
-    let scaffold_svg = render_smiles_svg_highlighted(&res.scaffold_smiles, &highlight_atoms);
-    let candidates = res
-        .enumerated
-        .iter()
-        .map(|smi| (smi.clone(), render_smiles_svg(smi)))
-        .collect();
-    DepictedResult {
-        scaffold_svg,
-        candidates,
-    }
+    render_smiles_svg_highlighted(&res.scaffold_smiles, &highlight_atoms)
 }
 
 fn card_surface(flex: bool) -> String {
     let light = ColorScheme::LIGHT;
     let b = StyleBuilder::new()
         .background_color(light.surface)
-        .border(&format!("1px solid {}", light.border))
+        .property_fmt("border", format_args!("1px solid {}", light.border))
         .border_radius(Radius::MD)
         .padding("0.5rem")
         .min_height("120px");
@@ -80,7 +65,7 @@ fn floating_badges(res: &CxResult) -> Element {
         .padding("2px 0.5rem")
         .border_radius("999px")
         .background_color(light.bg)
-        .border(&format!("1px solid {}", light.border))
+        .property_fmt("border", format_args!("1px solid {}", light.border))
         .color(light.text2)
         .build();
     rsx! {
@@ -110,66 +95,127 @@ fn floating_badges(res: &CxResult) -> Element {
     }
 }
 
-/// Renders the CX-SMILES output card when a result is present, memoizing SVGs.
-#[component]
-pub(super) fn ResultsPanel(
-    result: Signal<Option<CxResult>>,
-    mut show_all: Signal<bool>,
-) -> Element {
-    let depicted = use_memo(move || result.read().as_ref().map(depict_result));
-    let res_guard = result.read();
-    let Some(res) = res_guard.as_ref() else {
-        return rsx! {};
-    };
-    let dep_guard = depicted.read();
-    let Some(dep) = dep_guard.as_ref() else {
-        return rsx! {};
-    };
-    let light = ColorScheme::LIGHT;
+fn recall_notice(res: &CxResult) -> (NoticeTone, String) {
     let frac = res.coverage.fraction() * 100.0;
-    let recall_text = if res.coverage.is_clean() {
-        format!(
-            "Round-trip recall: 100% ({}/{})",
-            res.coverage.covered, res.coverage.total
+    if res.coverage.is_clean() {
+        (
+            NoticeTone::Success,
+            format!(
+                "Round-trip recall: 100% ({}/{})",
+                res.coverage.covered, res.coverage.total
+            ),
         )
     } else {
         let floored = (frac * 10.0).floor() / 10.0;
-        format!(
-            "Round-trip recall: {floored:.1}% ({}/{})",
-            res.coverage.covered, res.coverage.total
+        (
+            NoticeTone::Warning,
+            format!(
+                "Round-trip recall: {floored:.1}% ({}/{})",
+                res.coverage.covered, res.coverage.total
+            ),
         )
-    };
-    let tone = if res.coverage.is_clean() {
-        NoticeTone::Success
-    } else {
-        NoticeTone::Warning
-    };
-    let construct_label = match res.construct {
+    }
+}
+
+const fn construct_label(kind: ConstructKind) -> &'static str {
+    match kind {
         ConstructKind::Positional => "Positional isomer (m: blocks)",
         ConstructKind::Repeating => "Variable-length repeat (Sg:n: block)",
         ConstructKind::BestEffort => "Best-effort (no clean shared scaffold)",
-    };
+    }
+}
+
+fn candidates_section(
+    res: &CxResult,
+    candidates: &[(String, String)],
+    mut show_all: Signal<bool>,
+) -> Element {
+    if candidates.is_empty() {
+        return rsx! {};
+    }
+    let light = ColorScheme::LIGHT;
     let n_enum = res.enumerated.len();
     let all_enumerated = res.enumerated.join("\n");
-    let cx_box_style = StyleBuilder::new()
-        .padding("0.6rem 0.7rem")
-        .background_color(light.bg)
-        .border_radius(Radius::MD)
-        .border(&format!("1px solid {}", light.border))
-        .font_family("ui-monospace, monospace")
-        .font_size(Typography::UI)
-        .property("word-break", "break-all")
-        .color(light.text)
-        .build();
-    let candidate_cell_style = StyleBuilder::new()
+    let cell_style = StyleBuilder::new()
         .width("100%")
         .height("90px")
         .display("grid")
         .property("place-items", "center")
         .background_color(light.bg)
-        .border(&format!("1px solid {}", light.border))
+        .property_fmt("border", format_args!("1px solid {}", light.border))
         .border_radius(Radius::MD)
         .property("overflow", "hidden")
+        .build();
+    rsx! {
+        div { style: card_surface(true),
+            div { style: StyleBuilder::new().display("flex").justify_content("space-between").align_items("center").build(),
+                div { style: field_label(false), "Enumerated candidates ({n_enum})" }
+                CopyCell { text: Arc::<str>::from(all_enumerated.as_str()) }
+            }
+            div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fill, minmax(110px, 1fr))").gap("0.4rem").width("100%").property("max-height", "420px").property("overflow-y", "auto").build(),
+                for (idx, (smi, svg)) in candidates.iter().enumerate() {
+                    div {
+                        key: "{idx}-{smi}",
+                        title: "{smi}",
+                        style: "{cell_style}",
+                        div { dangerous_inner_html: "{svg}" }
+                    }
+                }
+            }
+            if n_enum > CANDIDATE_PAGE_SIZE && !*show_all.read() {
+                button {
+                    r#type: "button",
+                    onclick: move |_| show_all.set(true),
+                    style: StyleBuilder::new().background_color(light.bg).color(light.text2).property_fmt("border", format_args!("1px solid {}", light.border)).border_radius(Radius::MD).padding("0.3rem 0.6rem").font_size(Typography::UI).cursor("pointer").build(),
+                    "Show all ({n_enum})"
+                }
+            }
+        }
+    }
+}
+
+/// Renders the CX-SMILES output card when a result is present, lazily memoizing SVGs.
+#[component]
+pub(super) fn ResultsPanel(result: Signal<Option<CxResult>>, show_all: Signal<bool>) -> Element {
+    let scaffold_svg = use_memo(move || result.read().as_ref().map(depict_scaffold));
+    let candidates = use_memo(move || {
+        let guard = result.read();
+        let Some(res) = guard.as_ref() else {
+            return Vec::new();
+        };
+        let limit = if *show_all.read() {
+            res.enumerated.len()
+        } else {
+            CANDIDATE_PAGE_SIZE
+        };
+        res.enumerated
+            .iter()
+            .take(limit)
+            .map(|smi| (smi.clone(), render_smiles_svg(smi)))
+            .collect::<Vec<_>>()
+    });
+
+    let res_guard = result.read();
+    let Some(res) = res_guard.as_ref() else {
+        return rsx! {};
+    };
+    let svg_guard = scaffold_svg.read();
+    let Some(scaffold) = svg_guard.as_deref() else {
+        return rsx! {};
+    };
+    let cand_guard = candidates.read();
+    let light = ColorScheme::LIGHT;
+    let (tone, recall_text) = recall_notice(res);
+    let construct_text = construct_label(res.construct);
+    let cx_box_style = StyleBuilder::new()
+        .padding("0.6rem 0.7rem")
+        .background_color(light.bg)
+        .border_radius(Radius::MD)
+        .property_fmt("border", format_args!("1px solid {}", light.border))
+        .font_family("ui-monospace, monospace")
+        .font_size(Typography::UI)
+        .property("word-break", "break-all")
+        .color(light.text)
         .build();
 
     rsx! {
@@ -179,7 +225,7 @@ pub(super) fn ResultsPanel(
                 div { style: cx_box_style, "{res.cx_smiles}" }
                 div { style: StyleBuilder::new().display("flex").align_items("center").gap("0.5rem").flex_wrap("wrap").build(),
                     CopyCell { text: Arc::<str>::from(res.cx_smiles.as_str()) }
-                    span { style: StyleBuilder::new().font_size(Typography::UI).color(light.text3).build(), "{construct_label}" }
+                    span { style: StyleBuilder::new().font_size(Typography::UI).color(light.text3).build(), "{construct_text}" }
                 }
                 NoticeBar {
                     label: recall_text,
@@ -189,44 +235,11 @@ pub(super) fn ResultsPanel(
                     div { style: card_surface(false),
                         div { style: field_label(true), "Shared scaffold" }
                         div { style: StyleBuilder::new().width("100%").display("flex").justify_content("center").align_items("center").build(),
-                            div { dangerous_inner_html: "{dep.scaffold_svg}" }
+                            div { dangerous_inner_html: "{scaffold}" }
                         }
                         { floating_badges(res) }
                     }
-                    if !dep.candidates.is_empty() {
-                        div { style: card_surface(true),
-                            div { style: StyleBuilder::new().display("flex").justify_content("space-between").align_items("center").build(),
-                                div { style: field_label(false), "Enumerated candidates ({n_enum})" }
-                                CopyCell { text: Arc::<str>::from(all_enumerated.as_str()) }
-                            }
-                            div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fill, minmax(110px, 1fr))").gap("0.4rem").width("100%").property("max-height", "420px").property("overflow-y", "auto").build(),
-                                {
-                                    let limit = if *show_all.read() {
-                                        dep.candidates.len()
-                                    } else {
-                                        CANDIDATE_PAGE_SIZE
-                                    };
-                                    rsx! {
-                                        for (smi, svg) in dep.candidates.iter().take(limit) {
-                                            div {
-                                                title: "{smi}",
-                                                style: "{candidate_cell_style}",
-                                                div { dangerous_inner_html: "{svg}" }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            if dep.candidates.len() > CANDIDATE_PAGE_SIZE && !*show_all.read() {
-                                button {
-                                    r#type: "button",
-                                    onclick: move |_| show_all.set(true),
-                                    style: StyleBuilder::new().background_color(light.bg).color(light.text2).border(&format!("1px solid {}", light.border)).border_radius(Radius::MD).padding("0.3rem 0.6rem").font_size(Typography::UI).cursor("pointer").build(),
-                                    "Show all ({n_enum})"
-                                }
-                            }
-                        }
-                    }
+                    { candidates_section(res, &cand_guard, show_all) }
                 }
             }
         }

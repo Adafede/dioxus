@@ -100,6 +100,7 @@ pub fn app() -> Element {
     let mut selected = use_signal(String::new);
     let aromatic = use_signal(|| false);
     let mut show_all = use_signal(|| false);
+    let is_input_empty = use_memo(move || input.read().trim().is_empty());
     let light = ColorScheme::LIGHT;
 
     let on_generate = move |_| {
@@ -171,7 +172,7 @@ pub fn app() -> Element {
                 Button {
                     label: "Generate",
                     variant: ButtonVariant::Primary,
-                    disabled: input.read().trim().is_empty(),
+                    disabled: *is_input_empty.read(),
                     onclick: Some(EventHandler::new(on_generate)),
                 }
             }
