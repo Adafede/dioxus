@@ -548,26 +548,26 @@ Hardware & toolchain: Apple M1 Pro (8 cores, 16 GiB RAM, macOS arm64), Rust `1.1
 
 ## 6. Findings Handed Off (Suspected Scientific / Correctness Issues — Not Fixed Here)
 
-1. **`FND-01` (`crates/mgf-analysis-core/src/adduct.rs:71-72`)**: Substring `"CA"` check classifies `"[M+FormicAcid-H]-"` and `"[M+AceticAcid-H]-"` as `AdductFamily::MetalComplex` instead of `Other`.
-2. **`FND-02` (`crates/mgf-analysis-core/src/adduct.rs:190-194`)**: `normalize_adduct_label` slices `1..idx` before `']'`, dropping the first character on malformed inputs lacking leading `'['`.
-3. **`FND-03` (`crates/mgf-analysis-core/src/metrics/record.rs:97-103`)**: Incremental square-and-`sqrt` RMS accumulation introduces floating-point rounding drift relative to single final `sqrt` of mean-square.
-4. **`FND-04` (`crates/mgf-analysis-core/src/recalibration/{parsing,calibration,generator}.rs`)**: `parse_fragment_prefix` omits finiteness/positivity guards enforced by `mgf`, `recalibrate_fragments` applies deadzones absent from diagnostics/MGF export, and `generate_recalibrated_mgf` buffers peaks until `END IONS`.
-5. **`FND-05` (`crates/mgf-analysis-core/src/adduct/parse.rs:71`)**: `compact.contains("+H")` matches unbracketed `M+H2O` / `M+HCOONa` as positive polarity.
-6. **`FND-06` (`crates/lipid-core/src/lipids/classify.rs:153-160`)**: Unchecked `u32` addition/multiplication on untrusted `FORMULA=` counts can overflow on extreme inputs.
-7. **`FND-07` (`crates/lipid-core/src/parser/block.rs:169-172` vs `lipids/classify.rs:201`)**: `classify_formula` trims while `formula_exact_mass` passes untrimmed strings.
-8. **`FND-08` (`crates/cxsmiles-core/src/repeating.rs:107-120`)**: Integer division per element in `unit_multiset` can yield a multiset shorter than `unit_size` when pattern length is not an exact multiple.
-9. **`FND-09` (`crates/cxsmiles-core/src/positional.rs:124-126`)**: `build_targets` implicitly assumes component definitions have length 1 or 2.
-10. **`FND-10` (`crates/smellfish-core/src/evidence/{chemist,ring_family}.rs` vs `apps/smellfish-rs/public/*`)**: Shipped Ertl tables emit raw FG notation while Rust/JS keyword matching checks English words (`steroid`, `flavone`, `ring`), yielding 0 runtime scaffold/core hits on shipped tables.
-11. **`FND-11` (`crates/ui/src/components/upload_zone.rs:164-168` & `theme.rs`)**: `LIGHT.surface == LIGHT.surface2` and `DARK.surface == DARK.surface2`, making drag-hover background color change a visual no-op.
-12. **`FND-12` (`crates/ui/src/document.rs:68-81`)**: `DocumentHead` `use_effect` captures a non-reactive `String` clone of `lang`.
-13. **`FND-13` (`apps/lipid-selecto-rs/src/app/browser.rs:58-133`)**: Failed or empty subsequent file upload leaves stale `analysis` results visible and downloadable.
-14. **`FND-14` (`apps/smellfish-rs/src/app/input_panel.rs:39-41`)**: Hand-rolled `on_drop` omits `prevent_default()` and fails to reset `drag_active` on empty/error extraction.
-15. **`FND-15` (`apps/smellfish-rs/src/document_head.rs:25`)**: Unpinned `unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js` URL lacks version pin and SRI hash.
-16. **`FND-16` (`apps/smellfish-rs/public/group_names.txt` & `literature.rs:36`)**: Empty `group_names.txt` leaves Ertl FG labels untranslated while `literature.rs` cites it as populated.
-17. **`FND-17` (`apps/mgf-precursor-erro-rs/src/plotting/histogram.rs`)**: Histogram SVG lacks an embedded SVG legend (HTML-only legend in `DiagnosticsPanel`).
-18. **`FND-18` (`apps/.../smarts-evoliposuction/src/cli/split.rs` vs `splitting.rs`)**: `smiles_cap` (2000) truncates positives after `target_negative_count` already sampled up to 5000 negatives, creating 1:2.5 imbalance and double-shuffling negatives.
-19. **`FND-19` (`apps/.../smarts-evoliposuction/src/splitting.rs:240,264`)**: `main_class` and `subclass` splits leave `category` empty despite `category_of_main` existing.
-20. **`FND-20` (`apps/.../smarts-evoliposuction/src/download.rs:4,18-19`)**: Doc claims SDF-to-TSV deduplicates by `SMILES+LM_ID`, whereas it only filters non-empty records.
+1. **`FIND-01` (`crates/mgf-analysis-core/src/adduct.rs:71-72`)**: Substring `"CA"` check classifies `"[M+FormicAcid-H]-"` and `"[M+AceticAcid-H]-"` as `AdductFamily::MetalComplex` instead of `Other`.
+2. **`FIND-02` (`crates/mgf-analysis-core/src/adduct.rs:190-194`)**: `normalize_adduct_label` slices `1..idx` before `']'`, dropping the first character on malformed inputs lacking leading `'['`.
+3. **`FIND-03` (`crates/mgf-analysis-core/src/metrics/record.rs:97-103`)**: Incremental square-and-`sqrt` RMS accumulation introduces floating-point rounding drift relative to single final `sqrt` of mean-square.
+4. **`FIND-04` (`crates/mgf-analysis-core/src/recalibration/{parsing,calibration,generator}.rs`)**: `parse_fragment_prefix` omits finiteness/positivity guards enforced by `mgf`, `recalibrate_fragments` applies deadzones absent from diagnostics/MGF export, and `generate_recalibrated_mgf` buffers peaks until `END IONS`.
+5. **`FIND-05` (`crates/mgf-analysis-core/src/adduct/parse.rs:71`)**: `compact.contains("+H")` matches unbracketed `M+H2O` / `M+HCOONa` as positive polarity.
+6. **`FIND-06` (`crates/lipid-core/src/lipids/classify.rs:153-160`)**: Unchecked `u32` addition/multiplication on untrusted `FORMULA=` counts can overflow on extreme inputs.
+7. **`FIND-07` (`crates/lipid-core/src/parser/block.rs:169-172` vs `lipids/classify.rs:201`)**: `classify_formula` trims while `formula_exact_mass` passes untrimmed strings.
+8. **`FIND-08` (`crates/cxsmiles-core/src/repeating.rs:107-120`)**: Integer division per element in `unit_multiset` can yield a multiset shorter than `unit_size` when pattern length is not an exact multiple.
+9. **`FIND-09` (`crates/cxsmiles-core/src/positional.rs:124-126`)**: `build_targets` implicitly assumes component definitions have length 1 or 2.
+10. **`FIND-10` (`crates/smellfish-core/src/evidence/{chemist,ring_family}.rs` vs `apps/smellfish-rs/public/*`)**: Shipped Ertl tables emit raw FG notation while Rust/JS keyword matching checks English words (`steroid`, `flavone`, `ring`), yielding 0 runtime scaffold/core hits on shipped tables.
+11. **`FIND-11` (`crates/ui/src/components/upload_zone.rs:164-168` & `theme.rs`)**: `LIGHT.surface == LIGHT.surface2` and `DARK.surface == DARK.surface2`, making drag-hover background color change a visual no-op.
+12. **`FIND-12` (`crates/ui/src/document.rs:68-81`)**: `DocumentHead` `use_effect` captures a non-reactive `String` clone of `lang`.
+13. **`FIND-13` (`apps/lipid-selecto-rs/src/app/browser.rs:58-133`)**: Failed or empty subsequent file upload leaves stale `analysis` results visible and downloadable.
+14. **`FIND-14` (`apps/smellfish-rs/src/app/input_panel.rs:39-41`)**: Hand-rolled `on_drop` omits `prevent_default()` and fails to reset `drag_active` on empty/error extraction.
+15. **`FIND-15` (`apps/smellfish-rs/src/document_head.rs:25`)**: Unpinned `unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js` URL lacks version pin and SRI hash.
+16. **`FIND-16` (`apps/smellfish-rs/public/group_names.txt` & `literature.rs:36`)**: Empty `group_names.txt` leaves Ertl FG labels untranslated while `literature.rs` cites it as populated.
+17. **`FIND-17` (`apps/mgf-precursor-erro-rs/src/plotting/histogram.rs`)**: Histogram SVG lacks an embedded SVG legend (HTML-only legend in `DiagnosticsPanel`).
+18. **`FIND-18` (`apps/.../smarts-evoliposuction/src/cli/split.rs` vs `splitting.rs`)**: `smiles_cap` (2000) truncates positives after `target_negative_count` already sampled up to 5000 negatives, creating 1:2.5 imbalance and double-shuffling negatives.
+19. **`FIND-19` (`apps/.../smarts-evoliposuction/src/splitting.rs:240,264`)**: `main_class` and `subclass` splits leave `category` empty despite `category_of_main` existing.
+20. **`FIND-20` (`apps/.../smarts-evoliposuction/src/download.rs:4,18-19`)**: Doc claims SDF-to-TSV deduplicates by `SMILES+LM_ID`, whereas it only filters non-empty records.
 
 ## 7. Deliberately Not Changed
 
@@ -582,4 +582,4 @@ Hardware & toolchain: Apple M1 Pro (8 cores, 16 GiB RAM, macOS arm64), Rust `1.1
 ## 8. Residual Debt and Risk
 
 - Browser DOM/`web-sys`/`RDKit.js` runtime behavior is verified via `wasm32-unknown-unknown` compilation, clippy, and `dx build --profile wasm-release`, not headless browser execution.
-- Scientific/correctness items (`FND-01`..`FND-20`) remain deliberately unfixed pending domain sign-off.
+- Scientific/correctness items (`FIND-01`..`FIND-20`) remain deliberately unfixed pending domain sign-off.
