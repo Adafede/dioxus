@@ -113,6 +113,12 @@ impl InChIKey14 {
     pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Consumes the wrapper and returns the underlying owned string.
+    #[must_use]
+    pub(crate) fn into_string(self) -> String {
+        self.0
+    }
 }
 
 impl fmt::Display for InChIKey14 {

@@ -3,6 +3,8 @@
 
 //! SVG validation for molecule depictions injected into the DOM.
 
+use std::borrow::Cow;
+
 const FORBIDDEN_MARKERS: [&str; 11] = [
     "<script",
     "<foreignobject",
@@ -34,7 +36,11 @@ pub(crate) fn is_safe_svg(svg: &str) -> bool {
     {
         return false;
     }
-    let normalized: String = trimmed.chars().filter(|c| !c.is_control()).collect();
+    let normalized: Cow<'_, str> = if trimmed.chars().any(char::is_control) {
+        Cow::Owned(trimmed.chars().filter(|c| !c.is_control()).collect())
+    } else {
+        Cow::Borrowed(trimmed)
+    };
     if FORBIDDEN_MARKERS
         .iter()
         .any(|needle| normalized.contains(needle))

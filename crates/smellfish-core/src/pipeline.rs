@@ -55,7 +55,14 @@ pub struct ImportOutcome {
     pub warnings: Vec<String>,
 }
 
-type MotifAccumulator = HashMap<String, (SourceClass, String, BTreeSet<String>, HashSet<usize>)>;
+struct MotifAcc {
+    source_class: SourceClass,
+    kingdom: String,
+    kingdoms: BTreeSet<String>,
+    row_indices: HashSet<usize>,
+}
+
+type MotifAccumulator = HashMap<String, MotifAcc>;
 
 /// Aggregates Pass-1 `RDKit` inspections, sanitizes SVGs once, and builds the enrichment index.
 #[must_use]
@@ -75,15 +82,13 @@ pub fn prepare_pass1(inspections: Vec<RowInspection>) -> PreparedBatch {
     let motifs = sorted_motifs(
         motif_counts
             .into_iter()
-            .map(
-                |(label, (source_class, kingdom, kingdoms, rows_set))| MotifSummary {
-                    label,
-                    source_class,
-                    kingdom,
-                    kingdoms: kingdoms.into_iter().collect(),
-                    count: rows_set.len(),
-                },
-            )
+            .map(|(label, acc)| MotifSummary {
+                label,
+                source_class: acc.source_class,
+                kingdom: acc.kingdom,
+                kingdoms: acc.kingdoms.into_iter().collect(),
+                count: acc.row_indices.len(),
+            })
             .collect(),
     );
     let dataset_context = compute_dataset_context(&motifs, rows.len());
@@ -118,16 +123,16 @@ fn build_pass1_row(
 
     let motif_hits = inspect.motifs.unwrap_or_default();
     for hit in &motif_hits {
-        let entry = motif_counts.entry(hit.label.clone()).or_insert_with(|| {
-            (
-                hit.source_class,
-                hit.kingdom.clone(),
-                hit.kingdoms.iter().cloned().collect(),
-                HashSet::new(),
-            )
-        });
-        entry.2.extend(hit.kingdoms.iter().cloned());
-        entry.3.insert(index);
+        let entry = motif_counts
+            .entry(hit.label.clone())
+            .or_insert_with(|| MotifAcc {
+                source_class: hit.source_class,
+                kingdom: hit.kingdom.clone(),
+                kingdoms: BTreeSet::new(),
+                row_indices: HashSet::new(),
+            });
+        entry.kingdoms.extend(hit.kingdoms.iter().cloned());
+        entry.row_indices.insert(index);
     }
 
     let inchikey = inspect.inchikey.unwrap_or_default();
@@ -221,7 +226,7 @@ fn build_connectivity_index(rows: &[MoleculeRow]) -> HashMap<String, Vec<usize>>
     let mut map: HashMap<String, Vec<usize>> = HashMap::new();
     for (idx, row) in rows.iter().enumerate() {
         if let Some(key) = InChIKey14::from_inchikey(&row.inchikey) {
-            map.entry(key.as_str().to_string()).or_default().push(idx);
+            map.entry(key.into_string()).or_default().push(idx);
         }
     }
     map

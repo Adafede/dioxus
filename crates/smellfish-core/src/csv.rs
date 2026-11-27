@@ -5,8 +5,10 @@
 
 use crate::error::SmellfishError;
 use crate::model::{MoleculeRow, RawRow};
-use std::borrow::Cow;
 use std::fmt::Write;
+
+const SMILES_HEADERS: &[&str] = &["smiles", "smile", "structure", "canonical_smiles"];
+const LABEL_HEADERS: &[&str] = &["name", "label", "id", "compound"];
 
 /// Parse delimited text (`CSV`, `TSV`, `;`-separated) or newline-delimited SMILES into [`RawRow`] values.
 ///
@@ -34,12 +36,8 @@ pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, SmellfishError> {
 
     let (smiles_idx, label_idx, skip) = if has_header {
         let headers = records.first().ok_or(SmellfishError::EmptyInput)?;
-        let smiles_idx = detect_column(
-            headers,
-            &["smiles", "smile", "structure", "canonical_smiles"],
-        )
-        .unwrap_or(0);
-        let label_idx = detect_column(headers, &["name", "label", "id", "compound"]);
+        let smiles_idx = detect_column(headers, SMILES_HEADERS).unwrap_or(0);
+        let label_idx = detect_column(headers, LABEL_HEADERS);
         (smiles_idx, label_idx, 1usize)
     } else {
         // Headerless TSV / semicolon SMILES+label rows: column 0 is SMILES, column 1 is label.
@@ -149,19 +147,9 @@ fn detect_delimiter(text: &str) -> char {
 }
 
 fn row_looks_like_header(record: &[String]) -> bool {
-    const KNOWN_HEADERS: &[&str] = &[
-        "smiles",
-        "smile",
-        "structure",
-        "canonical_smiles",
-        "name",
-        "label",
-        "id",
-        "compound",
-    ];
     record.iter().any(|cell| {
         let norm = strip_header_prefix(cell).to_ascii_lowercase();
-        KNOWN_HEADERS.iter().any(|k| norm == *k)
+        SMILES_HEADERS.iter().any(|k| norm == *k) || LABEL_HEADERS.iter().any(|k| norm == *k)
     })
 }
 
@@ -254,22 +242,18 @@ pub(crate) fn escape_csv(value: &str) -> String {
 }
 
 fn push_csv_escaped(out: &mut String, s: &str) {
-    let safe = if matches!(
+    let formula_prefix = matches!(
         s.as_bytes().first(),
         Some(b'=' | b'+' | b'-' | b'@' | b'\t' | b'\r')
-    ) {
-        Cow::Owned(format!("'{s}"))
-    } else {
-        Cow::Borrowed(s)
-    };
-    let text = safe.as_ref();
-    if text
-        .bytes()
-        .any(|b| matches!(b, b',' | b'"' | b'\n' | b'\r'))
-    {
-        out.reserve(text.len() + 2);
+    );
+    let needs_quotes = s.bytes().any(|b| matches!(b, b',' | b'"' | b'\n' | b'\r'));
+    if needs_quotes {
+        out.reserve(s.len() + 2 + usize::from(formula_prefix));
         out.push('"');
-        for ch in text.chars() {
+        if formula_prefix {
+            out.push('\'');
+        }
+        for ch in s.chars() {
             if ch == '"' {
                 out.push_str("\"\"");
             } else {
@@ -278,8 +262,16 @@ fn push_csv_escaped(out: &mut String, s: &str) {
         }
         out.push('"');
     } else {
-        out.push_str(text);
+        if formula_prefix {
+            out.push('\'');
+        }
+        out.push_str(s);
     }
+}
+
+fn push_csv_field(out: &mut String, value: &str) {
+    push_csv_escaped(out, value);
+    out.push(',');
 }
 
 /// Formats assessed molecule rows into a downloadable CSV report.
@@ -291,12 +283,9 @@ pub fn format_csv_rows(rows: &[MoleculeRow]) -> String {
     );
     let mut scratch = String::new();
     for r in rows {
-        push_csv_escaped(&mut csv, &r.label);
-        csv.push(',');
-        push_csv_escaped(&mut csv, &r.smiles);
-        csv.push(',');
-        push_csv_escaped(&mut csv, &r.inchikey);
-        csv.push(',');
+        push_csv_field(&mut csv, &r.label);
+        push_csv_field(&mut csv, &r.smiles);
+        push_csv_field(&mut csv, &r.inchikey);
         if let Some(np) = r.np_score.filter(|np| np.score.is_finite()) {
             let _ = write!(csv, "{:.3},", np.score);
             push_csv_escaped(&mut csv, &r.np_label);
@@ -311,8 +300,7 @@ pub fn format_csv_rows(rows: &[MoleculeRow]) -> String {
             push_csv_escaped(&mut csv, &r.np_label);
             csv.push_str(",,");
         }
-        push_csv_escaped(&mut csv, r.ring_family.as_str());
-        csv.push(',');
+        push_csv_field(&mut csv, r.ring_family.as_str());
 
         scratch.clear();
         for (idx, (label, count)) in r.substituents_counts.iter().enumerate() {

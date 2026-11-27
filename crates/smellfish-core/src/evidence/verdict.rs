@@ -6,6 +6,7 @@
 use crate::model::{MoleculeRow, Verdict, VerdictCategory};
 
 use super::chemist::EvidenceCounts;
+use super::{ERTL_AMBIGUOUS, ERTL_FISHY, ERTL_MODERATE, ERTL_STRONG};
 
 /// Flat evidence inputs consumed by [`classify_np_evidence`].
 #[derive(Clone, Copy, Debug, Default)]
@@ -66,13 +67,13 @@ pub(crate) fn classify_np_evidence(signals: &EvidenceSignals) -> Verdict {
     let Some(score) = signals.np_score.filter(|s| s.is_finite()) else {
         return classify_without_model(*signals);
     };
-    if score <= -2.0 {
+    if score <= ERTL_FISHY {
         return Verdict::new(
             VerdictCategory::Fishy,
             format!("Smells fishy — highly synthetic (Ertl {score:+.2})"),
         );
     }
-    let synthetic_lean = signals.synthetic_majority() || score < 0.0;
+    let synthetic_lean = signals.synthetic_majority() || score < ERTL_AMBIGUOUS;
     if synthetic_lean && !signals.has_lotus {
         return Verdict::new(
             VerdictCategory::Caution,
@@ -117,12 +118,12 @@ fn classify_without_model(signals: EvidenceSignals) -> Verdict {
 }
 
 fn classify_with_lotus(signals: EvidenceSignals, score: f64) -> Verdict {
-    if score >= 2.0 && signals.structural_support() {
+    if score >= ERTL_STRONG && signals.structural_support() {
         Verdict::new(
             VerdictCategory::Likely,
             format!("LOTUS + strong NP evidence (Ertl {score:+.2})"),
         )
-    } else if score >= 1.0 && signals.structural_support() {
+    } else if score >= ERTL_MODERATE && signals.structural_support() {
         Verdict::new(
             VerdictCategory::Likely,
             format!("LOTUS-backed NP evidence (Ertl {score:+.2})"),
@@ -141,28 +142,28 @@ fn classify_with_lotus_scaffold(signals: EvidenceSignals, score: f64) -> Verdict
         || signals.counts.scaffold > 0
         || signals.counts.np_core > 0;
 
-    if score >= 2.0 && corroborates {
+    if score >= ERTL_STRONG && corroborates {
         Verdict::new(
             VerdictCategory::Likely,
             format!(
                 "Likely NP — LOTUS-prevalent scaffold + strong Ertl + natural motifs (Ertl {score:+.2})"
             ),
         )
-    } else if score >= 2.0 {
+    } else if score >= ERTL_STRONG {
         Verdict::new(
             VerdictCategory::Skeptical,
             format!(
                 "Citation needed — LOTUS scaffold hint, no natural corroboration (Ertl {score:+.2})"
             ),
         )
-    } else if score >= 1.0 && corroborates {
+    } else if score >= ERTL_MODERATE && corroborates {
         Verdict::new(
             VerdictCategory::Likely,
             format!(
                 "Likely NP — LOTUS-prevalent scaffold + Ertl + natural motifs (Ertl {score:+.2})"
             ),
         )
-    } else if score >= 1.0 {
+    } else if score >= ERTL_MODERATE {
         Verdict::new(
             VerdictCategory::Skeptical,
             format!("Citation needed — LOTUS scaffold hint, Ertl-only (Ertl {score:+.2})"),
@@ -178,17 +179,17 @@ fn classify_with_lotus_scaffold(signals: EvidenceSignals, score: f64) -> Verdict
 }
 
 fn classify_with_pubchem(signals: EvidenceSignals, score: f64) -> Verdict {
-    if score >= 2.0 && signals.structural_support() {
+    if score >= ERTL_STRONG && signals.structural_support() {
         Verdict::new(
             VerdictCategory::Likely,
             format!("PubChem + strong NP evidence (Ertl {score:+.2})"),
         )
-    } else if score >= 1.0 && signals.structural_support() {
+    } else if score >= ERTL_MODERATE && signals.structural_support() {
         Verdict::new(
             VerdictCategory::Neutral,
             format!("PubChem hit + moderate NP structure (Ertl {score:+.2})"),
         )
-    } else if score >= 1.0 {
+    } else if score >= ERTL_MODERATE {
         Verdict::new(
             VerdictCategory::Skeptical,
             format!("Citation needed — PubChem hit, unsupported structure (Ertl {score:+.2})"),
@@ -202,8 +203,8 @@ fn classify_with_pubchem(signals: EvidenceSignals, score: f64) -> Verdict {
 }
 
 fn classify_unbacked(signals: EvidenceSignals, score: f64) -> Verdict {
-    let strong = score >= 2.0;
-    let confident = score >= 1.0;
+    let strong = score >= ERTL_STRONG;
+    let confident = score >= ERTL_MODERATE;
 
     if strong
         && signals.counts.np_core >= 2

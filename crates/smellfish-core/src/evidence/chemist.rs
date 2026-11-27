@@ -3,35 +3,14 @@
 
 //! Chemist visual audit checks and structural motif classification counters.
 
+use super::{ERTL_AMBIGUOUS, ERTL_MODERATE, RING_FAMILY_MOTIFS};
 use crate::model::{
     CheckStatus, ChemistCheck, MoleculeRow, RdkitMotifHit, SourceClass, contains_ignore_ascii_case,
     matches_any,
 };
 
-const SCAFFOLD_MOTIFS: &[&str] = &[
-    "steroid",
-    "sugar",
-    "macrolide",
-    "macrocycle",
-    "lactone",
-    "lactam",
-    "flavone",
-    "flavonoid",
-    "indole",
-    "quinoline",
-    "isoquinoline",
-    "benzofuran",
-    "benzothiophene",
-    "quinoxaline",
-    "purine",
-    "chromone",
-    "coumarin",
-    "morpholine",
-    "piperidine",
-    "piperazine",
-    "tetrahydrofuran",
-    "tetrahydropyran",
-];
+const EXTRA_SCAFFOLD_MOTIFS: &[&str] =
+    &["morpholine", "piperidine", "piperazine", "tetrahydropyran"];
 
 const DECORATION_MOTIFS: &[&str] = &[
     "aldehyde",
@@ -64,8 +43,10 @@ const DECORATION_MOTIFS: &[&str] = &[
 pub(crate) fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     let (np_status, np_detail) = match row.np_score.filter(|np| np.score.is_finite()) {
         None => (CheckStatus::Warn, "Ertl model unavailable".into()),
-        Some(np) if np.score >= 1.0 => (CheckStatus::Pass, format!("Ertl score {:+.2}", np.score)),
-        Some(np) if np.score >= 0.0 => (
+        Some(np) if np.score >= ERTL_MODERATE => {
+            (CheckStatus::Pass, format!("Ertl score {:+.2}", np.score))
+        }
+        Some(np) if np.score >= ERTL_AMBIGUOUS => (
             CheckStatus::Warn,
             format!("Ertl score {:+.2} — borderline", np.score),
         ),
@@ -112,13 +93,16 @@ pub(crate) fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
 /// Returns `true` when `label` names a scaffold motif known to be enriched in natural products.
 #[must_use]
 pub(crate) fn is_known_np_motif(label: &str) -> bool {
-    matches_any(label, SCAFFOLD_MOTIFS)
+    RING_FAMILY_MOTIFS
+        .iter()
+        .any(|(_, keywords)| matches_any(label, keywords))
+        || matches_any(label, EXTRA_SCAFFOLD_MOTIFS)
 }
 
 /// Returns `true` for scaffold ring systems characteristic of natural products.
 #[must_use]
 pub(crate) fn is_scaffold_motif(label: &str) -> bool {
-    matches_any(label, SCAFFOLD_MOTIFS)
+    is_known_np_motif(label)
         || contains_ignore_ascii_case(label, "ring")
         || contains_ignore_ascii_case(label, "cyclohexane")
 }

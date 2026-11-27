@@ -3,6 +3,7 @@
 
 //! Scaffold ring-family classification from motif labels and `RDKit` descriptors.
 
+use super::RING_FAMILY_MOTIFS;
 use crate::model::{RdkitDescriptors, RdkitMotifHit, RingFamily, matches_any};
 
 /// Classifies the molecule's core scaffold ring family.
@@ -11,28 +12,11 @@ pub(crate) fn classify_ring_family(
     descriptors: &RdkitDescriptors,
     motif_hits: &[RdkitMotifHit],
 ) -> RingFamily {
-    let has_any = |keywords: &[&str]| motif_hits.iter().any(|h| matches_any(&h.label, keywords));
-
-    if has_any(&["steroid"]) {
-        RingFamily::Steroid
-    } else if has_any(&["sugar", "tetrahydrofuran"]) {
-        RingFamily::Sugar
-    } else if has_any(&["macrolide", "macrocycle", "lactone", "lactam"]) {
-        RingFamily::Macrolide
-    } else if has_any(&["flavone", "flavonoid"]) {
-        RingFamily::Flavonoid
-    } else if has_any(&[
-        "indole",
-        "quinoline",
-        "isoquinoline",
-        "benzofuran",
-        "benzothiophene",
-        "quinoxaline",
-        "purine",
-        "chromone",
-        "coumarin",
-    ]) {
-        RingFamily::Heteroaromatic
+    if let Some(&(family, _)) = RING_FAMILY_MOTIFS
+        .iter()
+        .find(|(_, keywords)| motif_hits.iter().any(|h| matches_any(&h.label, keywords)))
+    {
+        family
     } else {
         family_from_descriptors(descriptors)
     }

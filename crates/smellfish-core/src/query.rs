@@ -3,55 +3,41 @@
 
 //! SPARQL query builders for `WDQS` and `QLever` endpoints over `InChIKey` batches.
 
-/// Builds the Wikidata LOTUS query for `WDQS` using a nested `SELECT`.
-#[must_use]
-pub(crate) fn build_lotus_query_wdqs(inchikeys: &[String]) -> String {
-    let values = format_sparql_values(inchikeys);
-    if values.is_empty() {
-        return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
-    }
-    format!(
-        r#"PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
-  {{
-    SELECT DISTINCT ?inchikey ?connectivity ?related_item WHERE {{
-      VALUES ?inchikey {{ {values} }}
-      BIND(SUBSTR(?inchikey, 1 , 14 ) AS ?connectivity)
-      ?item wdt:P235 ?inchikey;
-        (wdt:P3364|wdt:P6185|(wdt:P279*)|^(wdt:P279+)) ?related_item.
-      OPTIONAL {{ ?related_item wdt:P235 ?related_inchikey. }}
-      OPTIONAL {{
-        ?item wdt:P6185 ?related_item.
-        BIND("true"^^xsd:boolean AS ?is_tautomer)
-      }}
-      FILTER(((?item = ?related_item) || (BOUND(?is_tautomer))) || (STRSTARTS(?related_inchikey, ?connectivity)))
-    }}
-  }}
-  OPTIONAL {{ ?related_item (wdt:P703/wdt:P225) ?taxon_name. }}
-}}"#
-    )
+/// SPARQL dialect target for LOTUS compound queries.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum LotusDialect {
+    /// Wikidata Query Service endpoint.
+    Wdqs,
+    /// Compressed-dictionary `QLever` Wikidata endpoint.
+    Qlever,
 }
 
-/// Builds the Wikidata LOTUS query optimized for `QLever`'s compressed dictionary.
+/// Builds the Wikidata LOTUS query for the selected SPARQL endpoint dialect.
 #[must_use]
-pub(crate) fn build_lotus_query_qlever(inchikeys: &[String]) -> String {
+pub(crate) fn build_lotus_query(inchikeys: &[String], dialect: LotusDialect) -> String {
     let values = format_sparql_values(inchikeys);
     if values.is_empty() {
         return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
     }
+    let prefix_union = match dialect {
+        LotusDialect::Wdqs => "",
+        LotusDialect::Qlever => {
+            "\n      UNION\n      {\n        # Native QLever compressed dictionary prefix lookup\n        ?related_item wdt:P235 ?prefix_inchikey .\n        FILTER(STRSTARTS(?prefix_inchikey, ?connectivity))\n      }"
+        }
+    };
+    let (branch_open, branch_close) = match dialect {
+        LotusDialect::Wdqs => ("", ""),
+        LotusDialect::Qlever => ("      {\n", "\n      }"),
+    };
     format!(
         r#"PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-
 SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
   {{
     SELECT DISTINCT ?inchikey ?connectivity ?related_item WHERE {{
       VALUES ?inchikey {{ {values} }}
       BIND(SUBSTR(?inchikey, 1, 14) AS ?connectivity)
-
-      {{
-        ?item wdt:P235 ?inchikey .
+{branch_open}        ?item wdt:P235 ?inchikey .
         ?item (wdt:P3364|wdt:P6185|(wdt:P279*)|^(wdt:P279+)) ?related_item .
         OPTIONAL {{ ?related_item wdt:P235 ?related_inchikey . }}
         OPTIONAL {{
@@ -59,13 +45,7 @@ SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
           BIND("true"^^xsd:boolean AS ?is_tautomer)
         }}
         FILTER(((?item = ?related_item) || (BOUND(?is_tautomer))) || (STRSTARTS(?related_inchikey, ?connectivity)))
-      }}
-      UNION
-      {{
-        # Native QLever compressed dictionary prefix lookup
-        ?related_item wdt:P235 ?prefix_inchikey .
-        FILTER(STRSTARTS(?prefix_inchikey, ?connectivity))
-      }}
+{branch_close}{prefix_union}
     }}
   }}
   OPTIONAL {{ ?related_item (wdt:P703/wdt:P225) ?taxon_name . }}

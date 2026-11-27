@@ -5,7 +5,7 @@
 
 use crate::error::SmellfishError;
 use crate::model::{EndpointStatus, Enrichment, EnrichmentOutcome, InChIKey14, SourceSummary};
-use crate::query::{build_lotus_query_qlever, build_lotus_query_wdqs, build_pubchem_sparql};
+use crate::query::{LotusDialect, build_lotus_query, build_pubchem_sparql};
 use crate::sparql::{QLEVER_PUBCHEM, run_query};
 use futures::future::join;
 use lotus_search::{Http, QLEVER_WIKIDATA, ResponseFormat, WDQS_WIKIDATA};
@@ -82,7 +82,7 @@ async fn fetch_lotus_with_fallback(
     inchikeys: &[String],
     warnings: &mut Vec<String>,
 ) -> (HashMap<String, SourceSummary>, EndpointStatus) {
-    match fetch_lotus_hits(http, WDQS_WIKIDATA, inchikeys).await {
+    match fetch_lotus_hits(http, WDQS_WIKIDATA, LotusDialect::Wdqs, inchikeys).await {
         Ok(data) => {
             let detail = if data.is_empty() {
                 "online (0 matches)"
@@ -95,7 +95,7 @@ async fn fetch_lotus_with_fallback(
             warnings.push(format!(
                 "LOTUS WDQS failed, switched to Qlever fallback: {wdqs_err}"
             ));
-            match fetch_lotus_hits(http, QLEVER_WIKIDATA, inchikeys).await {
+            match fetch_lotus_hits(http, QLEVER_WIKIDATA, LotusDialect::Qlever, inchikeys).await {
                 Ok(data) => {
                     let detail = if data.is_empty() {
                         "online via QLever fallback (0 matches)"
@@ -123,15 +123,12 @@ async fn fetch_lotus_with_fallback(
 async fn fetch_lotus_hits(
     http: &impl Http,
     endpoint: &str,
+    dialect: LotusDialect,
     inchikeys: &[String],
 ) -> Result<HashMap<String, SourceSummary>, SmellfishError> {
     let mut summary: HashMap<String, SourceSummary> = HashMap::new();
     for chunk in inchikeys.chunks(QUERY_CHUNK_SIZE) {
-        let query = if endpoint == WDQS_WIKIDATA {
-            build_lotus_query_wdqs(chunk)
-        } else {
-            build_lotus_query_qlever(chunk)
-        };
+        let query = build_lotus_query(chunk, dialect);
         for binding in sparql_bindings(http, endpoint, &query).await? {
             let Some(connectivity) = InChIKey14::from_inchikey(binding_str(&binding, "inchikey"))
             else {

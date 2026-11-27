@@ -7,6 +7,7 @@ use crate::model::{DatasetMotifContext, MotifContext, NpScore, RdkitDescriptors,
 
 use super::chemist::{EvidenceCounts, is_known_np_motif};
 use super::ring_family::classify_ring_family;
+use super::{ERTL_AMBIGUOUS, ERTL_FISHY, ERTL_MODERATE, ERTL_STRONG};
 
 /// Assessment result built for a single molecule row.
 #[derive(Clone, Debug, PartialEq)]
@@ -33,13 +34,13 @@ pub(crate) const fn np_likeness_label(score: Option<f64>) -> &'static str {
     };
     if !s.is_finite() {
         "unavailable"
-    } else if s >= 2.0 {
+    } else if s >= ERTL_STRONG {
         "strong natural product"
-    } else if s >= 1.0 {
+    } else if s >= ERTL_MODERATE {
         "NP-like"
-    } else if s >= 0.0 {
+    } else if s >= ERTL_AMBIGUOUS {
         "NP-ambiguous"
-    } else if s > -2.0 {
+    } else if s > ERTL_FISHY {
         "synthetic-leaning"
     } else {
         "highly synthetic"
