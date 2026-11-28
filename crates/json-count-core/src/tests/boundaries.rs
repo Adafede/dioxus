@@ -137,10 +137,16 @@ fn progress_message_and_callback_invocation() {
     );
     assert!(
         recorded
+            .iter()
+            .all(|&(p, t)| p <= t && t == doc.len() as u64),
+        "all progress events must be bounded by document length: {recorded:?}"
+    );
+    assert!(
+        recorded
             .last()
             .copied()
-            .is_some_and(|(p, t)| p >= 4 * 1024 * 1024 && p <= t && t == doc.len() as u64),
-        "progress event must cross 4 MiB threshold with matching total: {recorded:?}"
+            .is_some_and(|(p, _)| p >= 1_048_576),
+        "progress event must advance past first chunk (either 120 ms timer or 4 MiB byte threshold): {recorded:?}"
     );
 
     let on_progress: fn(u64, u64) = |_, _| {};
