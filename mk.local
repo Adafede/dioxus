@@ -31,3 +31,7 @@ COVERAGE_FAIL_UNDER_LINES="80"
 # Mutation testing covers the logic crates; the apps are mostly Dioxus rendering
 # (`./mk local:mutants-ui` and `./mk local:mutants-mgf` run the rest on request).
 MUTANTS_PACKAGES=(json-count-core cxsmiles-core)
+# `unsafe_code = "forbid"` holds workspace-wide; the remaining crates have
+# heavy chemistry/large-buffer tests or WASM/I/O dependencies that exceed
+# Miri's nightly budget.
+MIRI_PACKAGES=(stream-io mgf chem-depict)
